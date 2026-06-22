@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { t } from '../../i18n';
+import '../../styles/global.css';
+
+const m = t('vi');
+---
+
+<BaseLayout title={m.solutions.title} description={m.solutions.intro}>
+  <Header slot="header" />
+  <section class="section">
+    <div class="container">
+      <h1 class="section-title">{m.solutions.title}</h1>
+      <p class="section-intro">{m.solutions.intro}</p>
+      <div class="card-grid">
+        <article class="card">
+          <h3>{m.solutions.posTitle}</h3>
+          <p>{m.solutions.posDesc}</p>
+        </article>
+        <article class="card">
+          <h3>{m.solutions.invTitle}</h3>
+          <p>{m.solutions.invDesc}</p>
+        </article>
+        <article class="card">
+          <h3>{m.solutions.custTitle}</h3>
+          <p>{m.solutions.custDesc}</p>
+        </article>
+        <article class="card">
+          <h3>{m.solutions.opsTitle}</h3>
+          <p>{m.solutions.opsDesc}</p>
+        </article>
+      </div>
+      <p style="margin-top: 2rem">
+        <a class="btn btn-primary" href="/vi/lien-he">{m.home.ctaContact}</a>
+      </p>
+    </div>
+  </section>
+  <Footer slot="footer" />
+</BaseLayout>

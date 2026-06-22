@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "siteName": "Novixa",
+    "tagline": "Giải pháp dược thông minh"
+  },
+  "nav": {
+    "home": "Trang chủ",
+    "solutions": "Giải pháp",
+    "about": "Về Novixa",
+    "news": "Tin tức",
+    "contact": "Liên hệ",
+    "langEn": "English",
+    "langEnSoon": "English — sắp có"
+  },
+  "home": {
+    "heroTitle": "Quản lý nhà thuốc thông minh — từ quầy bán đến tồn kho lô",
+    "heroSubtitle": "Novixa là nền tảng ERP dành cho nhà thuốc tại Việt Nam: POS nhanh, tồn theo FEFO, khách hàng và vận hành trong một hệ thống thống nhất.",
+    "ctaContact": "Đăng ký quan tâm",
+    "ctaSolutions": "Xem giải pháp",
+    "featuresTitle": "Tại sao Novixa",
+    "feature1Title": "POS bán hàng",
+    "feature1Desc": "Quét mã vạch, chiết khấu, thanh toán đa hình thức — tối ưu cho quầy nhà thuốc.",
+    "feature2Title": "Tồn kho & lô FEFO",
+    "feature2Desc": "Theo dõi tồn sổ theo lô, gợi ý bán hết hạn trước — giảm rủi ro tồn kém phẩm chất.",
+    "feature3Title": "Khách hàng & vận hành",
+    "feature3Desc": "Hồ sơ khách, ca bán hàng, báo cáo — dữ liệu tập trung, dễ đối soát.",
+    "newsTitle": "Tin mới",
+    "newsAll": "Xem tất cả tin",
+    "trustTitle": "Hướng tới chuẩn hóa vận hành dược",
+    "trustDesc": "Novixa đang được phát triển bám sát thực tế nhà thuốc Việt Nam — từ độc lập đến chuỗi nhỏ. Sản phẩm demo nội bộ; phiên bản dùng thử công khai sẽ mở sau."
+  },
+  "solutions": {
+    "title": "Giải pháp",
+    "intro": "Novixa gom các module cốt lõi cho vận hành nhà thuốc — triển khai theo giai đoạn, mở rộng khi bạn sẵn sàng.",
+    "posTitle": "Bán hàng (POS)",
+    "posDesc": "Giỏ hàng, chiết khấu dòng/đơn, mở ca — thanh toán tiền mặt và các hình thức khác. In hóa đơn, lưu đơn nháp.",
+    "invTitle": "Kho & lô",
+    "invDesc": "Tồn theo lô và hạn dùng. Phân bổ FEFO khi chốt bán — minh bạch tồn sổ, hỗ trợ kiểm kê.",
+    "custTitle": "Khách hàng",
+    "custDesc": "Danh mục khách, đồng ý sử dụng dữ liệu (CDP) — nền tảng cho chăm sóc và marketing sau này.",
+    "opsTitle": "Vận hành",
+    "opsDesc": "Ca bán, báo cáo ca, cảnh báo lô — góc nhìn quản lý trong ngày."
+  },
+  "about": {
+    "title": "Về Novixa",
+    "p1": "Novixa hướng tới trở thành giải pháp dược thông minh: giúp nhà thuốc vận hành chính xác, minh bạch và sẵn sàng mở rộng bằng dữ liệu.",
+    "p2": "Sản phẩm đang trong giai đoạn phát triển tích cực. Chúng tôi ưu tiên các nhu cầu thực tế: bán đúng giá, đúng lô, đúng tồn — trước khi bổ sung các tính năng nâng cao.",
+    "p3": "Mã nguồn lõi ERP (PharmaCore) tách biệt với website giới thiệu này — đảm bảo bảo mật và tốc độ cập nhật nội dung công khai."
+  },
+  "contact": {
+    "title": "Liên hệ",
+    "intro": "Quan tâm Novixa hoặc muốn trao đổi demo? Gửi thông tin — chúng tôi phản hồi sớm nhất có thể.",
+    "name": "Họ tên",
+    "email": "Email",
+    "phone": "Số điện thoại",
+    "message": "Nội dung",
+    "submit": "Gửi đăng ký",
+    "mailtoNote": "Form mở ứng dụng email của bạn. Hoặc gửi trực tiếp tới:",
+    "emailAddress": "khiemtic@gmail.com"
+  },
+  "news": {
+    "title": "Tin tức",
+    "intro": "Cập nhật phát triển sản phẩm và hướng đi Novixa.",
+    "readMore": "Đọc tiếp",
+    "back": "← Quay lại tin tức"
+  },
+  "footer": {
+    "rights": "Bản quyền thuộc Novixa.",
+    "erpNote": "Phần mềm quản lý — không phải tư vấn y khoa."
+  }
+}

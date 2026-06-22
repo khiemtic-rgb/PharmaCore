@@ -1,0 +1,246 @@
+:root {
+  --color-primary: #0d7377;
+  --color-primary-dark: #095456;
+  --color-accent: #14a085;
+  --color-text: #1a1a2e;
+  --color-muted: #5c6370;
+  --color-bg: #f8fafb;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(13, 115, 119, 0.08);
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --max-width: 1080px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.container {
+  width: min(100% - 2rem, var(--max-width));
+  margin-inline: auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border: 2px solid var(--color-border);
+}
+
+.section {
+  padding: 4rem 0;
+}
+
+.section-title {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  margin: 0 0 1rem;
+  color: var(--color-text);
+}
+
+.section-intro {
+  color: var(--color-muted);
+  max-width: 60ch;
+  margin: 0 0 2rem;
+}
+
+.prose {
+  max-width: 65ch;
+}
+
+.prose h2 {
+  margin-top: 2rem;
+  font-size: 1.35rem;
+}
+
+.prose p,
+.prose li {
+  color: var(--color-text);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--color-border);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+}
+
+.prose th {
+  background: #eef7f7;
+}
+
+.card-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.card h3 {
+  margin: 0 0 0.5rem;
+  color: var(--color-primary);
+}
+
+.card p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.news-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.news-list li {
+  border-bottom: 1px solid var(--color-border);
+  padding: 1.25rem 0;
+}
+
+.news-list li:first-child {
+  padding-top: 0;
+}
+
+.news-list a {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.news-meta {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-top: 0.25rem;
+}
+
+.contact-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font: inherit;
+  margin-bottom: 1rem;
+}
+
+.contact-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.hero {
+  background: linear-gradient(160deg, #e8f6f6 0%, var(--color-bg) 55%);
+  padding: 4.5rem 0 3.5rem;
+}
+
+.hero h1 {
+  font-size: clamp(1.85rem, 5vw, 2.75rem);
+  line-height: 1.2;
+  margin: 0 0 1rem;
+  max-width: 18ch;
+}
+
+.hero-lead {
+  font-size: 1.1rem;
+  color: var(--color-muted);
+  max-width: 52ch;
+  margin: 0 0 1.75rem;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.trust-band {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 2rem 0;
+}
+
+.trust-band h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.trust-band p {
+  margin: 0;
+  color: var(--color-muted);
+  max-width: 65ch;
+}

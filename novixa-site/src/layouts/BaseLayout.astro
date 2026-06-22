@@ -1,0 +1,33 @@
+---
+import '../styles/global.css';
+import { t, type Locale } from '../i18n';
+
+interface Props {
+  title: string;
+  description?: string;
+  locale?: Locale;
+}
+
+const { title, description, locale = 'vi' } = Astro.props;
+const m = t(locale);
+const fullTitle = title === m.meta.siteName ? title : `${title} — ${m.meta.siteName}`;
+const base = '/vi';
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description ?? m.home.heroSubtitle} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+  </head>
+  <body>
+    <slot name="header" />
+    <main>
+      <slot />
+    </main>
+    <slot name="footer" />
+  </body>
+</html>

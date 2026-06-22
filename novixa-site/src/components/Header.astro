@@ -1,0 +1,115 @@
+---
+import { t } from '../i18n';
+
+const m = t('vi');
+const base = '/vi';
+const path = Astro.url.pathname;
+---
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a href={base} class="logo">
+      <span class="logo-mark">N</span>
+      <span class="logo-text">{m.meta.siteName}<small>{m.meta.tagline}</small></span>
+    </a>
+    <nav class="nav">
+      <a href={base} class:list={{ active: path === base || path === `${base}/` }}>{m.nav.home}</a>
+      <a href={`${base}/giai-phap`} class:list={{ active: path.startsWith(`${base}/giai-phap`) }}>{m.nav.solutions}</a>
+      <a href={`${base}/ve-chung-toi`} class:list={{ active: path.startsWith(`${base}/ve-chung-toi`) }}>{m.nav.about}</a>
+      <a href={`${base}/tin-tuc`} class:list={{ active: path.startsWith(`${base}/tin-tuc`) }}>{m.nav.news}</a>
+      <a href={`${base}/lien-he`} class="nav-cta">{m.nav.contact}</a>
+      <span class="lang-soon" title={m.nav.langEnSoon}>{m.nav.langEn}</span>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    flex-wrap: wrap;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
+    color: inherit;
+  }
+  .logo:hover {
+    text-decoration: none;
+  }
+  .logo-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 1.2rem;
+  }
+  .logo-text {
+    font-weight: 700;
+    font-size: 1.15rem;
+    line-height: 1.2;
+  }
+  .logo-text small {
+    display: block;
+    font-weight: 400;
+    font-size: 0.72rem;
+    color: var(--color-muted);
+  }
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 1rem;
+    font-size: 0.92rem;
+  }
+  .nav a {
+    color: var(--color-muted);
+    text-decoration: none;
+    padding: 0.35rem 0;
+  }
+  .nav a:hover,
+  .nav a.active {
+    color: var(--color-primary);
+  }
+  .nav-cta {
+    background: var(--color-primary);
+    color: #fff !important;
+    padding: 0.45rem 1rem !important;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .nav-cta:hover {
+    background: var(--color-primary-dark);
+    text-decoration: none;
+  }
+  .lang-soon {
+    font-size: 0.8rem;
+    color: var(--color-border);
+    cursor: not-allowed;
+    border: 1px dashed var(--color-border);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+  }
+  @media (max-width: 640px) {
+    .nav {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+</style>

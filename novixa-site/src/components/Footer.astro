@@ -1,0 +1,31 @@
+---
+import { t } from '../i18n';
+
+const m = t('vi');
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p><strong>{m.meta.siteName}</strong> — {m.meta.tagline}</p>
+    <p class="muted">{m.footer.erpNote}</p>
+    <p class="muted">© {year} {m.footer.rights}</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--color-text);
+    color: #cbd5e1;
+    padding: 2.5rem 0;
+    margin-top: 3rem;
+    font-size: 0.9rem;
+  }
+  .footer-inner p {
+    margin: 0.35rem 0;
+  }
+  .muted {
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+</style>

@@ -1,0 +1,30 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { t } from '../../i18n';
+import '../../styles/global.css';
+
+const m = t('vi');
+const mailto = `mailto:${m.contact.emailAddress}?subject=${encodeURIComponent('Đăng ký quan tâm Novixa')}&body=${encodeURIComponent('Xin chào Novixa,\n\nTôi quan tâm giải pháp quản lý nhà thuốc.\n\nHọ tên:\nSĐT:\nNội dung:\n')}`;
+---
+
+<BaseLayout title={m.contact.title} description={m.contact.intro}>
+  <Header slot="header" />
+  <section class="section">
+    <div class="container">
+      <h1 class="section-title">{m.contact.title}</h1>
+      <p class="section-intro">{m.contact.intro}</p>
+      <div class="card" style="max-width: 520px">
+        <p>{m.contact.mailtoNote}</p>
+        <p style="font-size: 1.1rem; font-weight: 600">
+          <a href={`mailto:${m.contact.emailAddress}`}>{m.contact.emailAddress}</a>
+        </p>
+        <p style="margin-top: 1.5rem">
+          <a class="btn btn-primary" href={mailto}>{m.contact.submit}</a>
+        </p>
+      </div>
+    </div>
+  </section>
+  <Footer slot="footer" />
+</BaseLayout>

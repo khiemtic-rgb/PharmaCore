@@ -1,0 +1,74 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { getCollection } from 'astro:content';
+import { t } from '../../i18n';
+import '../../styles/global.css';
+
+const m = t('vi');
+const posts = (await getCollection('tinTuc'))
+  .filter((p) => p.data.lang === 'vi')
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 3);
+
+const fmt = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' });
+---
+
+<BaseLayout title={m.meta.siteName} description={m.home.heroSubtitle}>
+  <Header slot="header" />
+  <section class="hero">
+    <div class="container">
+      <h1>{m.home.heroTitle}</h1>
+      <p class="hero-lead">{m.home.heroSubtitle}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/vi/lien-he">{m.home.ctaContact}</a>
+        <a class="btn btn-secondary" href="/vi/giai-phap">{m.home.ctaSolutions}</a>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">{m.home.featuresTitle}</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>{m.home.feature1Title}</h3>
+          <p>{m.home.feature1Desc}</p>
+        </article>
+        <article class="card">
+          <h3>{m.home.feature2Title}</h3>
+          <p>{m.home.feature2Desc}</p>
+        </article>
+        <article class="card">
+          <h3>{m.home.feature3Title}</h3>
+          <p>{m.home.feature3Desc}</p>
+        </article>
+      </div>
+    </div>
+  </section>
+  <section class="trust-band">
+    <div class="container">
+      <h2>{m.home.trustTitle}</h2>
+      <p>{m.home.trustDesc}</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">{m.home.newsTitle}</h2>
+      <ul class="news-list">
+        {
+          posts.map((post) => (
+            <li>
+              <a href={`/vi/tin-tuc/${post.id}`}>{post.data.title}</a>
+              <p class="news-meta">{fmt.format(post.data.pubDate)}</p>
+            </li>
+          ))
+        }
+      </ul>
+      <p style="margin-top: 1.5rem">
+        <a class="btn btn-secondary" href="/vi/tin-tuc">{m.home.newsAll}</a>
+      </p>
+    </div>
+  </section>
+  <Footer slot="footer" />
+</BaseLayout>

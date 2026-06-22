@@ -24,6 +24,7 @@ PharmaCore/
 │   └── seed/001_demo_data.sql
 ├── client/
 │   └── admin/                  # React Admin Web (Phase 1)
+├── novixa-site/                # Website giới thiệu novixa.vn (tách deploy)
 ├── scripts/run-migrations.ps1
 ├── src/
 │   ├── PharmaCore.Api/         # REST API, Controllers
@@ -122,3 +123,13 @@ Swagger: bấm **Authorize** → `Bearer {accessToken}`
 5. Customer API (OTP, điểm, reminders)
 
 Xem `docs/next-steps.md`
+
+## Development freeze — Sales / POS
+
+**Tạm dừng phát triển tính năng mới** khu vực bán hàng (POS, checkout, ca, FEFO chốt đơn) cho đến khi **Novixa site v1** live trên `novixa.vn`.
+
+- Website: thư mục [`novixa-site/`](novixa-site/) — deploy riêng, không ảnh hưởng API/DB.
+- Vẫn được: hotfix bảo mật/crash, nội dung site, chụp screenshot demo.
+- Mở lại sales: sau khi site có HTTPS + Trang chủ / Giải pháp / Liên hệ + tin tức VI.
+
+Xem [`novixa-site/README.md`](novixa-site/README.md).
