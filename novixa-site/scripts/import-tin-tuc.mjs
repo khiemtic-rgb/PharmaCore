@@ -26,16 +26,46 @@ function slugify(text) {
     .slice(0, 80);
 }
 
-function parseDate(value) {
+function parseDate(value, { prevDate } = {}) {
   if (value == null || value === '') return null;
-  if (value instanceof Date && !Number.isNaN(value.valueOf())) return value;
   if (typeof value === 'number') {
     const parsed = XLSX.SSF.parse_date_code(value);
-    if (parsed) return new Date(parsed.y, parsed.m - 1, parsed.d);
+    if (parsed) {
+      let d = new Date(parsed.y, parsed.m - 1, parsed.d);
+      // Excel m/d/yy: 1/7/2026 (VN = 1/7) hay bị đọc thành tháng 1
+      if (prevDate && d.getMonth() === 0 && prevDate.getMonth() === 5) {
+        d = new Date(parsed.y, 6, 1);
+      }
+      return d;
+    }
+  }
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    let d = value;
+    if (prevDate && d.getMonth() === 0 && prevDate.getMonth() === 5) {
+      d = new Date(d.getFullYear(), 6, 1);
+    }
+    return d;
   }
   const s = String(value).trim();
   const dmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-  if (dmy) return new Date(+dmy[3], +dmy[2] - 1, +dmy[1]);
+  if (dmy) {
+    const a = +dmy[1];
+    const b = +dmy[2];
+    const year = +dmy[3];
+    let day;
+    let month;
+    if (a > 12) {
+      day = a;
+      month = b > 12 ? 6 : b;
+    } else if (b > 12) {
+      day = b;
+      month = a;
+    } else {
+      day = a;
+      month = b;
+    }
+    return new Date(year, month - 1, day);
+  }
   const iso = Date.parse(s);
   if (!Number.isNaN(iso)) return new Date(iso);
   return null;
@@ -45,6 +75,36 @@ function normKey(row) {
   return Object.fromEntries(
     Object.entries(row).map(([k, v]) => [k.toLowerCase().trim(), v]),
   );
+}
+
+const TITLE_FROM_CONTENT = [
+  [/Tồn kho là tài sản lớn nhất/i, 'Quản lý tồn kho thuốc hiệu quả cho nhà thuốc hiện đại'],
+  [/chỉ theo dõi doanh thu/i, 'Các KPI quan trọng khi quản lý nhà thuốc'],
+  [/Excel từng là công cụ/i, 'Vì sao Excel không còn phù hợp để quản lý nhà thuốc?'],
+  [/nguyên nhân gây thất thoát lớn nhất tại nhà thuốc là hàng hóa hết hạn/i, 'Giảm thất thoát từ hàng cận date và hết hạn sử dụng'],
+  [/FEFO|First Expired/i, 'FEFO là gì? Nguyên tắc bán hết hạn trước cho nhà thuốc'],
+  [/chi nhánh thứ hai/i, 'Quản lý nhiều chi nhánh nhà thuốc — thách thức và giải pháp'],
+  [/Chuyển đổi số đang trở thành/i, 'Chuyển đổi số cho nhà thuốc — bắt đầu từ đâu?'],
+  [/Tồn kho là tài sản của nhà thuốc[\s\S]{0,400}tồn kho chết/i, 'Cách giảm tồn kho chết trong nhà thuốc'],
+  [/tồn kho chết/i, 'Cách giảm tồn kho chết trong nhà thuốc'],
+];
+
+function extractTitleFromContent(content) {
+  const text = String(content).trim();
+  const h1 = text.match(/^#\s+(.+?)(?:\r?\n|$)/m);
+  if (h1) return h1[1].trim();
+
+  for (const [re, title] of TITLE_FROM_CONTENT) {
+    if (re.test(text)) return title;
+  }
+
+  const para = text.split(/\r?\n\r?\n/).find((p) => {
+    const t = p.trim();
+    return t && !t.startsWith('#');
+  });
+  if (!para) return '';
+  const sentence = para.trim().match(/^(.+?[.!?])(?:\s|$)/)?.[1] ?? para.trim();
+  return sentence.replace(/\*\*/g, '').slice(0, 120);
 }
 
 function extractDescFromContent(content) {
@@ -66,15 +126,15 @@ function parseFrontmatter(raw) {
 }
 
 function findExistingFile({ title, slug }) {
-  const bySlug = path.join(OUT_DIR, `${slug}.md`);
-  if (fs.existsSync(bySlug)) return `${slug}.md`;
-
   for (const file of fs.readdirSync(OUT_DIR).filter((f) => f.endsWith('.md'))) {
     const raw = fs.readFileSync(path.join(OUT_DIR, file), 'utf8');
     const meta = parseFrontmatter(raw);
     if (meta.title === title) return file;
   }
-  return `${slug}.md`;
+
+  const slugFile = `${slug}.md`;
+  if (fs.existsSync(path.join(OUT_DIR, slugFile))) return slugFile;
+  return slugFile;
 }
 
 function formatPubDate(d) {
@@ -88,28 +148,33 @@ function escapeYaml(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-function normalizeRow(row) {
+function normalizeRow(row, { prevDate } = {}) {
   const r = normKey(row);
   const titleCol = r.title ?? r['tiêu đề'] ?? r.tieu_de;
   const descCol = r.description ?? r['mô tả'] ?? r.mo_ta;
-  const title = String(titleCol ?? descCol ?? '')
+  const content = String(r.content ?? r['nội dung'] ?? r.noi_dung ?? '').trim();
+
+  let title = String(titleCol ?? '')
     .trim()
     .replace(/\s+/g, ' ');
+  if (!title && descCol) title = String(descCol).trim().replace(/\s+/g, ' ');
+  if (!title) title = extractTitleFromContent(content);
   if (!title) return null;
 
-  const hasSeparateDesc = Boolean(titleCol && descCol && titleCol !== descCol);
+  const descText = String(descCol ?? '').trim();
+  const placeholder = /^mô tả ngắn/i.test(descText);
+  const hasSeparateDesc = Boolean(descText && !placeholder && descText !== title);
   const description = hasSeparateDesc
-    ? String(descCol).trim()
-    : extractDescFromContent(r.content) || title.slice(0, 200);
+    ? descText
+    : extractDescFromContent(content) || title.slice(0, 200);
 
-  const pubDate = parseDate(r.pubdate ?? r['ngày đăng'] ?? r.ngay_dang);
+  const pubDate = parseDate(r.pubdate ?? r['ngày đăng'] ?? r.ngay_dang, { prevDate });
   if (!pubDate) {
     console.warn(`⚠ Bỏ qua (thiếu pubDate hợp lệ): "${title}"`);
     return null;
   }
 
   const slug = String(r.slug ?? '').trim() || slugify(title);
-  const content = String(r.content ?? r['nội dung'] ?? r.noi_dung ?? '').trim();
 
   if (!content) {
     console.warn(`⚠ Bỏ qua (thiếu content): "${title}"`);
@@ -130,7 +195,13 @@ function findInputFile() {
 function readRows(filePath) {
   const wb = XLSX.readFile(filePath, { cellDates: true });
   const sheet = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  rows.forEach((row, i) => {
+    const cell = sheet[`C${i + 2}`];
+    if (cell?.t === 's') row.pubDate = cell.v;
+    else if (cell?.t === 'n') row.pubDate = cell.v;
+  });
+  return rows;
 }
 
 function writeMarkdown({ title, description, pubDate, content }, filename) {
@@ -163,9 +234,11 @@ function main() {
   let created = 0;
   let updated = 0;
 
+  let prevDate = null;
   for (const row of rows) {
-    const item = normalizeRow(row);
+    const item = normalizeRow(row, { prevDate });
     if (!item) continue;
+    prevDate = item.pubDate;
 
     const filename = findExistingFile(item);
     const target = path.join(OUT_DIR, filename);

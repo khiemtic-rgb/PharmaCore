@@ -1,11 +1,9 @@
 ---
 title: "7 Sai Lầm Khiến Nhà Thuốc Thất Thoát Lợi Nhuận Mỗi Tháng"
-description: "Mô tả ngắn 1–2 câu (SEO, danh sách tin)"
+description: "Nhiều chủ nhà thuốc cho rằng lợi nhuận giảm là do cạnh tranh hoặc giá nhập tăng. Tuy nhiên, thực tế cho thấy phần lớn thất thoát đến từ các sai sót trong quản lý hàng ngày."
 pubDate: 2026-06-23
 lang: vi
 ---
-
-# 7 Sai Lầm Khiến Nhà Thuốc Thất Thoát Lợi Nhuận Mỗi Tháng
 
 Nhiều chủ nhà thuốc cho rằng lợi nhuận giảm là do cạnh tranh hoặc giá nhập tăng. Tuy nhiên, thực tế cho thấy phần lớn thất thoát đến từ các sai sót trong quản lý hàng ngày.
 
