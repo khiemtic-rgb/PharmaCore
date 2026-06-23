@@ -85,7 +85,7 @@ internal sealed class SalesService : ISalesService
         var id = request.SaveAsDraft
             ? await _repository.CreateDraftSaleAsync(request, _tenant.UserId, DiscountPolicy, cancellationToken)
             : await _repository.CreateCompletedSaleAsync(request, _tenant.UserId, DiscountPolicy, cancellationToken);
-        var order = (await _repository.GetSalesOrderAsync(id, cancellationToken))!;
+        var order = (await _repository.GetSalesOrderAsync(id, cancellationToken, freshSale: !request.SaveAsDraft))!;
         await _audit.WriteAsync(
             "sales_order",
             id,
@@ -122,7 +122,7 @@ internal sealed class SalesService : ISalesService
     {
         var completed = await _repository.CompleteDraftSaleAsync(id, request, cancellationToken);
         if (!completed) return null;
-        var order = await _repository.GetSalesOrderAsync(id, cancellationToken);
+        var order = await _repository.GetSalesOrderAsync(id, cancellationToken, freshSale: true);
         if (order is not null)
         {
             await _audit.WriteAsync(

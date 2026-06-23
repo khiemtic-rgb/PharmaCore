@@ -508,7 +508,10 @@ internal sealed class SalesRepository
         })).ToList();
     }
 
-    public async Task<SalesOrderDetailDto?> GetSalesOrderAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<SalesOrderDetailDto?> GetSalesOrderAsync(
+        Guid id,
+        CancellationToken cancellationToken,
+        bool freshSale = false)
     {
         const string headerSql = """
             SELECT
@@ -554,6 +557,23 @@ internal sealed class SalesRepository
             WHERE i.sales_order_id = @OrderId
             ORDER BY p.product_name, b.batch_number NULLS LAST
             """;
+        const string itemsFreshSql = """
+            SELECT
+                i.id AS Id, i.product_id AS ProductId, p.product_code AS ProductCode,
+                p.product_name AS ProductName, i.product_unit_id AS ProductUnitId, u.unit_name AS UnitName,
+                i.batch_id AS BatchId, b.batch_number AS BatchNumber,
+                b.expiry_date AS ExpiryDate, i.quantity AS Quantity,
+                i.unit_price AS UnitPrice, i.discount_amount AS DiscountAmount,
+                i.discount_type AS DiscountType, i.discount_value AS DiscountValue,
+                i.line_total AS LineTotal,
+                0::decimal AS ReturnedQuantity
+            FROM sales_order_items i
+            INNER JOIN products p ON p.id = i.product_id
+            INNER JOIN product_units u ON u.id = i.product_unit_id
+            LEFT JOIN inventory_batches b ON b.id = i.batch_id
+            WHERE i.sales_order_id = @OrderId
+            ORDER BY p.product_name, b.batch_number NULLS LAST
+            """;
         const string paymentsSql = """
             SELECT id AS Id, payment_method AS PaymentMethod, amount AS Amount, paid_at AS PaidAt
             FROM sales_payments WHERE sales_order_id = @OrderId
@@ -576,23 +596,28 @@ internal sealed class SalesRepository
             ReturnCompleted = SalesReturnStatuses.Completed,
         });
         if (header is null) return null;
-        var items = (await conn.QueryAsync<SalesOrderItemDto>(itemsSql, new
-        {
-            OrderId = id,
-            ReturnCompleted = SalesReturnStatuses.Completed,
-        })).ToList();
+        var items = (await conn.QueryAsync<SalesOrderItemDto>(
+            freshSale ? itemsFreshSql : itemsSql,
+            new
+            {
+                OrderId = id,
+                ReturnCompleted = SalesReturnStatuses.Completed,
+            })).ToList();
         var payments = (await conn.QueryAsync<SalesPaymentDto>(paymentsSql, new { OrderId = id })).ToList();
-        var refundPayments = (await conn.QueryAsync<SalesRefundPaymentSummaryDto>(refundPaymentsSql, new
-        {
-            OrderId = id,
-            ReturnCompleted = SalesReturnStatuses.Completed,
-        })).ToList();
+        var refundPayments = freshSale
+            ? []
+            : (await conn.QueryAsync<SalesRefundPaymentSummaryDto>(refundPaymentsSql, new
+            {
+                OrderId = id,
+                ReturnCompleted = SalesReturnStatuses.Completed,
+            })).ToList();
+        var totalRefunded = freshSale ? 0m : header.TotalRefunded;
         var lineDiscountTotal = items.Sum(i => i.DiscountAmount);
         return new SalesOrderDetailDto(
             header.Id, header.OrderNumber, header.WarehouseId, header.WarehouseName,
             header.CustomerId, header.CustomerName, header.Status, header.OrderDate,
             header.Subtotal, header.DiscountAmount, lineDiscountTotal,
-            header.OrderDiscountType, header.OrderDiscountValue, header.TotalAmount, header.TotalRefunded,
+            header.OrderDiscountType, header.OrderDiscountValue, header.TotalAmount, totalRefunded,
             header.Notes, items, payments, refundPayments,
             header.SalesShiftId, header.ShiftNumber);
     }
@@ -621,7 +646,6 @@ internal sealed class SalesRepository
         SalesPricing.ValidateDiscounts(pricing, discountPolicy);
 
         var payments = NormalizePayments(request.Payments, pricing.TotalAmount);
-        await ValidateSaleBatchLabelsAsync(conn, tx, request.WarehouseId, request.Items, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, request.WarehouseId, pricing.Lines, cancellationToken);
 
         var orderId = await InsertSaleHeaderAsync(
@@ -794,7 +818,6 @@ internal sealed class SalesRepository
         var orderDiscount = new SaleDiscountInput(header.OrderDiscountType, header.OrderDiscountValue);
         var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
         var paymentList = NormalizePayments(request?.Payments, pricing.TotalAmount);
-        await ValidateSaleBatchLabelsAsync(conn, tx, header.WarehouseId, saleItems, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
 
         await conn.ExecuteAsync("""
@@ -1542,45 +1565,6 @@ internal sealed class SalesRepository
         return list;
     }
 
-    private async Task ValidateSaleBatchLabelsAsync(
-        IDbConnection conn,
-        IDbTransaction tx,
-        Guid warehouseId,
-        IReadOnlyList<CreateSaleLineRequest> items,
-        CancellationToken cancellationToken)
-    {
-        var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
-        if (batchMode is TenantBatchMode.Off or TenantBatchMode.Suggest)
-            return;
-
-        foreach (var line in items)
-        {
-            var batchNumber = line.BatchNumber?.Trim();
-            if (batchMode == TenantBatchMode.LabelRequired && string.IsNullOrWhiteSpace(batchNumber))
-            {
-                var productCode = await conn.QuerySingleOrDefaultAsync<string>(
-                    "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
-                    new { Id = line.ProductId, TenantId }, tx);
-                throw new InvalidOperationException(
-                    $"Nhập số lô cho sản phẩm {productCode ?? line.ProductId.ToString()}.");
-            }
-
-            if (string.IsNullOrWhiteSpace(batchNumber))
-                continue;
-
-            var batch = await FindLockedBatchByNumberAsync(
-                conn, tx, warehouseId, line.ProductId, batchNumber, cancellationToken);
-            if (batch is null)
-            {
-                var productCode = await conn.QuerySingleOrDefaultAsync<string>(
-                    "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
-                    new { Id = line.ProductId, TenantId }, tx);
-                throw new InvalidOperationException(
-                    $"Số lô \"{batchNumber}\" không có tồn khả dụng cho {productCode ?? line.ProductId.ToString()}.");
-            }
-        }
-    }
-
     private async Task<BatchLockRow?> FindLockedBatchByNumberAsync(
         IDbConnection conn,
         IDbTransaction tx,
@@ -1613,12 +1597,21 @@ internal sealed class SalesRepository
         IReadOnlyList<PricedSaleLineResult> lines,
         CancellationToken cancellationToken)
     {
+        var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
         var linePlans = new List<PlannedSaleLine>();
         foreach (var pricedLine in lines)
         {
             var baseQtyNeeded = pricedLine.Quantity * pricedLine.ConversionFactor;
-            var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
             var labelBatch = pricedLine.BatchNumber?.Trim();
+            if (batchMode == TenantBatchMode.LabelRequired && string.IsNullOrWhiteSpace(labelBatch))
+            {
+                var productCode = await conn.QuerySingleOrDefaultAsync<string>(
+                    "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
+                    new { Id = pricedLine.ProductId, TenantId }, tx);
+                throw new InvalidOperationException(
+                    $"Nhập số lô cho sản phẩm {productCode ?? pricedLine.ProductId.ToString()}.");
+            }
+
             var useLabelScan = !string.IsNullOrWhiteSpace(labelBatch)
                 && batchMode is TenantBatchMode.LabelOptional or TenantBatchMode.LabelRequired;
 
