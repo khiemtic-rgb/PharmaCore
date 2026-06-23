@@ -117,10 +117,10 @@ internal sealed class SalesService : ISalesService
 
     public async Task<SalesOrderDetailDto?> CompleteDraftSaleAsync(
         Guid id,
-        IReadOnlyList<CreateSalePaymentRequest>? payments,
+        CompleteDraftSaleRequest? request,
         CancellationToken cancellationToken = default)
     {
-        var completed = await _repository.CompleteDraftSaleAsync(id, payments, cancellationToken);
+        var completed = await _repository.CompleteDraftSaleAsync(id, request, cancellationToken);
         if (!completed) return null;
         var order = await _repository.GetSalesOrderAsync(id, cancellationToken);
         if (order is not null)

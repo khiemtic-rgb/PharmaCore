@@ -343,6 +343,7 @@ type SaleLinePayload = {
   productId: string;
   productUnitId: string;
   quantity: number;
+  batchNumber?: string;
   discountType?: number;
   discountValue?: number;
 };
@@ -370,9 +371,11 @@ export async function createSale(payload: CreateSalePayload): Promise<SalesOrder
 export async function completeDraftSale(
   id: string,
   payments?: { paymentMethod: number; amount: number }[],
+  items?: SaleLinePayload[],
 ): Promise<SalesOrderDetail> {
   const { data } = await http.post<Record<string, unknown>>(`/sales/orders/${id}/complete`, {
     payments: payments ?? null,
+    ...(items?.length ? { items } : {}),
   });
   const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
   return normalizeSalesOrderDetail(data, rawItems);

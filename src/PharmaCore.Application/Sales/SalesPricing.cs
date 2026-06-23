@@ -12,7 +12,8 @@ public sealed record PricedSaleLineResult(
     decimal DiscountAmount,
     short? DiscountType,
     decimal DiscountValue,
-    decimal LineTotal);
+    decimal LineTotal,
+    string? BatchNumber = null);
 
 public sealed record SaleOrderPricingResult(
     decimal SubtotalGross,
@@ -78,7 +79,8 @@ public static class SalesPricing
                 discountAmount,
                 request.DiscountType,
                 request.DiscountValue ?? 0,
-                gross - discountAmount));
+                gross - discountAmount,
+                request.BatchNumber));
         }
 
         var merchandiseNet = subtotalGross - lineDiscountTotal;

@@ -84,7 +84,12 @@ public sealed record CreateSaleLineRequest(
     Guid ProductUnitId,
     decimal Quantity,
     short? DiscountType = null,
-    decimal? DiscountValue = null);
+    decimal? DiscountValue = null,
+    string? BatchNumber = null);
+
+public sealed record CompleteDraftSaleRequest(
+    IReadOnlyList<CreateSalePaymentRequest>? Payments = null,
+    IReadOnlyList<CreateSaleLineRequest>? Items = null);
 
 public sealed record CreateSalePaymentRequest(
     short PaymentMethod,

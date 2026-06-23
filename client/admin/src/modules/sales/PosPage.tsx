@@ -38,7 +38,7 @@ import {
   validateCartBatchLabels,
 } from '@/modules/sales/pos-batch-mode-ui';
 import { capQuantityToStock, stockCapWarningText } from '@/modules/sales/pos-stock-messages';
-import { buildCreateSalePayload, buildDraftUpdatePayload } from '@/modules/sales/pos-sale-payload';
+import { buildCreateSalePayload, buildDraftUpdatePayload, buildSaleLineItems } from '@/modules/sales/pos-sale-payload';
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
 import { DISCOUNT_TYPE_SELECT_OPTIONS, PosSummaryDivider, PosSummaryOrderDiscountRow, PosSummaryPanel, PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
@@ -462,7 +462,7 @@ export function PosPage() {
           editingDraftId,
           buildDraftUpdatePayload(customerId, cart, orderDiscount),
         );
-        order = await completeDraftSale(editingDraftId, payments);
+        order = await completeDraftSale(editingDraftId, payments, buildSaleLineItems(cart));
       } else {
         order = await createSale(
           buildCreateSalePayload(warehouseId, customerId, cart, orderDiscount, false, payments),

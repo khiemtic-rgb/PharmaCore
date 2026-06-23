@@ -150,7 +150,7 @@ public sealed class SalesController : ControllerBase
     {
         try
         {
-            var item = await _sales.CompleteDraftSaleAsync(id, request?.Payments, cancellationToken);
+            var item = await _sales.CompleteDraftSaleAsync(id, request, cancellationToken);
             return item is null ? NotFound() : Ok(item);
         }
         catch (InvalidOperationException ex)
@@ -295,5 +295,3 @@ public sealed class SalesController : ControllerBase
         }
     }
 }
-
-public sealed record CompleteDraftSaleRequest(IReadOnlyList<CreateSalePaymentRequest>? Payments = null);

@@ -621,6 +621,7 @@ internal sealed class SalesRepository
         SalesPricing.ValidateDiscounts(pricing, discountPolicy);
 
         var payments = NormalizePayments(request.Payments, pricing.TotalAmount);
+        await ValidateSaleBatchLabelsAsync(conn, tx, request.WarehouseId, request.Items, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, request.WarehouseId, pricing.Lines, cancellationToken);
 
         var orderId = await InsertSaleHeaderAsync(
@@ -744,7 +745,7 @@ internal sealed class SalesRepository
 
     public async Task<bool> CompleteDraftSaleAsync(
         Guid id,
-        IReadOnlyList<CreateSalePaymentRequest>? payments,
+        CompleteDraftSaleRequest? request,
         CancellationToken cancellationToken)
     {
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
@@ -768,22 +769,32 @@ internal sealed class SalesRepository
         await EnsureOpenShiftAsync(conn, tx, header.WarehouseId);
         var shiftId = await ResolveOpenShiftIdAsync(conn, tx, header.WarehouseId);
 
-        const string draftItemsSql = """
-            SELECT
-                product_id AS ProductId, product_unit_id AS ProductUnitId, quantity AS Quantity,
-                discount_type AS DiscountType, discount_value AS DiscountValue
-            FROM sales_order_items WHERE sales_order_id = @OrderId
-            """;
-        var draftItems = (await conn.QueryAsync<CreateSaleLineRequest>(draftItemsSql, new { OrderId = id }, tx)).ToList();
-        if (draftItems.Count == 0)
+        IReadOnlyList<CreateSaleLineRequest> saleItems;
+        if (request?.Items is { Count: > 0 })
+        {
+            saleItems = request.Items;
+        }
+        else
+        {
+            const string draftItemsSql = """
+                SELECT
+                    product_id AS ProductId, product_unit_id AS ProductUnitId, quantity AS Quantity,
+                    discount_type AS DiscountType, discount_value AS DiscountValue
+                FROM sales_order_items WHERE sales_order_id = @OrderId
+                """;
+            saleItems = (await conn.QueryAsync<CreateSaleLineRequest>(draftItemsSql, new { OrderId = id }, tx)).ToList();
+        }
+
+        if (saleItems.Count == 0)
             throw new InvalidOperationException("Đơn nháp không có dòng bán.");
 
         await conn.ExecuteAsync("DELETE FROM sales_order_items WHERE sales_order_id = @OrderId", new { OrderId = id }, tx);
 
-        var pricedInputs = await ResolveSaleLineInputsAsync(conn, tx, draftItems, header.PriceType, cancellationToken);
+        var pricedInputs = await ResolveSaleLineInputsAsync(conn, tx, saleItems, header.PriceType, cancellationToken);
         var orderDiscount = new SaleDiscountInput(header.OrderDiscountType, header.OrderDiscountValue);
         var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
-        var paymentList = NormalizePayments(payments, pricing.TotalAmount);
+        var paymentList = NormalizePayments(request?.Payments, pricing.TotalAmount);
+        await ValidateSaleBatchLabelsAsync(conn, tx, header.WarehouseId, saleItems, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
 
         await conn.ExecuteAsync("""
@@ -1531,6 +1542,70 @@ internal sealed class SalesRepository
         return list;
     }
 
+    private async Task ValidateSaleBatchLabelsAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid warehouseId,
+        IReadOnlyList<CreateSaleLineRequest> items,
+        CancellationToken cancellationToken)
+    {
+        var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
+        if (batchMode is TenantBatchMode.Off or TenantBatchMode.Suggest)
+            return;
+
+        foreach (var line in items)
+        {
+            var batchNumber = line.BatchNumber?.Trim();
+            if (batchMode == TenantBatchMode.LabelRequired && string.IsNullOrWhiteSpace(batchNumber))
+            {
+                var productCode = await conn.QuerySingleOrDefaultAsync<string>(
+                    "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
+                    new { Id = line.ProductId, TenantId }, tx);
+                throw new InvalidOperationException(
+                    $"Nhập số lô cho sản phẩm {productCode ?? line.ProductId.ToString()}.");
+            }
+
+            if (string.IsNullOrWhiteSpace(batchNumber))
+                continue;
+
+            var batch = await FindLockedBatchByNumberAsync(
+                conn, tx, warehouseId, line.ProductId, batchNumber, cancellationToken);
+            if (batch is null)
+            {
+                var productCode = await conn.QuerySingleOrDefaultAsync<string>(
+                    "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
+                    new { Id = line.ProductId, TenantId }, tx);
+                throw new InvalidOperationException(
+                    $"Số lô \"{batchNumber}\" không có tồn khả dụng cho {productCode ?? line.ProductId.ToString()}.");
+            }
+        }
+    }
+
+    private async Task<BatchLockRow?> FindLockedBatchByNumberAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid warehouseId,
+        Guid productId,
+        string batchNumber,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, quantity_available AS QuantityAvailable, unit_cost AS UnitCost
+            FROM inventory_batches
+            WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId
+              AND product_id = @ProductId AND batch_number = @BatchNumber
+              AND quantity_available > 0
+            FOR UPDATE
+            """;
+        return await conn.QuerySingleOrDefaultAsync<BatchLockRow>(sql, new
+        {
+            TenantId,
+            WarehouseId = warehouseId,
+            ProductId = productId,
+            BatchNumber = batchNumber,
+        }, tx);
+    }
+
     private async Task<List<PlannedSaleLine>> BuildFifoPlansAsync(
         IDbConnection conn,
         IDbTransaction tx,
@@ -1542,33 +1617,65 @@ internal sealed class SalesRepository
         foreach (var pricedLine in lines)
         {
             var baseQtyNeeded = pricedLine.Quantity * pricedLine.ConversionFactor;
+            var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
+            var labelBatch = pricedLine.BatchNumber?.Trim();
+            var useLabelScan = !string.IsNullOrWhiteSpace(labelBatch)
+                && batchMode is TenantBatchMode.LabelOptional or TenantBatchMode.LabelRequired;
+
             IReadOnlyList<FifoAllocationResult> allocations;
-            try
+            short batchSource;
+
+            if (useLabelScan)
             {
-                allocations = await _batchResolver.AllocateFifoAsync(
-                    conn, tx, warehouseId, pricedLine.ProductId, baseQtyNeeded, cancellationToken);
+                var batch = await FindLockedBatchByNumberAsync(
+                    conn, tx, warehouseId, pricedLine.ProductId, labelBatch!, cancellationToken)
+                    ?? throw new InvalidOperationException(
+                        $"Số lô \"{labelBatch}\" không có tồn khả dụng.");
+
+                if (batch.QuantityAvailable + 0.0001m < baseQtyNeeded)
+                {
+                    var productCode = await conn.QuerySingleOrDefaultAsync<string>(
+                        "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
+                        new { Id = pricedLine.ProductId, TenantId }, tx);
+                    throw new InvalidOperationException(
+                        $"Lô \"{labelBatch}\" không đủ tồn cho {productCode ?? pricedLine.ProductId.ToString()} " +
+                        $"(cần {baseQtyNeeded:N0} đv cơ sở, còn {batch.QuantityAvailable:N0}).");
+                }
+
+                allocations = [new FifoAllocationResult(batch.Id, baseQtyNeeded, batch.UnitCost)];
+                batchSource = SalesBatchSources.LabelScan;
             }
-            catch (InvalidOperationException)
+            else
             {
-                var unit = await conn.QuerySingleOrDefaultAsync<ProductUnitRow>(
-                    """
-                    SELECT p.product_code AS ProductCode, p.product_name AS ProductName,
-                           u.unit_name AS UnitName, u.conversion_factor AS ConversionFactor
-                    FROM product_units u
-                    INNER JOIN products p ON p.id = u.product_id
-                    WHERE u.id = @UnitId AND u.tenant_id = @TenantId
-                    """,
-                    new { UnitId = pricedLine.ProductUnitId, TenantId }, tx);
-                var batches = await _batchResolver.GetAvailableBatchesAsync(
-                    conn, warehouseId, pricedLine.ProductId, cancellationToken);
-                var availableSale = SumSaleStock(batches, pricedLine.ConversionFactor);
-                var code = unit?.ProductCode ?? pricedLine.ProductId.ToString();
-                var name = unit?.ProductName ?? "";
-                var unitName = unit?.UnitName ?? "đv";
-                throw new InvalidOperationException(
-                    $"Không đủ tồn kho theo FEFO cho {code}" +
-                    (string.IsNullOrEmpty(name) ? "" : $" — {name}") +
-                    $" (cần {pricedLine.Quantity:N0} {unitName}, còn {availableSale:N0} {unitName}).");
+                try
+                {
+                    allocations = await _batchResolver.AllocateFifoAsync(
+                        conn, tx, warehouseId, pricedLine.ProductId, baseQtyNeeded, cancellationToken);
+                }
+                catch (InvalidOperationException)
+                {
+                    var unit = await conn.QuerySingleOrDefaultAsync<ProductUnitRow>(
+                        """
+                        SELECT p.product_code AS ProductCode, p.product_name AS ProductName,
+                               u.unit_name AS UnitName, u.conversion_factor AS ConversionFactor
+                        FROM product_units u
+                        INNER JOIN products p ON p.id = u.product_id
+                        WHERE u.id = @UnitId AND u.tenant_id = @TenantId
+                        """,
+                        new { UnitId = pricedLine.ProductUnitId, TenantId }, tx);
+                    var batches = await _batchResolver.GetAvailableBatchesAsync(
+                        conn, warehouseId, pricedLine.ProductId, cancellationToken);
+                    var availableSale = SumSaleStock(batches, pricedLine.ConversionFactor);
+                    var code = unit?.ProductCode ?? pricedLine.ProductId.ToString();
+                    var name = unit?.ProductName ?? "";
+                    var unitName = unit?.UnitName ?? "đv";
+                    throw new InvalidOperationException(
+                        $"Không đủ tồn kho theo FEFO cho {code}" +
+                        (string.IsNullOrEmpty(name) ? "" : $" — {name}") +
+                        $" (cần {pricedLine.Quantity:N0} {unitName}, còn {availableSale:N0} {unitName}).");
+                }
+
+                batchSource = SalesBatchSources.FefoAuto;
             }
 
             decimal lineQtyRemaining = pricedLine.Quantity;
@@ -1591,7 +1698,8 @@ internal sealed class SalesRepository
                     pricedLine.DiscountType,
                     pricedLine.DiscountValue,
                     alloc.UnitCost,
-                    alloc.BaseQuantity));
+                    alloc.BaseQuantity,
+                    batchSource));
                 lineQtyRemaining -= saleQty;
             }
 
@@ -1744,7 +1852,7 @@ internal sealed class SalesRepository
                 plan.ProductId,
                 plan.ProductUnitId,
                 plan.BatchId,
-                BatchSource = SalesBatchSources.FefoAuto,
+                BatchSource = plan.BatchSource,
                 plan.Quantity,
                 plan.UnitPrice,
                 plan.DiscountAmount,
@@ -1828,7 +1936,15 @@ internal sealed class SalesRepository
         short? DiscountType,
         decimal DiscountValue,
         decimal UnitCost,
-        decimal BaseQuantity);
+        decimal BaseQuantity,
+        short BatchSource);
+
+    private sealed class BatchLockRow
+    {
+        public Guid Id { get; init; }
+        public decimal QuantityAvailable { get; init; }
+        public decimal UnitCost { get; init; }
+    }
 
     private sealed class DraftHeaderRow
     {

@@ -48,7 +48,7 @@ public interface ISalesService
 
     Task<SalesOrderDetailDto?> CompleteDraftSaleAsync(
         Guid id,
-        IReadOnlyList<CreateSalePaymentRequest>? payments,
+        CompleteDraftSaleRequest? request,
         CancellationToken cancellationToken = default);
 
     Task<SalesOrderDetailDto?> CancelDraftSaleAsync(Guid id, CancellationToken cancellationToken = default);

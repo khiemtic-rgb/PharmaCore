@@ -6,6 +6,7 @@ export function buildSaleLineItems(cart: CartLine[]) {
     productId: line.productId,
     productUnitId: line.productUnitId,
     quantity: line.quantity,
+    ...(line.batchLabel?.trim() ? { batchNumber: line.batchLabel.trim() } : {}),
     ...(line.discountType
       ? { discountType: line.discountType, discountValue: line.discountValue ?? 0 }
       : {}),
