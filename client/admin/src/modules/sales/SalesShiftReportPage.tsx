@@ -36,6 +36,7 @@ import { useHasPermission } from '@/shared/auth/usePermission';
 import { CloseShiftModal } from '@/modules/sales/CloseShiftModal';
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
 import { ShiftSummaryPanel } from '@/modules/sales/shift-summary-ui';
+import { SHOW_SHIFT_FEFO_LOT_ALERTS } from '@/modules/sales/sales-feature-flags';
 import { formatDisplayMoney } from '@/shared/utils/money';
 import { formatDisplayDate } from '@/shared/utils/date';
 
@@ -228,7 +229,7 @@ export function SalesShiftReportPage() {
                 <Tag color="processing">Đang mở</Tag>
               </Descriptions.Item>
             </Descriptions>
-            {openShift.lotAlerts && openShift.lotAlerts.length > 0 && (
+            {SHOW_SHIFT_FEFO_LOT_ALERTS && openShift.lotAlerts && openShift.lotAlerts.length > 0 && (
               <Alert
                 type="warning"
                 showIcon
