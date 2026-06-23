@@ -14,6 +14,6 @@ export const BATCH_MODE_OPTIONS = (
 export const BATCH_MODE_HINTS: Record<TenantBatchModeValue, string> = {
   off: 'POS không hiển thị gợi ý lô; backend vẫn xuất FEFO khi chốt đơn.',
   suggest: 'Nhân viên thấy lô FEFO gợi ý (tooltip) khi bán; khách không thấy lô trên hóa đơn.',
-  label_optional: 'Cho phép ghi nhận nhãn lô khi cần (sẽ mở rộng trên POS).',
-  label_required: 'Bắt buộc nhập nhãn lô trước khi bán (sẽ mở rộng trên POS).',
+  label_optional: 'POS hiển thị cột chọn lô; có thể bỏ trống nếu không cần.',
+  label_required: 'POS bắt buộc chọn số lô khớp tồn kho trước khi thanh toán.',
 };

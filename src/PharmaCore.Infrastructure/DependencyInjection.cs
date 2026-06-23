@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.Auth;
 using PharmaCore.Application.Catalog;
@@ -55,6 +56,8 @@ public static class DependencyInjection
         services.AddScoped<IBatchResolver, BatchResolver>();
         services.AddScoped<ITenantSettingsService, TenantSettingsService>();
         services.AddScoped<IIntegrationOutboxWriter, IntegrationOutboxWriter>();
+        services.Configure<IntegrationOutboxOptions>(configuration.GetSection(IntegrationOutboxOptions.SectionName));
+        services.AddHostedService<IntegrationOutboxWorker>();
         services.AddScoped<IInventoryService, InventoryService>();
 
         services.AddScoped<CustomerConsentRepository>();

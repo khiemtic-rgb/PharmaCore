@@ -18,7 +18,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { PrinterOutlined } from '@ant-design/icons';
 import { fetchWarehouses } from '@/shared/api/inventory.api';
 import type { Warehouse } from '@/shared/api/inventory.types';
-import { createSale, completeDraftSale, fetchOpenShift, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale } from '@/shared/api/sales.api';
+import { createSale, completeDraftSale, fetchBatchModeSettings, fetchOpenShift, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue } from '@/shared/api/sales.api';
 import {
   isShiftAlreadyOpenError,
   loadOpenShiftForWarehouse,
@@ -31,6 +31,12 @@ import { useHasPermission } from '@/shared/auth/usePermission';
 import { PosCheckoutModal } from '@/modules/sales/PosCheckoutModal';
 import { PosCartQuantityInput } from '@/modules/sales/PosCartQuantityInput';
 import { formatSuggestedBatch } from '@/modules/sales/pos-batch-display';
+import {
+  initialBatchLabelForMode,
+  showsBatchHints,
+  showsBatchLabelField,
+  validateCartBatchLabels,
+} from '@/modules/sales/pos-batch-mode-ui';
 import { capQuantityToStock, stockCapWarningText } from '@/modules/sales/pos-stock-messages';
 import { buildCreateSalePayload, buildDraftUpdatePayload } from '@/modules/sales/pos-sale-payload';
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
@@ -79,6 +85,7 @@ export function PosPage() {
   const [editingDraftNumber, setEditingDraftNumber] = useState<string | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [checkoutValidating, setCheckoutValidating] = useState(false);
+  const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('suggest');
 
   const pricing = useMemo(() => priceCart(cart, orderDiscount), [cart, orderDiscount]);
 
@@ -121,6 +128,12 @@ export function PosPage() {
       setCustomers(await searchCustomers());
       void loadReceiptStoreSettings();
     })();
+  }, []);
+
+  useEffect(() => {
+    void fetchBatchModeSettings()
+      .then(setBatchMode)
+      .catch(() => setBatchMode('suggest'));
   }, []);
 
   useEffect(() => {
@@ -215,6 +228,15 @@ export function PosPage() {
 
     return true;
   }, [canDiscount, cart, maxPercent, orderDiscount, unlimited]);
+
+  const validateBatchLabels = useCallback((): boolean => {
+    const error = validateCartBatchLabels(cart, batchMode);
+    if (error) {
+      message.warning(error);
+      return false;
+    }
+    return true;
+  }, [batchMode, cart, message]);
 
   const refreshCartStock = useCallback(async () => {
     if (!warehouseId || cart.length === 0) return;
@@ -315,6 +337,7 @@ export function PosPage() {
                       stockAvailable: item.stockAvailable,
                       qtyWarning: capWarning,
                       batchHints: item.batchHints ?? l.batchHints,
+                      batchLabel: l.batchLabel ?? initialBatchLabelForMode(batchMode, item.batchHints ?? l.batchHints),
                       stockSourceLabel: item.stockSourceLabel ?? l.stockSourceLabel,
                     }
                   : l,
@@ -326,6 +349,7 @@ export function PosPage() {
                     ...l,
                     quantity: nextQty,
                     batchHints: item.batchHints ?? l.batchHints,
+                    batchLabel: l.batchLabel ?? initialBatchLabelForMode(batchMode, item.batchHints ?? l.batchHints),
                     stockSourceLabel: item.stockSourceLabel ?? l.stockSourceLabel,
                   }
                 : l,
@@ -344,6 +368,7 @@ export function PosPage() {
               unitPrice: item.unitPrice,
               stockAvailable: item.stockAvailable,
               batchHints: item.batchHints,
+              batchLabel: initialBatchLabelForMode(batchMode, item.batchHints),
               stockSourceLabel: item.stockSourceLabel,
             },
           ];
@@ -353,7 +378,7 @@ export function PosPage() {
         message.error(apiErrorMessage(error, 'Không tìm thấy sản phẩm'));
       }
     },
-    [barcode, message, warehouseId],
+    [barcode, batchMode, message, warehouseId],
   );
 
   const resetCartAndExitDraft = () => {
@@ -370,6 +395,7 @@ export function PosPage() {
       return;
     }
     if (!validateDiscounts()) return;
+    if (!validateBatchLabels()) return;
     const updatingExisting = Boolean(editingDraftId);
     setSaving(true);
     const hideLoading = message.loading(
@@ -418,6 +444,9 @@ export function PosPage() {
     if (!validateDiscounts()) {
       throw new Error('invalid-discount');
     }
+    if (!validateBatchLabels()) {
+      throw new Error('invalid-batch-label');
+    }
     if (!(await validateStock())) {
       throw new Error('invalid-stock');
     }
@@ -464,6 +493,7 @@ export function PosPage() {
       return;
     }
     if (!validateDiscounts()) return;
+    if (!validateBatchLabels()) return;
     setCheckoutValidating(true);
     try {
       if (!(await validateStock())) return;
@@ -475,6 +505,7 @@ export function PosPage() {
   }, [
     openShift,
     validateDiscounts,
+    validateBatchLabels,
     validateFefoAllocation,
     validateStock,
   ]);
@@ -484,7 +515,7 @@ export function PosPage() {
     {
       title: 'Sản phẩm',
       render: (_, row) => {
-        const batchLabel = formatSuggestedBatch(row.batchHints);
+        const suggestedBatch = formatSuggestedBatch(row.batchHints);
         const name = (
           <span>
             {row.productName}
@@ -495,14 +526,41 @@ export function PosPage() {
             </Typography.Text>
           </span>
         );
-        return batchLabel !== '—' ? (
-          <Tooltip title={`Lô FEFO gợi ý: ${batchLabel}`}>{name}</Tooltip>
+        return showsBatchHints(batchMode) && suggestedBatch !== '—' ? (
+          <Tooltip title={`Lô FEFO gợi ý: ${suggestedBatch}`}>{name}</Tooltip>
         ) : (
           name
         );
       },
     },
     { title: 'ĐVT', dataIndex: 'unitName', width: 70 },
+    ...(showsBatchLabelField(batchMode)
+      ? ([
+          {
+            title: 'Lô',
+            width: 150,
+            render: (_, row) => (
+              <Select
+                showSearch
+                allowClear={batchMode !== 'label_required'}
+                placeholder="Chọn lô"
+                style={{ width: 140 }}
+                disabled={!canWrite}
+                value={row.batchLabel || undefined}
+                options={(row.batchHints ?? []).map((hint) => ({
+                  value: hint.batchNumber,
+                  label: formatSuggestedBatch([hint]),
+                }))}
+                onChange={(value) =>
+                  setCart((prev) =>
+                    prev.map((l) => (l.key === row.key ? { ...l, batchLabel: value ?? '' } : l)),
+                  )
+                }
+              />
+            ),
+          },
+        ] as ColumnsType<CartLine>)
+      : []),
     {
       title: 'SL',
       dataIndex: 'quantity',

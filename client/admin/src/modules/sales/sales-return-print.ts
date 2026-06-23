@@ -1,81 +1,89 @@
 import type { SalesReturnDetail } from '@/shared/api/sales.types';
 import { SALES_PAYMENT_METHOD_LABELS } from '@/shared/api/sales.types';
 import { loadReceiptStoreSettings } from '@/modules/sales/receipt-settings';
-import { formatDisplayDate } from '@/shared/utils/date';
+import {
+  buildThermalReceiptDocument,
+  dashedLine,
+  formatReceiptDateTime,
+  formatThermalMoney,
+  openThermalPrintWindow,
+  rowBetween,
+} from '@/modules/sales/thermal-receipt-print';
 import { escapeHtml } from '@/shared/utils/escape-html';
-import { formatDisplayMoney } from '@/shared/utils/money';
+
+function buildReturnItemHtml(line: SalesReturnDetail['items'][number]): string {
+  const name = escapeHtml(line.productName);
+  const batch = escapeHtml(line.batchNumber || '—');
+  const qtyLabel = `${line.quantity.toLocaleString('vi-VN')}`;
+
+  return `
+    <div class="item">
+      <div class="item-name">${name}</div>
+      <div class="item-sub">Lô: ${batch}</div>
+      <div class="row">
+        <span class="row-left">SL trả: ${qtyLabel}</span>
+        <span class="row-right">${formatThermalMoney(line.refundAmount)}</span>
+      </div>
+    </div>`;
+}
+
+function buildRefundPaymentSection(ret: SalesReturnDetail): string {
+  const payments = ret.payments ?? [];
+  if (payments.length === 0) {
+    return rowBetween('Hoàn tiền', formatThermalMoney(ret.totalRefund), 'sub');
+  }
+
+  return payments
+    .map((p) => {
+      const label = SALES_PAYMENT_METHOD_LABELS[p.paymentMethod] ?? String(p.paymentMethod);
+      return rowBetween(label, formatThermalMoney(p.amount), 'sub');
+    })
+    .join('');
+}
 
 export async function buildSalesReturnHtml(ret: SalesReturnDetail): Promise<string> {
   const store = await loadReceiptStoreSettings();
-  const rows = ret.items
-    .map(
-      (line) => `
-      <tr>
-        <td>${escapeHtml(line.productCode)}</td>
-        <td>${escapeHtml(line.productName)}</td>
-        <td>${escapeHtml(line.batchNumber)}</td>
-        <td style="text-align:right">${line.quantity.toLocaleString('vi-VN')}</td>
-        <td style="text-align:right">${formatDisplayMoney(line.refundAmount)}</td>
-      </tr>`,
-    )
-    .join('');
+  const storeName = escapeHtml(store.name);
+  const storeTagline = store.tagline ? escapeHtml(store.tagline) : '';
+  const storePhone = store.phone ? escapeHtml(store.phone) : '';
+  const storeAddress = store.address ? escapeHtml(store.address) : '';
+  const headerContact = [storePhone ? `ĐT: ${storePhone}` : '', storeAddress]
+    .filter(Boolean)
+    .join(' · ');
 
-  const paymentRows = (ret.payments ?? [])
-    .map(
-      (p) =>
-        `<div>${escapeHtml(SALES_PAYMENT_METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod)}: ${formatDisplayMoney(p.amount)}</div>`,
-    )
-    .join('');
+  const itemBlocks = ret.items.map((line) => buildReturnItemHtml(line)).join('');
+  const paymentBlock = buildRefundPaymentSection(ret);
 
-  return `<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(ret.returnNumber)}</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 13px; margin: 24px; color: #111; }
-    h1 { font-size: 18px; margin: 0 0 4px; }
-    .meta { margin-bottom: 16px; color: #444; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { border: 1px solid #ccc; padding: 6px 8px; }
-    th { background: #f5f5f5; text-align: left; }
-    .total { margin-top: 16px; font-size: 15px; font-weight: bold; text-align: right; }
-    .payments { margin-top: 8px; text-align: right; color: #333; }
-  </style>
-</head>
-<body>
-  <h1>PHIẾU TRẢ HÀNG</h1>
-  <div class="meta">
-    <div>${escapeHtml(store.name)}</div>
-    <div>Số phiếu: <strong>${escapeHtml(ret.returnNumber)}</strong></div>
-    <div>Đơn bán: <strong>${escapeHtml(ret.orderNumber)}</strong></div>
-    <div>Ngày trả: ${formatDisplayDate(ret.returnDate)}</div>
-    ${ret.reason ? `<div>Lý do trả: ${escapeHtml(ret.reason)}</div>` : ''}
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Mã SP</th>
-        <th>Tên SP</th>
-        <th>Lô</th>
-        <th style="text-align:right">SL trả</th>
-        <th style="text-align:right">Tiền hoàn</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="total">Tổng hoàn tiền: ${formatDisplayMoney(ret.totalRefund)}</div>
-  ${paymentRows ? `<div class="payments"><strong>Hình thức hoàn tiền</strong>${paymentRows}</div>` : ''}
-  <script>window.onload = () => { window.print(); }</script>
-</body>
-</html>`;
+  const bodyHtml = `
+    <div class="center store-name">${storeName}</div>
+    ${storeTagline ? `<div class="center store-sub">${storeTagline}</div>` : ''}
+    ${headerContact ? `<div class="center store-contact">${headerContact}</div>` : ''}
+
+    ${dashedLine()}
+    <div class="center title">PHIẾU TRẢ HÀNG</div>
+
+    <div class="meta">Số phiếu: <strong>${escapeHtml(ret.returnNumber)}</strong></div>
+    <div class="meta">Đơn bán: ${escapeHtml(ret.orderNumber)}</div>
+    <div class="meta">Ngày trả: ${formatReceiptDateTime(ret.returnDate)}</div>
+    ${ret.reason ? `<div class="meta">Lý do: ${escapeHtml(ret.reason)}</div>` : ''}
+
+    ${dashedLine()}
+    <div class="items">${itemBlocks}</div>
+    ${dashedLine()}
+
+    ${rowBetween('TỔNG HOÀN', formatThermalMoney(ret.totalRefund), 'total')}
+    ${paymentBlock ? `${dashedLine()}${paymentBlock}` : ''}
+
+    ${dashedLine()}
+    <div class="footer">
+      <div>Đã hoàn trả hàng</div>
+      <div class="note" style="margin-top:6px">Phiếu trả hàng — lưu nội bộ</div>
+    </div>`;
+
+  return buildThermalReceiptDocument(escapeHtml(ret.returnNumber), bodyHtml);
 }
 
 export async function printSalesReturn(ret: SalesReturnDetail): Promise<boolean> {
   const html = await buildSalesReturnHtml(ret);
-  const win = window.open('', '_blank', 'width=800,height=600');
-  if (!win) return false;
-  win.document.write(html);
-  win.document.close();
-  return true;
+  return openThermalPrintWindow(html);
 }

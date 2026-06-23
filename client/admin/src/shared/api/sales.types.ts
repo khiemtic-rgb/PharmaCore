@@ -271,6 +271,8 @@ export interface CartLine {
   unitPrice: number;
   stockAvailable?: number;
   batchHints?: PosBatchHint[];
+  /** Số lô nhân viên xác nhận (label_optional / label_required) */
+  batchLabel?: string;
   stockSourceLabel?: string;
   discountType?: SalesDiscountType;
   discountValue?: number;
