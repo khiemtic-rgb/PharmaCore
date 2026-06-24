@@ -1,118 +1,82 @@
-export interface PagedResult<T> {
+import type {
+  ActiveIngredientDto,
+  BrandDto,
+  CategoryDto,
+  PagedProductListResult,
+  ProductBarcodeDto,
+  ProductDetailDto,
+  ProductImageDto,
+  ProductIngredientDto,
+  ProductListItemDto,
+  ProductPriceDto,
+  ProductUnitDto,
+  Req,
+} from '@/shared/api/generated';
+
+/** Phân trang chung (client). */
+export type PagedResult<T> = {
   items: T[];
   total: number;
   page: number;
   pageSize: number;
-}
+};
 
-export interface ProductListItem {
-  id: string;
-  productCode: string;
-  productName: string;
-  genericName?: string;
-  drugType: number;
-  categoryName?: string;
-  brandName?: string;
-  primaryBarcode?: string;
-  retailPrice?: number;
-  primaryImageUrl?: string;
-  saleUnitName?: string;
-  status: number;
-}
+export type ProductListItem = Req<
+  ProductListItemDto,
+  'id' | 'productCode' | 'productName' | 'drugType' | 'status'
+>;
 
-export interface ProductImage {
-  id: string;
-  imageUrl: string;
-  sortOrder: number;
-  isPrimary: boolean;
-}
+export type PagedProductList = Omit<Req<PagedProductListResult, 'total' | 'page' | 'pageSize'>, 'items'> & {
+  items: ProductListItem[];
+};
 
-export interface ProductDetail {
-  id: string;
-  productCode: string;
-  productName: string;
-  genericName?: string;
-  drugType: number;
-  categoryId?: string;
-  brandId?: string;
-  description?: string;
-  status: number;
-  saleUnitName?: string;
+export type ProductImage = Req<ProductImageDto, 'id' | 'imageUrl' | 'sortOrder' | 'isPrimary'>;
+
+export type ProductIngredient = Req<
+  ProductIngredientDto,
+  'id' | 'ingredientId' | 'ingredientCode' | 'ingredientName'
+>;
+
+export type ProductUnit = Req<ProductUnitDto, 'id' | 'unitName' | 'conversionFactor' | 'isBaseUnit' | 'isSaleUnit'>;
+
+export type ProductBarcode = Req<ProductBarcodeDto, 'id' | 'barcode' | 'barcodeType' | 'isPrimary'>;
+
+export type ProductPrice = Req<
+  ProductPriceDto,
+  'id' | 'productUnitId' | 'unitName' | 'priceType' | 'currencyCode' | 'price' | 'effectiveFrom'
+>;
+
+export type ProductDetail = Omit<
+  Req<ProductDetailDto, 'id' | 'productCode' | 'productName' | 'drugType' | 'status'>,
+  'units' | 'barcodes' | 'prices' | 'images' | 'ingredients'
+> & {
   units: ProductUnit[];
   barcodes: ProductBarcode[];
   prices: ProductPrice[];
   images: ProductImage[];
   ingredients: ProductIngredient[];
-}
+};
 
-export interface ProductIngredient {
-  id: string;
-  ingredientId: string;
-  ingredientCode: string;
-  ingredientName: string;
-  strengthValue?: number;
-  strengthUnit?: string;
-}
-
-export interface ProductUnit {
-  id: string;
-  unitName: string;
-  conversionFactor: number;
-  isBaseUnit: boolean;
-  isSaleUnit: boolean;
-}
-
-export interface ProductBarcode {
-  id: string;
-  barcode: string;
-  barcodeType: number;
-  isPrimary: boolean;
-}
-
-export interface ProductPrice {
-  id: string;
-  productUnitId: string;
-  unitName: string;
-  priceType: number;
-  currencyCode: string;
-  price: number;
-  effectiveFrom: string;
-  effectiveTo?: string;
-}
-
-export interface LookupItem {
+/** Lookup gọn cho Select (map từ Category / Brand). */
+export type LookupItem = {
   id: string;
   code: string;
   name: string;
-}
+};
 
-export interface Category {
-  id: string;
-  categoryCode: string;
-  categoryName: string;
-  description?: string;
-  parentId?: string;
-  parentName?: string;
-  sortOrder: number;
-  status: number;
-}
+export type Category = Req<
+  CategoryDto,
+  'id' | 'categoryCode' | 'categoryName' | 'sortOrder' | 'status'
+>;
 
-export interface Brand {
-  id: string;
-  brandCode: string;
-  brandName: string;
-  countryCode?: string;
-  status: number;
-}
+export type Brand = Req<BrandDto, 'id' | 'brandCode' | 'brandName' | 'status'>;
 
-export interface ActiveIngredient {
-  id: string;
-  ingredientCode: string;
-  ingredientName: string;
-  description?: string;
-  status: number;
-}
+export type ActiveIngredient = Req<
+  ActiveIngredientDto,
+  'id' | 'ingredientCode' | 'ingredientName' | 'status'
+>;
 
+/** Query params danh sách sản phẩm (khớp GET /catalog/products). */
 export interface ProductListFilter {
   search?: string;
   drugTypes?: number[];

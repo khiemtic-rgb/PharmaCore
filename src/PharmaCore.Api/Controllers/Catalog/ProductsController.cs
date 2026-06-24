@@ -16,8 +16,7 @@ public sealed class ProductsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = CatalogPolicies.Read)]
-    public async Task<IActionResult> List(
-        [FromQuery] bool nextCodeOnly = false,
+    public async Task<ActionResult<PagedProductListResult>> List(
         [FromQuery] string? search = null,
         [FromQuery] short[]? drugTypes = null,
         [FromQuery] Guid[]? categoryIds = null,
@@ -31,17 +30,11 @@ public sealed class ProductsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        if (nextCodeOnly)
-        {
-            var code = await _catalog.GetNextProductCodeAsync(cancellationToken);
-            return Ok(new { productCode = code });
-        }
-
         var filter = new ProductListFilter(
             search, drugTypes, categoryIds, brandIds, status,
             priceMin, priceMax, hasBarcode, hasPrice, page, pageSize);
         var result = await _catalog.GetProductsAsync(filter, cancellationToken);
-        return Ok(result);
+        return Ok(new PagedProductListResult(result.Items, result.Total, result.Page, result.PageSize));
     }
 
     [HttpGet("check-name")]
@@ -60,10 +53,10 @@ public sealed class ProductsController : ControllerBase
 
     [HttpGet("next-code")]
     [Authorize(Policy = CatalogPolicies.Read)]
-    public async Task<ActionResult<object>> NextCode(CancellationToken cancellationToken)
+    public async Task<ActionResult<NextProductCodeDto>> NextCode(CancellationToken cancellationToken)
     {
         var code = await _catalog.GetNextProductCodeAsync(cancellationToken);
-        return Ok(new { productCode = code });
+        return Ok(new NextProductCodeDto(code));
     }
 
     [HttpGet("{id:guid}")]

@@ -18,6 +18,12 @@ public sealed record ProductListItemDto(
     string? SaleUnitName,
     short Status);
 
+public sealed record PagedProductListResult(
+    IReadOnlyList<ProductListItemDto> Items,
+    int Total,
+    int Page,
+    int PageSize);
+
 public sealed record NextProductCodeDto(string ProductCode);
 
 public sealed record ProductImageDto(

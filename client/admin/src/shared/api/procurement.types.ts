@@ -1,3 +1,16 @@
+import type {
+  GoodsReceiptDetailDto,
+  GoodsReceiptItemDto,
+  GoodsReceiptListItemDto,
+  LastPurchasePriceHintDto,
+  PurchaseOrderDetailDto,
+  PurchaseOrderItemDto,
+  PurchaseOrderListItemDto,
+  Req,
+  SupplierDto,
+  SupplierPaymentListItemDto,
+} from '@/shared/api/generated';
+
 export const PO_STATUS_LABELS: Record<number, string> = {
   1: 'Nháp',
   2: 'Đơn mới',
@@ -53,96 +66,110 @@ export interface SupplierPaymentListFilters {
   dateTo?: string;
 }
 
-export interface LastPurchasePriceHint {
-  unitPrice?: number;
-  priceDate?: string;
-  source?: string;
-  documentNumber?: string;
-}
+export type LastPurchasePriceHint = Pick<
+  LastPurchasePriceHintDto,
+  'unitPrice' | 'priceDate' | 'source' | 'documentNumber'
+>;
 
-export interface Supplier {
-  id: string;
-  supplierCode: string;
-  supplierName: string;
-  taxCode?: string;
-  contactName?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  paymentTerms: number;
-  status: number;
-}
+export type Supplier = Req<
+  SupplierDto,
+  'id' | 'supplierCode' | 'supplierName' | 'paymentTerms' | 'status'
+>;
 
-export interface PurchaseOrderListItem {
-  id: string;
-  poNumber: string;
-  supplierId: string;
-  supplierName: string;
-  warehouseId: string;
-  warehouseName: string;
-  status: number;
-  orderDate: string;
-  totalAmount: number;
-  itemCount: number;
-  deletedAt?: string;
-}
+export type PurchaseOrderListItem = Req<
+  PurchaseOrderListItemDto,
+  | 'id'
+  | 'poNumber'
+  | 'supplierId'
+  | 'supplierName'
+  | 'warehouseId'
+  | 'warehouseName'
+  | 'status'
+  | 'orderDate'
+  | 'totalAmount'
+  | 'itemCount'
+>;
 
-export interface PurchaseOrderItem {
-  id: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  productUnitId: string;
-  unitName: string;
-  orderedQty: number;
-  receivedQty: number;
-  unitPrice: number;
-  lineTotal: number;
-}
+export type PurchaseOrderItem = Req<
+  PurchaseOrderItemDto,
+  | 'id'
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'productUnitId'
+  | 'unitName'
+  | 'orderedQty'
+  | 'receivedQty'
+  | 'unitPrice'
+  | 'lineTotal'
+>;
 
-export interface PurchaseOrderDetail extends PurchaseOrderListItem {
-  expectedDate?: string;
-  subtotal: number;
-  taxAmount: number;
-  notes?: string;
+export type PurchaseOrderDetail = Omit<
+  Req<
+    PurchaseOrderDetailDto,
+    | 'id'
+    | 'poNumber'
+    | 'supplierId'
+    | 'supplierName'
+    | 'warehouseId'
+    | 'warehouseName'
+    | 'status'
+    | 'orderDate'
+    | 'subtotal'
+    | 'taxAmount'
+    | 'totalAmount'
+  >,
+  'items'
+> & {
   items: PurchaseOrderItem[];
-}
+  itemCount?: number;
+};
 
-export interface GoodsReceiptListItem {
-  id: string;
-  grnNumber: string;
-  supplierId: string;
-  supplierName: string;
-  warehouseId: string;
-  warehouseName: string;
-  purchaseOrderId?: string;
-  poNumber?: string;
-  status: number;
-  receiptDate: string;
-  itemCount: number;
-  deletedAt?: string;
-}
+export type GoodsReceiptListItem = Req<
+  GoodsReceiptListItemDto,
+  | 'id'
+  | 'grnNumber'
+  | 'supplierId'
+  | 'supplierName'
+  | 'warehouseId'
+  | 'warehouseName'
+  | 'status'
+  | 'receiptDate'
+  | 'itemCount'
+>;
 
-export interface GoodsReceiptItem {
-  id: string;
-  purchaseOrderItemId?: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  productUnitId: string;
-  unitName: string;
-  batchNumber: string;
-  manufactureDate?: string;
-  expiryDate: string;
-  quantity: number;
-  unitCost: number;
-  lineTotal: number;
-}
+export type GoodsReceiptItem = Req<
+  GoodsReceiptItemDto,
+  | 'id'
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'productUnitId'
+  | 'unitName'
+  | 'batchNumber'
+  | 'expiryDate'
+  | 'quantity'
+  | 'unitCost'
+  | 'lineTotal'
+>;
 
-export interface GoodsReceiptDetail extends GoodsReceiptListItem {
-  notes?: string;
+export type GoodsReceiptDetail = Omit<
+  Req<
+    GoodsReceiptDetailDto,
+    | 'id'
+    | 'grnNumber'
+    | 'supplierId'
+    | 'supplierName'
+    | 'warehouseId'
+    | 'warehouseName'
+    | 'status'
+    | 'receiptDate'
+  >,
+  'items'
+> & {
   items: GoodsReceiptItem[];
-}
+  itemCount?: number;
+};
 
 export interface PurchaseOrderListFilters {
   search?: string;
@@ -168,19 +195,14 @@ export interface GoodsReceiptListFilters {
   includeArchived?: boolean;
 }
 
-export interface SupplierPaymentListItem {
-  id: string;
-  paymentNumber: string;
-  supplierId: string;
-  supplierName: string;
-  amount: number;
-  paymentMethod: number;
-  status: number;
-  paymentDate: string;
-  postedAt?: string;
-  purchaseOrderId?: string;
-  poNumber?: string;
-  goodsReceiptId?: string;
-  grnNumber?: string;
-  notes?: string;
-}
+export type SupplierPaymentListItem = Req<
+  SupplierPaymentListItemDto,
+  | 'id'
+  | 'paymentNumber'
+  | 'supplierId'
+  | 'supplierName'
+  | 'amount'
+  | 'paymentMethod'
+  | 'status'
+  | 'paymentDate'
+>;

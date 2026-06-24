@@ -2043,14 +2043,6 @@
         ],
         "parameters": [
           {
-            "name": "nextCodeOnly",
-            "in": "query",
-            "schema": {
-              "type": "boolean",
-              "default": false
-            }
-          },
-          {
             "name": "search",
             "in": "query",
             "schema": {
@@ -2149,7 +2141,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedProductListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedProductListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedProductListResult"
+                }
+              }
+            }
           }
         }
       },
@@ -2253,7 +2262,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextProductCodeDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextProductCodeDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextProductCodeDto"
+                }
+              }
+            }
           }
         }
       }
@@ -6983,6 +7009,16 @@
         },
         "additionalProperties": false
       },
+      "NextProductCodeDto": {
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "OpenSalesShiftRequest": {
         "type": "object",
         "properties": {
@@ -7109,6 +7145,31 @@
               "format": "uuid"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PagedProductListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductListItemDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -7686,6 +7747,61 @@
           "strengthUnit": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ProductListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "genericName": {
+            "type": "string",
+            "nullable": true
+          },
+          "drugType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "categoryName": {
+            "type": "string",
+            "nullable": true
+          },
+          "brandName": {
+            "type": "string",
+            "nullable": true
+          },
+          "primaryBarcode": {
+            "type": "string",
+            "nullable": true
+          },
+          "retailPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "primaryImageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "saleUnitName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

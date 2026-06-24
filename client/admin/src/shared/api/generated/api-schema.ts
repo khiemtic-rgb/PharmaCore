@@ -1673,7 +1673,6 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    nextCodeOnly?: boolean;
                     search?: string;
                     drugTypes?: number[];
                     categoryIds?: string[];
@@ -1697,7 +1696,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["PagedProductListResult"];
+                        "application/json": components["schemas"]["PagedProductListResult"];
+                        "text/json": components["schemas"]["PagedProductListResult"];
+                    };
                 };
             };
         };
@@ -1797,7 +1800,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["NextProductCodeDto"];
+                        "application/json": components["schemas"]["NextProductCodeDto"];
+                        "text/json": components["schemas"]["NextProductCodeDto"];
+                    };
                 };
             };
         };
@@ -4836,6 +4843,9 @@ export interface components {
             accessTokenExpiresAt?: string;
             user?: components["schemas"]["AuthUserDto"];
         };
+        NextProductCodeDto: {
+            productCode?: string | null;
+        };
         OpenSalesShiftRequest: {
             /** Format: uuid */
             warehouseId?: string;
@@ -4885,6 +4895,15 @@ export interface components {
             /** Format: int32 */
             linesProcessed?: number;
             batchIds?: string[] | null;
+        };
+        PagedProductListResult: {
+            items?: components["schemas"]["ProductListItemDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            pageSize?: number;
         };
         PagedStockBatchesResult: {
             items?: components["schemas"]["StockBatchListItemDto"][] | null;
@@ -5082,6 +5101,24 @@ export interface components {
             /** Format: double */
             strengthValue?: number | null;
             strengthUnit?: string | null;
+        };
+        ProductListItemDto: {
+            /** Format: uuid */
+            id?: string;
+            productCode?: string | null;
+            productName?: string | null;
+            genericName?: string | null;
+            /** Format: int32 */
+            drugType?: number;
+            categoryName?: string | null;
+            brandName?: string | null;
+            primaryBarcode?: string | null;
+            /** Format: double */
+            retailPrice?: number | null;
+            primaryImageUrl?: string | null;
+            saleUnitName?: string | null;
+            /** Format: int32 */
+            status?: number;
         };
         ProductPriceDto: {
             /** Format: uuid */

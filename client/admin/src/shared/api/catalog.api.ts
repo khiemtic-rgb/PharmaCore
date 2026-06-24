@@ -258,9 +258,8 @@ export async function fetchProduct(id: string): Promise<ProductDetail> {
 
 export async function fetchNextProductCode(): Promise<string> {
   const apiPaths: Array<string | { url: string; params?: Record<string, unknown> }> = [
-    { url: '/catalog/products', params: { nextCodeOnly: true } },
-    '/catalog/product-next-code',
     '/catalog/products/next-code',
+    '/catalog/product-next-code',
   ];
 
   let lastError: unknown;

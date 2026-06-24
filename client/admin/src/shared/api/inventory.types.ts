@@ -1,146 +1,147 @@
-export interface PagedStockBatches {
+import type {
+  AdjustmentDetailDto,
+  AdjustmentItemDto,
+  AdjustmentListItemDto,
+  BranchLookupDto,
+  OpeningBalanceBatchListItemDto,
+  OpeningBalanceLineRequest,
+  OpeningBalanceResultDto,
+  PagedStockBatchesResult,
+  PagedStockProductsResult,
+  Req,
+  StockBatchListItemDto,
+  StockProductSummaryDto,
+  TransferDetailDto,
+  TransferItemDto,
+  TransferListItemDto,
+  WarehouseDto,
+} from '@/shared/api/generated';
+
+export type StockBatch = Req<
+  StockBatchListItemDto,
+  | 'id'
+  | 'warehouseId'
+  | 'warehouseCode'
+  | 'warehouseName'
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'batchNumber'
+  | 'unitCost'
+  | 'quantityAvailable'
+  | 'quantityReceived'
+  | 'status'
+>;
+
+export type PagedStockBatches = Omit<Req<PagedStockBatchesResult, 'total' | 'page' | 'pageSize'>, 'items'> & {
   items: StockBatch[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
+};
 
-export interface StockProductSummary {
-  productId: string;
-  productCode: string;
-  productName: string;
-  totalQuantity: number;
-  warehouseCount: number;
-  batchCount: number;
-}
+export type StockProductSummary = Req<
+  StockProductSummaryDto,
+  'productId' | 'productCode' | 'productName' | 'totalQuantity' | 'warehouseCount' | 'batchCount'
+>;
 
-export interface PagedStockProducts {
+export type PagedStockProducts = Omit<Req<PagedStockProductsResult, 'total' | 'page' | 'pageSize'>, 'items'> & {
   items: StockProductSummary[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
+};
 
-export interface StockBatch {
-  id: string;
-  warehouseId: string;
-  warehouseCode: string;
-  warehouseName: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  batchNumber: string;
-  expiryDate?: string;
-  unitCost: number;
-  quantityAvailable: number;
-  quantityReceived: number;
-  status: number;
-}
+export type Warehouse = Req<
+  WarehouseDto,
+  'id' | 'branchId' | 'branchName' | 'warehouseCode' | 'warehouseName' | 'warehouseType' | 'isDefault' | 'status'
+>;
 
-export interface Warehouse {
-  id: string;
-  branchId: string;
-  branchName: string;
-  warehouseCode: string;
-  warehouseName: string;
-  warehouseType: number;
-  isDefault: boolean;
-  address?: string;
-  status: number;
-}
+export type BranchLookup = Req<BranchLookupDto, 'id' | 'branchCode' | 'branchName'>;
 
-export interface BranchLookup {
-  id: string;
-  branchCode: string;
-  branchName: string;
-}
+export type OpeningBalanceLine = Req<
+  OpeningBalanceLineRequest,
+  'productId' | 'batchNumber' | 'unitCost' | 'quantity'
+>;
 
-export interface OpeningBalanceLine {
-  productId: string;
-  batchNumber: string;
-  expiryDate?: string;
-  manufactureDate?: string;
-  unitCost: number;
-  quantity: number;
-}
-
-export interface OpeningBalanceResult {
-  warehouseId: string;
-  linesProcessed: number;
+export type OpeningBalanceResult = Req<OpeningBalanceResultDto, 'warehouseId' | 'linesProcessed'> & {
   batchIds: string[];
-}
+};
 
-export interface OpeningBalanceBatch {
-  batchId: string;
-  warehouseId: string;
-  warehouseName: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  batchNumber: string;
-  expiryDate?: string;
-  unitCost: number;
-  quantityAvailable: number;
-  openingQuantity: number;
-  firstOpeningDate: string;
-  canVoid: boolean;
-  voidBlockReason?: string;
-}
+export type OpeningBalanceBatch = Req<
+  OpeningBalanceBatchListItemDto,
+  | 'batchId'
+  | 'warehouseId'
+  | 'warehouseName'
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'batchNumber'
+  | 'unitCost'
+  | 'quantityAvailable'
+  | 'openingQuantity'
+  | 'firstOpeningDate'
+  | 'canVoid'
+>;
 
-export interface TransferListItem {
-  id: string;
-  transferNumber: string;
-  fromWarehouseId: string;
-  fromWarehouseName: string;
-  toWarehouseId: string;
-  toWarehouseName: string;
-  status: number;
-  transferDate: string;
-  itemCount: number;
-}
+export type TransferListItem = Req<
+  TransferListItemDto,
+  | 'id'
+  | 'transferNumber'
+  | 'fromWarehouseId'
+  | 'fromWarehouseName'
+  | 'toWarehouseId'
+  | 'toWarehouseName'
+  | 'status'
+  | 'transferDate'
+  | 'itemCount'
+>;
 
-export interface TransferItem {
-  id: string;
-  batchId: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  batchNumber: string;
-  quantity: number;
-}
+export type TransferItem = Req<
+  TransferItemDto,
+  'id' | 'batchId' | 'productId' | 'productCode' | 'productName' | 'batchNumber' | 'quantity'
+>;
 
-export interface TransferDetail extends TransferListItem {
-  notes?: string;
+export type TransferDetail = Omit<
+  Req<
+    TransferDetailDto,
+    | 'id'
+    | 'transferNumber'
+    | 'fromWarehouseId'
+    | 'fromWarehouseName'
+    | 'toWarehouseId'
+    | 'toWarehouseName'
+    | 'status'
+    | 'transferDate'
+  >,
+  'items'
+> & {
   items: TransferItem[];
-}
+  itemCount?: number;
+};
 
-export interface AdjustmentListItem {
-  id: string;
-  adjustmentNumber: string;
-  warehouseId: string;
-  warehouseName: string;
-  status: number;
-  adjustmentDate: string;
-  itemCount: number;
-}
+export type AdjustmentListItem = Req<
+  AdjustmentListItemDto,
+  'id' | 'adjustmentNumber' | 'warehouseId' | 'warehouseName' | 'status' | 'adjustmentDate' | 'itemCount'
+>;
 
-export interface AdjustmentItem {
-  id: string;
-  batchId: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  batchNumber: string;
-  systemQuantity: number;
-  actualQuantity: number;
-  differenceQuantity: number;
-  note?: string;
-}
+export type AdjustmentItem = Req<
+  AdjustmentItemDto,
+  | 'id'
+  | 'batchId'
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'batchNumber'
+  | 'systemQuantity'
+  | 'actualQuantity'
+  | 'differenceQuantity'
+>;
 
-export interface AdjustmentDetail extends AdjustmentListItem {
-  reason?: string;
+export type AdjustmentDetail = Omit<
+  Req<
+    AdjustmentDetailDto,
+    'id' | 'adjustmentNumber' | 'warehouseId' | 'warehouseName' | 'status' | 'adjustmentDate'
+  >,
+  'items'
+> & {
   items: AdjustmentItem[];
-}
+  itemCount?: number;
+};
 
 export const WAREHOUSE_TYPE_LABELS: Record<number, string> = {
   1: 'Kho chính',
