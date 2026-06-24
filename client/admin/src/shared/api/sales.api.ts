@@ -368,14 +368,30 @@ export async function createSale(payload: CreateSalePayload): Promise<SalesOrder
   return normalizeSalesOrderDetail(data, rawItems);
 }
 
+export type CompleteDraftSaleOptions = {
+  payments?: { paymentMethod: number; amount: number }[];
+  items?: SaleLinePayload[];
+  customerId?: string | null;
+  orderDiscountType?: number | null;
+  orderDiscountValue?: number | null;
+  notes?: string | null;
+};
+
 export async function completeDraftSale(
   id: string,
-  payments?: { paymentMethod: number; amount: number }[],
-  items?: SaleLinePayload[],
+  options?: CompleteDraftSaleOptions,
 ): Promise<SalesOrderDetail> {
   const { data } = await http.post<Record<string, unknown>>(`/sales/orders/${id}/complete`, {
-    payments: payments ?? null,
-    ...(items?.length ? { items } : {}),
+    payments: options?.payments ?? null,
+    ...(options?.items?.length ? { items: options.items } : {}),
+    ...(options && 'customerId' in options ? { customerId: options.customerId ?? null } : {}),
+    ...(options?.items?.length
+      ? {
+          orderDiscountType: options.orderDiscountType ?? null,
+          orderDiscountValue: options.orderDiscountValue ?? null,
+          ...(options.notes != null ? { notes: options.notes } : {}),
+        }
+      : {}),
   });
   const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
   return normalizeSalesOrderDetail(data, rawItems);

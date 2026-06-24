@@ -89,7 +89,11 @@ public sealed record CreateSaleLineRequest(
 
 public sealed record CompleteDraftSaleRequest(
     IReadOnlyList<CreateSalePaymentRequest>? Payments = null,
-    IReadOnlyList<CreateSaleLineRequest>? Items = null);
+    IReadOnlyList<CreateSaleLineRequest>? Items = null,
+    Guid? CustomerId = null,
+    short? OrderDiscountType = null,
+    decimal? OrderDiscountValue = null,
+    string? Notes = null);
 
 public sealed record CreateSalePaymentRequest(
     short PaymentMethod,

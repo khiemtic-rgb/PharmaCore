@@ -220,7 +220,7 @@ export function SalesOrderListPage() {
     }
     setDraftCompleting(true);
     try {
-      const updated = await completeDraftSale(detail.id, payments);
+      const updated = await completeDraftSale(detail.id, { payments });
       setDetail(updated);
       setDraftCheckoutOpen(false);
       message.success('Đã hoàn tất đơn nháp');

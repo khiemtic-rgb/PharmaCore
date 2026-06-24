@@ -1,18 +1,37 @@
 import type { CartLine } from '@/shared/api/sales.types';
 import { batchLabelMatchesHints } from '@/modules/sales/pos-batch-mode-ui';
+import { extractBatchFromScan, extractExpiryFromGs1Scan } from '@/modules/sales/pos-gs1-parse';
 
 function resolveBatchNumber(scan: string, line: CartLine): string | null {
-  const normalized = scan.trim();
-  if (!normalized) return null;
-  if (!batchLabelMatchesHints(normalized, line.batchHints)) return null;
-  const match = line.batchHints?.find(
-    (h) => h.batchNumber.trim().toLowerCase() === normalized.toLowerCase(),
-  );
-  return match?.batchNumber ?? normalized;
+  const candidates = [extractBatchFromScan(scan), scan.trim()].filter(
+    (value, index, list) => value && list.indexOf(value) === index,
+  ) as string[];
+
+  const expiryHint = extractExpiryFromGs1Scan(scan);
+
+  for (const normalized of candidates) {
+    if (!batchLabelMatchesHints(normalized, line.batchHints)) continue;
+    const matches = (line.batchHints ?? []).filter(
+      (h) => h.batchNumber.trim().toLowerCase() === normalized.toLowerCase(),
+    );
+    if (matches.length === 1) {
+      return matches[0]!.batchNumber;
+    }
+    if (matches.length > 1 && expiryHint) {
+      const byExpiry = matches.find((h) => h.expiryDate?.startsWith(expiryHint));
+      if (byExpiry) return byExpiry.batchNumber;
+    }
+    if (matches.length > 0) {
+      return matches[0]!.batchNumber;
+    }
+    return normalized;
+  }
+
+  return null;
 }
 
 /**
- * Gán số lô từ quét mã vạch nhãn lô vào dòng giỏ phù hợp.
+ * Gán số lô từ quét mã vạch nhãn lô (GS1 hoặc số lô thuần) vào dòng giỏ phù hợp.
  * Ưu tiên dòng chưa có lô, khớp batchHints; nếu không có thì dòng khớp cuối cùng.
  */
 export function applyBatchLabelScan(

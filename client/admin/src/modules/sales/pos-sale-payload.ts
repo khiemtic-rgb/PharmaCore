@@ -32,6 +32,21 @@ export function buildCreateSalePayload(
   };
 }
 
+export function buildDraftCompletePayload(
+  customerId: string | undefined,
+  cart: CartLine[],
+  orderDiscount: OrderDiscountState,
+  notes?: string,
+) {
+  return {
+    customerId: customerId ?? null,
+    orderDiscountType: orderDiscount.discountType ?? null,
+    orderDiscountValue: orderDiscount.discountType ? (orderDiscount.discountValue ?? 0) : null,
+    notes: notes ?? null,
+    items: buildSaleLineItems(cart),
+  };
+}
+
 export function buildDraftUpdatePayload(
   customerId: string | undefined,
   cart: CartLine[],

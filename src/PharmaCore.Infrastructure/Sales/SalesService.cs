@@ -120,7 +120,7 @@ internal sealed class SalesService : ISalesService
         CompleteDraftSaleRequest? request,
         CancellationToken cancellationToken = default)
     {
-        var completed = await _repository.CompleteDraftSaleAsync(id, request, cancellationToken);
+        var completed = await _repository.CompleteDraftSaleAsync(id, request, DiscountPolicy, cancellationToken);
         if (!completed) return null;
         var order = await _repository.GetSalesOrderAsync(id, cancellationToken, freshSale: true);
         if (order is not null)

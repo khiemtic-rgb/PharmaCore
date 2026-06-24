@@ -770,6 +770,7 @@ internal sealed class SalesRepository
     public async Task<bool> CompleteDraftSaleAsync(
         Guid id,
         CompleteDraftSaleRequest? request,
+        SalesDiscountPolicy discountPolicy,
         CancellationToken cancellationToken)
     {
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
@@ -777,8 +778,8 @@ internal sealed class SalesRepository
 
         const string headerSql = """
             SELECT
-                warehouse_id AS WarehouseId, price_type AS PriceType, subtotal AS Subtotal,
-                discount_amount AS OrderDiscountAmount, total_amount AS TotalAmount,
+                warehouse_id AS WarehouseId, customer_id AS CustomerId, price_type AS PriceType,
+                subtotal AS Subtotal, discount_amount AS OrderDiscountAmount, total_amount AS TotalAmount,
                 order_discount_type AS OrderDiscountType, order_discount_value AS OrderDiscountValue
             FROM sales_orders
             WHERE id = @Id AND tenant_id = @TenantId AND status = @Draft
@@ -793,10 +794,11 @@ internal sealed class SalesRepository
         await EnsureOpenShiftAsync(conn, tx, header.WarehouseId);
         var shiftId = await ResolveOpenShiftIdAsync(conn, tx, header.WarehouseId);
 
+        var syncFromRequest = request?.Items is { Count: > 0 };
         IReadOnlyList<CreateSaleLineRequest> saleItems;
-        if (request?.Items is { Count: > 0 })
+        if (syncFromRequest)
         {
-            saleItems = request.Items;
+            saleItems = request!.Items!;
         }
         else
         {
@@ -814,26 +816,37 @@ internal sealed class SalesRepository
 
         await conn.ExecuteAsync("DELETE FROM sales_order_items WHERE sales_order_id = @OrderId", new { OrderId = id }, tx);
 
+        var orderDiscount = syncFromRequest
+            ? new SaleDiscountInput(request!.OrderDiscountType, request.OrderDiscountValue)
+            : new SaleDiscountInput(header.OrderDiscountType, header.OrderDiscountValue);
         var pricedInputs = await ResolveSaleLineInputsAsync(conn, tx, saleItems, header.PriceType, cancellationToken);
-        var orderDiscount = new SaleDiscountInput(header.OrderDiscountType, header.OrderDiscountValue);
         var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
+        SalesPricing.ValidateDiscounts(pricing, discountPolicy);
         var paymentList = NormalizePayments(request?.Payments, pricing.TotalAmount);
         var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
+        var customerId = syncFromRequest ? request!.CustomerId : header.CustomerId;
+        var notes = syncFromRequest ? request!.Notes : null;
 
         await conn.ExecuteAsync("""
             UPDATE sales_orders SET
-                status = @Completed, subtotal = @Subtotal, discount_amount = @OrderDiscountAmount,
-                total_amount = @TotalAmount, sales_shift_id = @ShiftId
+                status = @Completed, customer_id = @CustomerId, subtotal = @Subtotal,
+                discount_amount = @OrderDiscountAmount, order_discount_type = @OrderDiscountType,
+                order_discount_value = @OrderDiscountValue, total_amount = @TotalAmount,
+                sales_shift_id = @ShiftId, notes = COALESCE(@Notes, notes)
             WHERE id = @Id AND tenant_id = @TenantId
             """, new
         {
             Id = id,
             TenantId,
+            CustomerId = customerId,
             Completed = SalesOrderStatuses.Completed,
             Subtotal = pricing.SubtotalGross,
             OrderDiscountAmount = pricing.OrderDiscountAmount,
+            OrderDiscountType = orderDiscount.DiscountType,
+            OrderDiscountValue = orderDiscount.DiscountValue ?? 0,
             TotalAmount = pricing.TotalAmount,
             ShiftId = shiftId,
+            Notes = notes,
         }, tx);
 
         await InsertCompletedLinesAsync(conn, tx, id, header.WarehouseId, linePlans, cancellationToken);
@@ -841,9 +854,6 @@ internal sealed class SalesRepository
 
         var orderNumber = await conn.QuerySingleAsync<string>(
             "SELECT order_number FROM sales_orders WHERE id = @Id",
-            new { Id = id }, tx);
-        var customerId = await conn.QuerySingleOrDefaultAsync<Guid?>(
-            "SELECT customer_id FROM sales_orders WHERE id = @Id",
             new { Id = id }, tx);
 
         await _outbox.WriteAsync(
@@ -1939,6 +1949,7 @@ internal sealed class SalesRepository
     private sealed class DraftHeaderRow
     {
         public Guid WarehouseId { get; init; }
+        public Guid? CustomerId { get; init; }
         public short PriceType { get; init; }
         public decimal Subtotal { get; init; }
         public decimal OrderDiscountAmount { get; init; }

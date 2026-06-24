@@ -40,7 +40,7 @@ import {
 import { applyBatchLabelScan } from '@/modules/sales/pos-batch-scan';
 import { POS_CART_DISCOUNT_TYPE_OPTIONS } from '@/modules/sales/pos-cart-table-options';
 import { capQuantityToStock, outOfStockWarningText, stockCapWarningText } from '@/modules/sales/pos-stock-messages';
-import { buildCreateSalePayload, buildDraftUpdatePayload, buildSaleLineItems } from '@/modules/sales/pos-sale-payload';
+import { buildCreateSalePayload, buildDraftCompletePayload, buildDraftUpdatePayload } from '@/modules/sales/pos-sale-payload';
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
 import { PosSummaryDivider, PosSummaryOrderDiscountRow, PosSummaryPanel, PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
@@ -463,11 +463,10 @@ export function PosPage() {
     try {
       let order: SalesOrderDetail;
       if (editingDraftId) {
-        await updateDraftSale(
-          editingDraftId,
-          buildDraftUpdatePayload(customerId, cart, orderDiscount),
-        );
-        order = await completeDraftSale(editingDraftId, payments, buildSaleLineItems(cart));
+        order = await completeDraftSale(editingDraftId, {
+          payments,
+          ...buildDraftCompletePayload(customerId, cart, orderDiscount),
+        });
       } else {
         order = await createSale(
           buildCreateSalePayload(warehouseId, customerId, cart, orderDiscount, false, payments),
