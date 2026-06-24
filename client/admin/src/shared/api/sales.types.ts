@@ -1,245 +1,194 @@
-export interface CustomerListItem {
-  id: string;
-  customerCode: string;
-  fullName: string;
-  phone: string;
-  email?: string;
-}
+import type {
+  ApiSchemas,
+  PosAllocationPreviewDto,
+  PosAllocationPreviewLineDto,
+  PosBatchAllocationPreviewDto,
+  PosBatchHintDto,
+  PosProductLookupDto,
+  PosProductSearchItemDto,
+  Req,
+  SalesOrderDetailDto,
+  SalesOrderItemDto,
+  SalesOrderListItemDto,
+  SalesPaymentDto,
+  SalesReturnDetailDto,
+  SalesReturnItemDto,
+  SalesReturnListItemDto,
+  SalesShiftDetailDto,
+  SalesShiftListItemDto,
+  SalesShiftPaymentSummaryDto,
+  SalesShiftSummaryDto,
+  ShiftLotComplianceAlertDto,
+  TenantReceiptSettingsDto,
+} from '@/shared/api/generated';
 
-export interface PosBatchHint {
-  batchId: string;
-  batchNumber: string;
-  expiryDate?: string;
-  quantityAvailable: number;
-  isSuggested: boolean;
-}
+type S = ApiSchemas;
 
-export interface PosProductLookup {
-  productId: string;
-  productCode: string;
-  productName: string;
-  productUnitId: string;
-  unitName: string;
-  conversionFactor: number;
-  unitPrice: number;
-  stockAvailable: number;
+export type CustomerListItem = Req<S['CustomerListItemDto'], 'id' | 'customerCode' | 'fullName' | 'phone'>;
+
+export type PosBatchHint = Req<PosBatchHintDto, 'batchId' | 'batchNumber' | 'quantityAvailable' | 'isSuggested'>;
+
+export type PosProductLookup = Omit<
+  Req<
+    PosProductLookupDto,
+    | 'productId'
+    | 'productCode'
+    | 'productName'
+    | 'productUnitId'
+    | 'unitName'
+    | 'conversionFactor'
+    | 'unitPrice'
+    | 'stockAvailable'
+  >,
+  'batchHints'
+> & {
   batchHints?: PosBatchHint[];
-  stockSourceLabel?: string;
-}
+};
 
-export interface PosProductSearchItem {
-  productCode: string;
-  productName: string;
-  lookupCode: string;
-  unitName: string;
-  unitPrice: number;
-  stockAvailable: number;
-}
+export type PosProductSearchItem = Req<
+  PosProductSearchItemDto,
+  'productCode' | 'productName' | 'lookupCode' | 'unitName' | 'unitPrice' | 'stockAvailable'
+>;
 
-export interface ReceiptStoreSettings {
-  name: string;
-  tagline?: string;
-  phone?: string;
-  address?: string;
-}
+export type ReceiptStoreSettings = Req<TenantReceiptSettingsDto, 'name'>;
 
-export interface PosBatchAllocationPreview {
-  batchId: string;
-  batchNumber: string;
-  expiryDate?: string;
-  quantity: number;
-  bookQuantityAvailable: number;
-}
+export type PosBatchAllocationPreview = Req<
+  PosBatchAllocationPreviewDto,
+  'batchId' | 'batchNumber' | 'quantity' | 'bookQuantityAvailable'
+>;
 
-export interface PosAllocationPreviewLine {
-  productId: string;
-  productCode: string;
-  productName: string;
-  productUnitId: string;
-  unitName: string;
-  requestedQuantity: number;
+export type PosAllocationPreviewLine = Omit<
+  Req<
+    PosAllocationPreviewLineDto,
+    'productId' | 'productCode' | 'productName' | 'productUnitId' | 'unitName' | 'requestedQuantity'
+  >,
+  'allocations'
+> & {
   allocations: PosBatchAllocationPreview[];
-}
+};
 
-export interface PosAllocationPreview {
+export type PosAllocationPreview = Omit<Req<PosAllocationPreviewDto, 'stockSourceLabel'>, 'lines'> & {
   lines: PosAllocationPreviewLine[];
-  stockSourceLabel: string;
-}
+};
 
-export interface SalesOrderListItem {
-  id: string;
-  orderNumber: string;
-  warehouseId: string;
-  warehouseName: string;
-  customerId?: string;
-  customerName?: string;
-  status: number;
-  orderDate: string;
-  totalAmount: number;
-  itemCount: number;
-  totalRefunded?: number;
-  salesShiftId?: string;
-  shiftNumber?: string;
-}
+export type SalesOrderListItem = Req<
+  SalesOrderListItemDto,
+  | 'id'
+  | 'orderNumber'
+  | 'warehouseId'
+  | 'warehouseName'
+  | 'status'
+  | 'orderDate'
+  | 'totalAmount'
+  | 'itemCount'
+>;
 
-export interface SalesPaymentLine {
-  id?: string;
-  paymentMethod: number;
-  amount: number;
-  paidAt?: string;
-}
+export type SalesPaymentLine = Req<SalesPaymentDto, 'paymentMethod' | 'amount'>;
 
-export interface SalesOrderItem {
-  id: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  productUnitId: string;
-  unitName: string;
-  batchId?: string;
-  batchNumber?: string;
-  expiryDate?: string;
-  quantity: number;
-  unitPrice: number;
-  discountAmount?: number;
-  discountType?: number;
-  discountValue?: number;
-  lineTotal: number;
-  returnedQuantity?: number;
-}
+export type SalesOrderItem = Req<
+  SalesOrderItemDto,
+  | 'id'
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'productUnitId'
+  | 'unitName'
+  | 'quantity'
+  | 'unitPrice'
+  | 'lineTotal'
+>;
 
-export interface SalesReturnItem {
-  id: string;
-  salesOrderItemId: string;
-  productCode: string;
-  productName: string;
-  batchNumber: string;
-  quantity: number;
-  refundAmount: number;
-}
+export type SalesReturnItem = Req<
+  SalesReturnItemDto,
+  'id' | 'salesOrderItemId' | 'productCode' | 'productName' | 'batchNumber' | 'quantity' | 'refundAmount'
+>;
 
-export interface SalesReturnListItem {
-  id: string;
-  returnNumber: string;
-  salesOrderId: string;
-  orderNumber: string;
-  returnDate: string;
-  status: number;
-  totalRefund: number;
-  salesShiftId?: string;
-  shiftNumber?: string;
-}
+export type SalesReturnListItem = Req<
+  SalesReturnListItemDto,
+  'id' | 'returnNumber' | 'salesOrderId' | 'orderNumber' | 'returnDate' | 'status' | 'totalRefund'
+>;
 
-export interface SalesReturnDetail {
-  id: string;
-  returnNumber: string;
-  salesOrderId: string;
-  orderNumber: string;
-  returnDate: string;
-  status: number;
-  reason?: string;
-  totalRefund: number;
+export type SalesReturnDetail = Omit<
+  Req<
+    SalesReturnDetailDto,
+    'id' | 'returnNumber' | 'salesOrderId' | 'orderNumber' | 'returnDate' | 'status' | 'totalRefund'
+  >,
+  'items' | 'payments'
+> & {
   items: SalesReturnItem[];
   payments?: SalesPaymentLine[];
-  salesShiftId?: string;
-  shiftNumber?: string;
-}
+};
 
-export interface ShiftLotComplianceAlert {
-  productId: string;
-  productCode: string;
-  productName: string;
-  soldBatchNumber: string;
-  soldExpiryDate?: string;
-  earlierBatchNumber: string;
-  earlierExpiryDate?: string;
-  earlierBookQuantity: number;
-  stockSourceLabel: string;
-}
+export type ShiftLotComplianceAlert = Req<
+  ShiftLotComplianceAlertDto,
+  | 'productId'
+  | 'productCode'
+  | 'productName'
+  | 'soldBatchNumber'
+  | 'earlierBatchNumber'
+  | 'earlierBookQuantity'
+  | 'stockSourceLabel'
+>;
 
-export interface SalesShiftPaymentSummary {
-  paymentMethod: number;
-  salesAmount: number;
-  refundAmount: number;
-  netAmount: number;
-}
+export type SalesShiftPaymentSummary = Req<
+  SalesShiftPaymentSummaryDto,
+  'paymentMethod' | 'salesAmount' | 'refundAmount' | 'netAmount'
+>;
 
-export interface SalesShiftSummary {
-  from: string;
-  to: string;
-  totalSales: number;
-  totalRefunds: number;
-  netTotal: number;
+export type SalesShiftSummary = Omit<
+  Req<SalesShiftSummaryDto, 'from' | 'to' | 'totalSales' | 'totalRefunds' | 'netTotal'>,
+  'byMethod'
+> & {
   byMethod: SalesShiftPaymentSummary[];
-  openingCash?: number;
-  cashSales?: number;
-  cashRefunds?: number;
-  expectedCash?: number;
-  closingCash?: number;
-  cashVariance?: number;
-}
+};
 
-export interface SalesShiftListItem {
-  id: string;
-  shiftNumber: string;
-  warehouseId: string;
-  warehouseName: string;
-  openedByUserName: string;
-  openedAt: string;
-  closedAt?: string;
-  openingCash: number;
-  closingCash?: number;
-  cashVariance?: number;
-  status: number;
-}
+export type SalesShiftListItem = Req<
+  SalesShiftListItemDto,
+  'id' | 'shiftNumber' | 'warehouseId' | 'warehouseName' | 'openedByUserName' | 'openedAt' | 'openingCash' | 'status'
+>;
 
-export interface SalesShiftDetail {
-  id: string;
-  shiftNumber: string;
-  warehouseId: string;
-  warehouseName: string;
-  openedByUserName: string;
-  closedByUserName?: string;
-  openedAt: string;
-  closedAt?: string;
-  openingCash: number;
-  closingCash?: number;
-  expectedCash?: number;
-  cashVariance?: number;
-  status: number;
-  closeNotes?: string;
+export type SalesShiftDetail = Omit<
+  Req<
+    SalesShiftDetailDto,
+    | 'id'
+    | 'shiftNumber'
+    | 'warehouseId'
+    | 'warehouseName'
+    | 'openedByUserName'
+    | 'openedAt'
+    | 'openingCash'
+    | 'status'
+  >,
+  'summary' | 'lotAlerts'
+> & {
   summary: SalesShiftSummary;
   lotAlerts?: ShiftLotComplianceAlert[];
-}
+};
 
 export const SALES_SHIFT_STATUSES = {
   Open: 1,
   Closed: 2,
 } as const;
 
-export interface SalesOrderDetail {
-  id: string;
-  orderNumber: string;
-  warehouseId: string;
-  warehouseName: string;
-  customerId?: string;
-  customerName?: string;
-  status: number;
-  orderDate: string;
-  subtotal: number;
-  discountAmount: number;
-  lineDiscountTotal?: number;
-  orderDiscountType?: number;
-  orderDiscountValue?: number;
-  totalAmount: number;
-  totalRefunded?: number;
-  notes?: string;
-  salesShiftId?: string;
-  shiftNumber?: string;
+export type SalesOrderDetail = Omit<
+  Req<
+    SalesOrderDetailDto,
+    | 'id'
+    | 'orderNumber'
+    | 'warehouseId'
+    | 'warehouseName'
+    | 'status'
+    | 'orderDate'
+    | 'subtotal'
+    | 'discountAmount'
+    | 'totalAmount'
+  >,
+  'items' | 'payments' | 'refundPayments'
+> & {
   items: SalesOrderItem[];
   payments?: SalesPaymentLine[];
-  refundPayments?: SalesPaymentLine[];
-}
+  refundPayments?: Pick<SalesPaymentLine, 'paymentMethod' | 'amount'>[];
+};
 
 export const SALES_DISCOUNT_TYPES = {
   Percent: 1,

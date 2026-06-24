@@ -1,16 +1,10 @@
 import { http } from '@/shared/api/http';
+import type { CustomerConsentDto, Req } from '@/shared/api/generated';
 
-export interface CustomerConsent {
-  id: string;
-  customerId: string;
-  channel: number;
-  purpose: number;
-  granted: boolean;
-  grantedAt?: string;
-  revokedAt?: string;
-  source: number;
-  notes?: string;
-}
+export type CustomerConsent = Req<
+  CustomerConsentDto,
+  'id' | 'customerId' | 'channel' | 'purpose' | 'granted' | 'source'
+>;
 
 export const CONSENT_CHANNEL_LABELS: Record<number, string> = {
   1: 'SMS',
