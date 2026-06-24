@@ -23,6 +23,23 @@ Hoặc từ root project:
 run-dev.bat
 ```
 
+Checklist demo POS: [demo-pos-checklist.md](./demo-pos-checklist.md)
+
+## OpenAPI / types (FE ↔ BE)
+
+Sau khi đổi API backend:
+
+```bash
+cd client/admin
+npm run openapi:sync    # export swagger.json + sinh TypeScript
+```
+
+- Spec: `openapi/swagger.json`
+- Types: `src/shared/api/generated/api-schema.ts` (không sửa tay)
+- Re-export: `src/shared/api/generated/index.ts`
+
+Script offline: `scripts/export-openapi.ps1` (fallback: tải từ API đang chạy `:5290`).
+
 ## Cấu trúc module
 
 ```

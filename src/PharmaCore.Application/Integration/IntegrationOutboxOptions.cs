@@ -9,4 +9,11 @@ public sealed class IntegrationOutboxOptions
     public int PollIntervalSeconds { get; set; } = 30;
 
     public int BatchSize { get; set; } = 20;
+
+    /// <summary>POST JSON envelope khi có URL; nếu trống chỉ ghi log.</summary>
+    public string? WebhookUrl { get; set; }
+
+    public int WebhookTimeoutSeconds { get; set; } = 15;
+
+    public int MaxPublishAttempts { get; set; } = 8;
 }

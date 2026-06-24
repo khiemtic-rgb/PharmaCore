@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "openapi:spec": "powershell -ExecutionPolicy Bypass -File ../../scripts/export-openapi.ps1",
+    "openapi:types": "openapi-typescript ./openapi/swagger.json -o ./src/shared/api/generated/api-schema.ts",
+    "openapi:sync": "npm run openapi:spec && npm run openapi:types"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
@@ -22,6 +25,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "openapi-typescript": "^7.6.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.2"
   }

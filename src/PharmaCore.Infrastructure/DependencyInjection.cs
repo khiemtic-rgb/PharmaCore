@@ -57,6 +57,14 @@ public static class DependencyInjection
         services.AddScoped<ITenantSettingsService, TenantSettingsService>();
         services.AddScoped<IIntegrationOutboxWriter, IntegrationOutboxWriter>();
         services.Configure<IntegrationOutboxOptions>(configuration.GetSection(IntegrationOutboxOptions.SectionName));
+        services.AddHttpClient(
+            IntegrationOutboxHttpClient.Name,
+            (sp, client) =>
+            {
+                var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<IntegrationOutboxOptions>>().Value;
+                client.Timeout = TimeSpan.FromSeconds(Math.Max(5, options.WebhookTimeoutSeconds));
+            });
+        services.AddSingleton<IIntegrationOutboxPublisher, HttpIntegrationOutboxPublisher>();
         services.AddHostedService<IntegrationOutboxWorker>();
         services.AddScoped<IInventoryService, InventoryService>();
 

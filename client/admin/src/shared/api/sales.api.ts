@@ -1,5 +1,11 @@
 import { http } from '@/shared/api/http';
 import type {
+  CompleteDraftSaleRequest,
+  CreateSaleLineRequest,
+  CreateSaleRequest,
+  UpdateDraftSaleRequest,
+} from '@/shared/api/generated';
+import type {
   CustomerListItem,
   PosAllocationPreview,
   PosBatchHint,
@@ -339,23 +345,20 @@ export async function fetchSalesOrder(id: string): Promise<SalesOrderDetail> {
   return normalizeSalesOrderDetail(data, rawItems);
 }
 
-type SaleLinePayload = {
-  productId: string;
-  productUnitId: string;
-  quantity: number;
-  batchNumber?: string;
-  discountType?: number;
-  discountValue?: number;
-};
+export type SaleLinePayload = Required<
+  Pick<CreateSaleLineRequest, 'productId' | 'productUnitId' | 'quantity'>
+> &
+  Pick<CreateSaleLineRequest, 'batchNumber' | 'discountType' | 'discountValue'>;
 
-type CreateSalePayload = {
-  warehouseId: string;
-  customerId?: string;
-  priceType?: number;
-  saveAsDraft?: boolean;
-  orderDiscountType?: number;
-  orderDiscountValue?: number;
-  payments?: { paymentMethod: number; amount: number }[];
+type CreateSalePayload = Pick<
+  CreateSaleRequest,
+  | 'warehouseId'
+  | 'customerId'
+  | 'saveAsDraft'
+  | 'orderDiscountType'
+  | 'orderDiscountValue'
+  | 'payments'
+> & {
   items: SaleLinePayload[];
 };
 
@@ -368,20 +371,13 @@ export async function createSale(payload: CreateSalePayload): Promise<SalesOrder
   return normalizeSalesOrderDetail(data, rawItems);
 }
 
-export type CompleteDraftSaleOptions = {
-  payments?: { paymentMethod: number; amount: number }[];
-  items?: SaleLinePayload[];
-  customerId?: string | null;
-  orderDiscountType?: number | null;
-  orderDiscountValue?: number | null;
-  notes?: string | null;
-};
+export type CompleteDraftSaleOptions = CompleteDraftSaleRequest;
 
 export async function completeDraftSale(
   id: string,
   options?: CompleteDraftSaleOptions,
 ): Promise<SalesOrderDetail> {
-  const { data } = await http.post<Record<string, unknown>>(`/sales/orders/${id}/complete`, {
+  const body: CompleteDraftSaleRequest = {
     payments: options?.payments ?? null,
     ...(options?.items?.length ? { items: options.items } : {}),
     ...(options && 'customerId' in options ? { customerId: options.customerId ?? null } : {}),
@@ -392,7 +388,8 @@ export async function completeDraftSale(
           ...(options.notes != null ? { notes: options.notes } : {}),
         }
       : {}),
-  });
+  };
+  const { data } = await http.post<Record<string, unknown>>(`/sales/orders/${id}/complete`, body);
   const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
   return normalizeSalesOrderDetail(data, rawItems);
 }
@@ -403,12 +400,11 @@ export async function cancelDraftSale(id: string): Promise<SalesOrderDetail> {
   return normalizeSalesOrderDetail(data, rawItems);
 }
 
-type UpdateDraftPayload = {
-  customerId?: string | null;
+export type UpdateDraftPayload = Pick<
+  UpdateDraftSaleRequest,
+  'customerId' | 'orderDiscountType' | 'orderDiscountValue' | 'notes'
+> & {
   priceType?: number;
-  orderDiscountType?: number | null;
-  orderDiscountValue?: number | null;
-  notes?: string | null;
   items: SaleLinePayload[];
 };
 
