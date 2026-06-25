@@ -7,6 +7,7 @@ using PharmaCore.Application.Inventory;
 using PharmaCore.Application.Sales;
 using PharmaCore.Infrastructure.Data;
 using PharmaCore.Infrastructure.Inventory;
+using PharmaCore.Infrastructure.Loyalty;
 
 namespace PharmaCore.Infrastructure.Sales;
 
@@ -18,6 +19,7 @@ internal sealed class SalesRepository
     private readonly IBatchResolver _batchResolver;
     private readonly ITenantSettingsService _tenantSettings;
     private readonly IIntegrationOutboxWriter _outbox;
+    private readonly LoyaltyPosService _loyaltyPos;
 
     public SalesRepository(
         IDbConnectionFactory db,
@@ -25,7 +27,8 @@ internal sealed class SalesRepository
         InventoryRepository inventory,
         IBatchResolver batchResolver,
         ITenantSettingsService tenantSettings,
-        IIntegrationOutboxWriter outbox)
+        IIntegrationOutboxWriter outbox,
+        LoyaltyPosService loyaltyPos)
     {
         _db = db;
         _tenant = tenant;
@@ -33,6 +36,7 @@ internal sealed class SalesRepository
         _batchResolver = batchResolver;
         _tenantSettings = tenantSettings;
         _outbox = outbox;
+        _loyaltyPos = loyaltyPos;
     }
 
     private Guid TenantId => _tenant.TenantId;
@@ -528,7 +532,15 @@ internal sealed class SalesRepository
                     WHERE sr.sales_order_id = o.id AND sr.status = @ReturnCompleted
                 ), 0) AS TotalRefunded,
                 o.sales_shift_id AS SalesShiftId,
-                sh.shift_number AS ShiftNumber
+                sh.shift_number AS ShiftNumber,
+                (
+                    SELECT lt.points
+                    FROM loyalty_transactions lt
+                    WHERE lt.sales_order_id = o.id AND lt.transaction_type = 1
+                    LIMIT 1
+                ) AS LoyaltyPointsEarned,
+                o.loyalty_points_redeemed AS LoyaltyPointsRedeemed,
+                o.loyalty_discount_amount AS LoyaltyDiscountAmount
             FROM sales_orders o
             INNER JOIN warehouses w ON w.id = o.warehouse_id
             LEFT JOIN customers c ON c.id = o.customer_id
@@ -619,7 +631,8 @@ internal sealed class SalesRepository
             header.Subtotal, header.DiscountAmount, lineDiscountTotal,
             header.OrderDiscountType, header.OrderDiscountValue, header.TotalAmount, totalRefunded,
             header.Notes, items, payments, refundPayments,
-            header.SalesShiftId, header.ShiftNumber);
+            header.SalesShiftId, header.ShiftNumber, header.LoyaltyPointsEarned,
+            header.LoyaltyPointsRedeemed, header.LoyaltyDiscountAmount);
     }
 
     public async Task<Guid> CreateCompletedSaleAsync(
@@ -645,17 +658,53 @@ internal sealed class SalesRepository
         var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
         SalesPricing.ValidateDiscounts(pricing, discountPolicy);
 
-        var payments = NormalizePayments(request.Payments, pricing.TotalAmount);
+        var redeem = await _loyaltyPos.ResolveRedeemAsync(
+            TenantId,
+            request.CustomerId,
+            request.LoyaltyPointsToRedeem,
+            request.LoyaltyDiscountAmount,
+            pricing.TotalAmount,
+            conn,
+            tx,
+            cancellationToken);
+
+        var payments = NormalizePayments(request.Payments, redeem.FinalTotal);
         var linePlans = await BuildFifoPlansAsync(conn, tx, request.WarehouseId, pricing.Lines, cancellationToken);
 
         var orderId = await InsertSaleHeaderAsync(
             conn, tx, orderNumber, branchId, request.WarehouseId, request.CustomerId, employeeId,
             SalesOrderStatuses.Completed, request.PriceType, pricing.SubtotalGross, pricing.OrderDiscountAmount,
-            request.OrderDiscountType, request.OrderDiscountValue ?? 0, pricing.TotalAmount, request.Notes,
-            shiftId);
+            request.OrderDiscountType, request.OrderDiscountValue ?? 0, redeem.FinalTotal, request.Notes,
+            shiftId, redeem.PointsRedeemed, redeem.DiscountAmount);
 
         await InsertCompletedLinesAsync(conn, tx, orderId, request.WarehouseId, linePlans, cancellationToken);
         await InsertPaymentsAsync(conn, tx, orderId, payments);
+
+        if (redeem.PointsRedeemed > 0 && request.CustomerId is Guid redeemCustomer)
+        {
+            var programId = await _loyaltyPos.GetDefaultProgramIdAsync(TenantId, conn, tx, cancellationToken)
+                ?? throw new InvalidOperationException("Không tìm thấy chương trình tích điểm.");
+            await _loyaltyPos.TryRedeemForCompletedSaleAsync(
+                TenantId,
+                redeemCustomer,
+                programId,
+                orderId,
+                orderNumber,
+                redeem.PointsRedeemed,
+                conn,
+                tx,
+                cancellationToken);
+        }
+
+        await _loyaltyPos.TryEarnForCompletedSaleAsync(
+            TenantId,
+            request.CustomerId,
+            orderId,
+            orderNumber,
+            redeem.FinalTotal,
+            conn,
+            tx,
+            cancellationToken);
 
         await _outbox.WriteAsync(
             conn, tx,
@@ -668,7 +717,9 @@ internal sealed class SalesRepository
                 orderNumber,
                 request.WarehouseId,
                 request.CustomerId,
-                pricing.TotalAmount,
+                totalAmount = redeem.FinalTotal,
+                loyaltyPointsRedeemed = redeem.PointsRedeemed,
+                loyaltyDiscountAmount = redeem.DiscountAmount,
                 status = SalesOrderStatuses.Completed,
                 salesShiftId = shiftId,
             },
@@ -808,7 +859,15 @@ internal sealed class SalesRepository
                     discount_type AS DiscountType, discount_value AS DiscountValue
                 FROM sales_order_items WHERE sales_order_id = @OrderId
                 """;
-            saleItems = (await conn.QueryAsync<CreateSaleLineRequest>(draftItemsSql, new { OrderId = id }, tx)).ToList();
+            saleItems = (await conn.QueryAsync<DraftSaleLineRow>(draftItemsSql, new { OrderId = id }, tx))
+                .Select(row => new CreateSaleLineRequest(
+                    row.ProductId,
+                    row.ProductUnitId,
+                    row.Quantity,
+                    row.DiscountType,
+                    row.DiscountValue,
+                    null))
+                .ToList();
         }
 
         if (saleItems.Count == 0)
@@ -822,16 +881,29 @@ internal sealed class SalesRepository
         var pricedInputs = await ResolveSaleLineInputsAsync(conn, tx, saleItems, header.PriceType, cancellationToken);
         var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
         SalesPricing.ValidateDiscounts(pricing, discountPolicy);
-        var paymentList = NormalizePayments(request?.Payments, pricing.TotalAmount);
-        var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
         var customerId = syncFromRequest ? request!.CustomerId : header.CustomerId;
         var notes = syncFromRequest ? request!.Notes : null;
+
+        var redeem = await _loyaltyPos.ResolveRedeemAsync(
+            TenantId,
+            customerId,
+            request?.LoyaltyPointsToRedeem,
+            request?.LoyaltyDiscountAmount,
+            pricing.TotalAmount,
+            conn,
+            tx,
+            cancellationToken);
+
+        var paymentList = NormalizePayments(request?.Payments, redeem.FinalTotal);
+        var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
 
         await conn.ExecuteAsync("""
             UPDATE sales_orders SET
                 status = @Completed, customer_id = @CustomerId, subtotal = @Subtotal,
                 discount_amount = @OrderDiscountAmount, order_discount_type = @OrderDiscountType,
                 order_discount_value = @OrderDiscountValue, total_amount = @TotalAmount,
+                loyalty_points_redeemed = @LoyaltyPointsRedeemed,
+                loyalty_discount_amount = @LoyaltyDiscountAmount,
                 sales_shift_id = @ShiftId, notes = COALESCE(@Notes, notes)
             WHERE id = @Id AND tenant_id = @TenantId
             """, new
@@ -844,7 +916,9 @@ internal sealed class SalesRepository
             OrderDiscountAmount = pricing.OrderDiscountAmount,
             OrderDiscountType = orderDiscount.DiscountType,
             OrderDiscountValue = orderDiscount.DiscountValue ?? 0,
-            TotalAmount = pricing.TotalAmount,
+            TotalAmount = redeem.FinalTotal,
+            LoyaltyPointsRedeemed = redeem.PointsRedeemed,
+            LoyaltyDiscountAmount = redeem.DiscountAmount,
             ShiftId = shiftId,
             Notes = notes,
         }, tx);
@@ -855,6 +929,32 @@ internal sealed class SalesRepository
         var orderNumber = await conn.QuerySingleAsync<string>(
             "SELECT order_number FROM sales_orders WHERE id = @Id",
             new { Id = id }, tx);
+
+        if (redeem.PointsRedeemed > 0 && customerId is Guid redeemCustomer)
+        {
+            var programId = await _loyaltyPos.GetDefaultProgramIdAsync(TenantId, conn, tx, cancellationToken)
+                ?? throw new InvalidOperationException("Không tìm thấy chương trình tích điểm.");
+            await _loyaltyPos.TryRedeemForCompletedSaleAsync(
+                TenantId,
+                redeemCustomer,
+                programId,
+                id,
+                orderNumber,
+                redeem.PointsRedeemed,
+                conn,
+                tx,
+                cancellationToken);
+        }
+
+        await _loyaltyPos.TryEarnForCompletedSaleAsync(
+            TenantId,
+            customerId,
+            id,
+            orderNumber,
+            redeem.FinalTotal,
+            conn,
+            tx,
+            cancellationToken);
 
         await _outbox.WriteAsync(
             conn, tx,
@@ -867,7 +967,9 @@ internal sealed class SalesRepository
                 orderNumber,
                 warehouseId = header.WarehouseId,
                 customerId,
-                totalAmount = pricing.TotalAmount,
+                totalAmount = redeem.FinalTotal,
+                loyaltyPointsRedeemed = redeem.PointsRedeemed,
+                loyaltyDiscountAmount = redeem.DiscountAmount,
                 status = SalesOrderStatuses.Completed,
                 salesShiftId = shiftId,
             },
@@ -1610,14 +1712,6 @@ internal sealed class SalesRepository
         {
             var baseQtyNeeded = pricedLine.Quantity * pricedLine.ConversionFactor;
             var labelBatch = pricedLine.BatchNumber?.Trim();
-            if (batchMode == TenantBatchMode.LabelRequired && string.IsNullOrWhiteSpace(labelBatch))
-            {
-                var productCode = await conn.QuerySingleOrDefaultAsync<string>(
-                    "SELECT product_code FROM products WHERE id = @Id AND tenant_id = @TenantId",
-                    new { Id = pricedLine.ProductId, TenantId }, tx);
-                throw new InvalidOperationException(
-                    $"Nhập số lô cho sản phẩm {productCode ?? pricedLine.ProductId.ToString()}.");
-            }
 
             var useLabelScan = !string.IsNullOrWhiteSpace(labelBatch)
                 && batchMode is TenantBatchMode.LabelOptional or TenantBatchMode.LabelRequired;
@@ -1760,18 +1854,20 @@ internal sealed class SalesRepository
         decimal orderDiscountValue,
         decimal totalAmount,
         string? notes,
-        Guid? salesShiftId = null)
+        Guid? salesShiftId = null,
+        decimal loyaltyPointsRedeemed = 0,
+        decimal loyaltyDiscountAmount = 0)
     {
         const string sql = """
             INSERT INTO sales_orders (
                 tenant_id, order_number, branch_id, warehouse_id, customer_id, employee_id,
                 status, price_type, subtotal, discount_amount, order_discount_type, order_discount_value,
-                total_amount, notes, sales_shift_id
+                total_amount, notes, sales_shift_id, loyalty_points_redeemed, loyalty_discount_amount
             )
             VALUES (
                 @TenantId, @OrderNumber, @BranchId, @WarehouseId, @CustomerId, @EmployeeId,
                 @Status, @PriceType, @Subtotal, @OrderDiscountAmount, @OrderDiscountType, @OrderDiscountValue,
-                @TotalAmount, @Notes, @SalesShiftId
+                @TotalAmount, @Notes, @SalesShiftId, @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount
             )
             RETURNING id
             """;
@@ -1792,6 +1888,8 @@ internal sealed class SalesRepository
             TotalAmount = totalAmount,
             Notes = notes,
             SalesShiftId = salesShiftId,
+            LoyaltyPointsRedeemed = loyaltyPointsRedeemed,
+            LoyaltyDiscountAmount = loyaltyDiscountAmount,
         }, tx);
     }
 
@@ -2099,5 +2197,17 @@ internal sealed class SalesRepository
         public string? Notes { get; init; }
         public Guid? SalesShiftId { get; init; }
         public string? ShiftNumber { get; init; }
+        public int? LoyaltyPointsEarned { get; init; }
+        public decimal LoyaltyPointsRedeemed { get; init; }
+        public decimal LoyaltyDiscountAmount { get; init; }
+    }
+
+    private sealed class DraftSaleLineRow
+    {
+        public Guid ProductId { get; init; }
+        public Guid ProductUnitId { get; init; }
+        public decimal Quantity { get; init; }
+        public short? DiscountType { get; init; }
+        public decimal? DiscountValue { get; init; }
     }
 }

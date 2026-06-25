@@ -1,0 +1,32 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  background: #f0fdfa;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.customer-app-content {
+  padding: 16px 16px 88px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.customer-app-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}

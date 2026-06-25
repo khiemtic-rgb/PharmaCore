@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PharmaCore.Api.Authorization;
 using PharmaCore.Application.Configuration;
+using PharmaCore.Application.CustomerApp;
 using PharmaCore.Infrastructure;
 using PharmaCore.Infrastructure.Data;
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,9 @@ builder.Services.AddEndpointsApiExplorer();
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException("Jwt configuration is missing.");
+
+var customerAppAuth = builder.Configuration.GetSection(CustomerAppAuthSettings.SectionName).Get<CustomerAppAuthSettings>()
+    ?? new CustomerAppAuthSettings();
 
 if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || jwtSettings.Secret.Length < 32)
 {
@@ -36,7 +40,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings.Issuer,
-            ValidAudience = jwtSettings.Audience,
+            ValidAudiences = new[] { jwtSettings.Audience, customerAppAuth.Audience },
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
             ClockSkew = TimeSpan.FromMinutes(1),
         };
@@ -49,6 +53,7 @@ builder.Services.AddAuthorization(options =>
     options.AddProcurementAuthorization();
     options.AddSystemAuthorization();
     options.AddSalesAuthorization();
+    options.AddCustomerAppAuthorization();
 });
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -71,7 +76,9 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins(
                     "http://localhost:5173",
-                    "http://127.0.0.1:5173")
+                    "http://127.0.0.1:5173",
+                    "http://localhost:5174",
+                    "http://127.0.0.1:5174")
                 .AllowAnyHeader()
                 .AllowAnyMethod();
         }
@@ -196,6 +203,11 @@ app.Use(async (context, next) =>
 });
 
 app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/", () => Results.Redirect("/swagger"));
+}
 
 try
 {

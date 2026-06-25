@@ -23,7 +23,8 @@ PharmaCore/
 │   ├── 002_identity.sql      … 007_customer_app.sql
 │   └── seed/001_demo_data.sql
 ├── client/
-│   └── admin/                  # React Admin Web (Phase 1)
+│   ├── admin/                  # React Admin Web (ERP/POS)
+│   └── customer-app/           # React Customer App (OTP, loyalty, reminders)
 ├── novixa-site/                # Website giới thiệu novixa.vn (tách deploy)
 ├── scripts/run-migrations.ps1
 ├── src/
@@ -64,6 +65,7 @@ docker compose up -d
 | URL | Mô tả |
 |-----|--------|
 | http://localhost:5173 | Admin Web (login trực quan) |
+| http://localhost:5174 | Customer App (OTP khách hàng) |
 | http://localhost:5290/swagger | API Swagger |
 
 Login Web: `admin` / `Admin@123`

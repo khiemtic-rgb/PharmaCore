@@ -82,9 +82,17 @@ $migrationFiles = @(
     "016_customer_consents_and_outbox.sql",
     "017_sales_batch_source.sql",
     "018_sales_shift_link.sql",
+    "019_customer_otp_auth.sql",
+    "020_loyalty_demo_transactions.sql",
+    "021_loyalty_demo_vouchers.sql",
+    "022_fix_loyalty_program_status.sql",
+    "023_sales_loyalty_redeem.sql",
     "seed\001_demo_data.sql",
     "seed\002_admin_password.sql",
-    "seed\003_more_customers.sql"
+    "seed\003_more_customers.sql",
+    "024_loyalty_unify_redeem_value.sql",
+    "025_loyalty_max_redeem_percent.sql",
+    "026_loyalty_fractional_points.sql"
 )
 
 foreach ($file in $migrationFiles) {

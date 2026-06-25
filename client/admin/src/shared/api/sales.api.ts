@@ -9,6 +9,7 @@ import type {
   CustomerListItem,
   PosAllocationPreview,
   PosBatchHint,
+  PosCustomerLoyalty,
   PosProductLookup,
   PosProductSearchItem,
   ReceiptStoreSettings,
@@ -99,6 +100,12 @@ function optionalGuid(value: unknown): string | undefined {
   return text;
 }
 
+function optionalInt(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function normalizeSalesOrderItem(row: Record<string, unknown>) {
   return {
     id: String(row.id ?? row.Id),
@@ -150,6 +157,9 @@ function normalizeSalesOrderDetail(
         amount: Number(row.amount ?? row.Amount ?? 0),
       }),
     ),
+    loyaltyPointsEarned: optionalInt(data.loyaltyPointsEarned ?? data.LoyaltyPointsEarned),
+    loyaltyPointsRedeemed: Number(data.loyaltyPointsRedeemed ?? data.LoyaltyPointsRedeemed ?? 0),
+    loyaltyDiscountAmount: Number(data.loyaltyDiscountAmount ?? data.LoyaltyDiscountAmount ?? 0),
   };
 }
 
@@ -360,7 +370,38 @@ type CreateSalePayload = Pick<
   | 'payments'
 > & {
   items: SaleLinePayload[];
+  loyaltyDiscountAmount?: number;
 };
+
+export type CompleteDraftSaleOptions = CompleteDraftSaleRequest & {
+  loyaltyDiscountAmount?: number;
+};
+
+export function normalizePosCustomerLoyalty(row: Record<string, unknown>): PosCustomerLoyalty {
+  return {
+    loyaltyEnabled: Boolean(row.loyaltyEnabled ?? row.LoyaltyEnabled ?? false),
+    pointsBalance: Number(row.pointsBalance ?? row.PointsBalance ?? 0),
+    amountPerPoint: Number(row.amountPerPoint ?? row.AmountPerPoint ?? 0),
+    pointsPerAmount: Number(row.pointsPerAmount ?? row.PointsPerAmount ?? 0),
+    maxRedeemPercent: Number(row.maxRedeemPercent ?? row.MaxRedeemPercent ?? 100),
+    maxRedeemDiscountAmount: Number(row.maxRedeemDiscountAmount ?? row.MaxRedeemDiscountAmount ?? 0),
+    maxRedeemPoints: Number(row.maxRedeemPoints ?? row.MaxRedeemPoints ?? 0),
+  };
+}
+
+export async function fetchPosCustomerLoyalty(
+  customerId: string,
+  orderTotal: number,
+): Promise<PosCustomerLoyalty | null> {
+  try {
+    const { data } = await http.get<Record<string, unknown>>('/sales/pos/customer-loyalty', {
+      params: { customerId, orderTotal },
+    });
+    return normalizePosCustomerLoyalty(data);
+  } catch {
+    return null;
+  }
+}
 
 export async function createSale(payload: CreateSalePayload): Promise<SalesOrderDetail> {
   const { data } = await http.post<Record<string, unknown>>('/sales/orders', {
@@ -370,8 +411,6 @@ export async function createSale(payload: CreateSalePayload): Promise<SalesOrder
   const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
   return normalizeSalesOrderDetail(data, rawItems);
 }
-
-export type CompleteDraftSaleOptions = CompleteDraftSaleRequest;
 
 export async function completeDraftSale(
   id: string,
@@ -387,6 +426,9 @@ export async function completeDraftSale(
           orderDiscountValue: options.orderDiscountValue ?? null,
           ...(options.notes != null ? { notes: options.notes } : {}),
         }
+      : {}),
+    ...(options?.loyaltyDiscountAmount != null && options.loyaltyDiscountAmount > 0
+      ? { loyaltyDiscountAmount: options.loyaltyDiscountAmount }
       : {}),
   };
   const { data } = await http.post<Record<string, unknown>>(`/sales/orders/${id}/complete`, body);

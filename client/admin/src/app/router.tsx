@@ -86,6 +86,9 @@ const CustomerConsentPage = lazy(() =>
 const ReceiptSettingsPage = lazy(() =>
   import('@/modules/sales/ReceiptSettingsPage').then((m) => ({ default: m.ReceiptSettingsPage })),
 );
+const LoyaltySettingsPage = lazy(() =>
+  import('@/modules/sales/LoyaltySettingsPage').then((m) => ({ default: m.LoyaltySettingsPage })),
+);
 
 function RouteFallback() {
   return (
@@ -198,6 +201,7 @@ export function AppRouter() {
                 <Route path="returns" element={<SalesReturnListPage />} />
                 <Route path="shift" element={<SalesShiftReportPage />} />
                 <Route path="customers" element={<CustomerConsentPage />} />
+                <Route path="loyalty" element={<LoyaltySettingsPage />} />
                 <Route path="settings" element={<ReceiptSettingsPage />} />
               </Route>
             </Route>

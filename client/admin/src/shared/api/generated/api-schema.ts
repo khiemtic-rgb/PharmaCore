@@ -833,6 +833,606 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/customer-app/auth/request-otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RequestCustomerOtpRequest"];
+                    "text/json": components["schemas"]["RequestCustomerOtpRequest"];
+                    "application/*+json": components["schemas"]["RequestCustomerOtpRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CustomerOtpSentResponse"];
+                        "application/json": components["schemas"]["CustomerOtpSentResponse"];
+                        "text/json": components["schemas"]["CustomerOtpSentResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/auth/verify-otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["VerifyCustomerOtpRequest"];
+                    "text/json": components["schemas"]["VerifyCustomerOtpRequest"];
+                    "application/*+json": components["schemas"]["VerifyCustomerOtpRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CustomerLoginResponse"];
+                        "application/json": components["schemas"]["CustomerLoginResponse"];
+                        "text/json": components["schemas"]["CustomerLoginResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CustomerRefreshTokenRequest"];
+                    "text/json": components["schemas"]["CustomerRefreshTokenRequest"];
+                    "application/*+json": components["schemas"]["CustomerRefreshTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CustomerLoginResponse"];
+                        "application/json": components["schemas"]["CustomerLoginResponse"];
+                        "text/json": components["schemas"]["CustomerLoginResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CustomerRefreshTokenRequest"];
+                    "text/json": components["schemas"]["CustomerRefreshTokenRequest"];
+                    "application/*+json": components["schemas"]["CustomerRefreshTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CustomerProfileDto"];
+                        "application/json": components["schemas"]["CustomerProfileDto"];
+                        "text/json": components["schemas"]["CustomerProfileDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/loyalty/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CustomerLoyaltySummaryDto"];
+                        "application/json": components["schemas"]["CustomerLoyaltySummaryDto"];
+                        "text/json": components["schemas"]["CustomerLoyaltySummaryDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/loyalty/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    programId?: string;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PagedLoyaltyTransactionsResult"];
+                        "application/json": components["schemas"]["PagedLoyaltyTransactionsResult"];
+                        "text/json": components["schemas"]["PagedLoyaltyTransactionsResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/loyalty/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["LoyaltyProgramCatalogResult"];
+                        "application/json": components["schemas"]["LoyaltyProgramCatalogResult"];
+                        "text/json": components["schemas"]["LoyaltyProgramCatalogResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/loyalty/vouchers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeUsed?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CustomerVoucherListResult"];
+                        "application/json": components["schemas"]["CustomerVoucherListResult"];
+                        "text/json": components["schemas"]["CustomerVoucherListResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MedicationReminderListResult"];
+                        "application/json": components["schemas"]["MedicationReminderListResult"];
+                        "text/json": components["schemas"]["MedicationReminderListResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreateMedicationReminderRequest"];
+                    "text/json": components["schemas"]["CreateMedicationReminderRequest"];
+                    "application/*+json": components["schemas"]["CreateMedicationReminderRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MedicationReminderDto"];
+                        "application/json": components["schemas"]["MedicationReminderDto"];
+                        "text/json": components["schemas"]["MedicationReminderDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customer-app/reminders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MedicationReminderDto"];
+                        "application/json": components["schemas"]["MedicationReminderDto"];
+                        "text/json": components["schemas"]["MedicationReminderDto"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMedicationReminderRequest"];
+                    "text/json": components["schemas"]["UpdateMedicationReminderRequest"];
+                    "application/*+json": components["schemas"]["UpdateMedicationReminderRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MedicationReminderDto"];
+                        "application/json": components["schemas"]["MedicationReminderDto"];
+                        "text/json": components["schemas"]["MedicationReminderDto"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/customers/{customerId}/consents": {
         parameters: {
             query?: never;
@@ -4647,6 +5247,13 @@ export interface components {
             notes?: string | null;
             items?: components["schemas"]["CreateGoodsReceiptItemRequest"][] | null;
         };
+        CreateMedicationReminderRequest: {
+            /** Format: uuid */
+            productId?: string;
+            dosageNote?: string | null;
+            remindTime?: string | null;
+            daysOfWeek?: number[] | null;
+        };
         CreateOpeningBalanceRequest: {
             /** Format: uuid */
             warehouseId?: string;
@@ -4827,6 +5434,63 @@ export interface components {
             phone?: string | null;
             email?: string | null;
         };
+        CustomerLoginResponse: {
+            accessToken?: string | null;
+            refreshToken?: string | null;
+            /** Format: date-time */
+            accessTokenExpiresAt?: string;
+            profile?: components["schemas"]["CustomerProfileDto"];
+        };
+        CustomerLoyaltySummaryDto: {
+            programs?: components["schemas"]["LoyaltyProgramSummaryDto"][] | null;
+        };
+        CustomerOtpSentResponse: {
+            /** Format: int32 */
+            expiresInSeconds?: number;
+            /** Format: int32 */
+            cooldownSeconds?: number;
+            message?: string | null;
+        };
+        CustomerProfileDto: {
+            /** Format: uuid */
+            accountId?: string;
+            /** Format: uuid */
+            customerId?: string;
+            /** Format: uuid */
+            tenantId?: string;
+            tenantCode?: string | null;
+            fullName?: string | null;
+            phone?: string | null;
+        };
+        CustomerRefreshTokenRequest: {
+            refreshToken?: string | null;
+        };
+        CustomerVoucherDto: {
+            /** Format: uuid */
+            customerVoucherId?: string;
+            /** Format: uuid */
+            voucherId?: string;
+            voucherCode?: string | null;
+            voucherName?: string | null;
+            discountType?: components["schemas"]["VoucherDiscountType"];
+            /** Format: double */
+            discountValue?: number;
+            /** Format: double */
+            minOrderAmount?: number;
+            /** Format: date-time */
+            validFrom?: string;
+            /** Format: date-time */
+            validTo?: string;
+            /** Format: date-time */
+            issuedAt?: string;
+            /** Format: date-time */
+            usedAt?: string | null;
+            isUsed?: boolean;
+            isExpired?: boolean;
+        };
+        CustomerVoucherListResult: {
+            items?: components["schemas"]["CustomerVoucherDto"][] | null;
+        };
         GoodsReceiptDetailDto: {
             /** Format: uuid */
             id?: string;
@@ -4930,6 +5594,86 @@ export interface components {
             accessTokenExpiresAt?: string;
             user?: components["schemas"]["AuthUserDto"];
         };
+        LoyaltyProgramCatalogDto: {
+            /** Format: uuid */
+            programId?: string;
+            programCode?: string | null;
+            programName?: string | null;
+            /** Format: double */
+            pointsPerAmount?: number;
+            /** Format: double */
+            amountPerPoint?: number;
+            tiers?: components["schemas"]["LoyaltyTierDto"][] | null;
+            isEnrolled?: boolean;
+            /** Format: int32 */
+            pointsBalance?: number | null;
+            /** Format: int32 */
+            lifetimePoints?: number | null;
+        };
+        LoyaltyProgramCatalogResult: {
+            programs?: components["schemas"]["LoyaltyProgramCatalogDto"][] | null;
+        };
+        LoyaltyProgramSummaryDto: {
+            /** Format: uuid */
+            programId?: string;
+            programCode?: string | null;
+            programName?: string | null;
+            /** Format: int32 */
+            pointsBalance?: number;
+            /** Format: int32 */
+            lifetimePoints?: number;
+            currentTier?: components["schemas"]["LoyaltyTierDto"];
+            nextTier?: components["schemas"]["LoyaltyTierDto"];
+        };
+        LoyaltyTierDto: {
+            tierCode?: string | null;
+            tierName?: string | null;
+            /** Format: int32 */
+            minPoints?: number;
+            /** Format: double */
+            discountPercent?: number;
+        };
+        LoyaltyTransactionDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            programId?: string;
+            programCode?: string | null;
+            transactionType?: components["schemas"]["LoyaltyTransactionType"];
+            /** Format: int32 */
+            points?: number;
+            /** Format: uuid */
+            salesOrderId?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        /**
+         * Format: int32
+         * @enum {integer}
+         */
+        LoyaltyTransactionType: 1 | 2 | 3 | 4;
+        MedicationReminderDto: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            productId?: string;
+            productCode?: string | null;
+            productName?: string | null;
+            dosageNote?: string | null;
+            remindTime?: string | null;
+            daysOfWeek?: number[] | null;
+            /** Format: date-time */
+            nextRemindAt?: string | null;
+            isActive?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        MedicationReminderListResult: {
+            items?: components["schemas"]["MedicationReminderDto"][] | null;
+        };
         NextProductCodeDto: {
             productCode?: string | null;
         };
@@ -4982,6 +5726,15 @@ export interface components {
             /** Format: int32 */
             linesProcessed?: number;
             batchIds?: string[] | null;
+        };
+        PagedLoyaltyTransactionsResult: {
+            items?: components["schemas"]["LoyaltyTransactionDto"][] | null;
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            pageSize?: number;
         };
         PagedProductListResult: {
             items?: components["schemas"]["ProductListItemDto"][] | null;
@@ -5318,6 +6071,10 @@ export interface components {
         };
         RefreshTokenRequest: {
             refreshToken?: string | null;
+        };
+        RequestCustomerOtpRequest: {
+            phone?: string | null;
+            tenantCode?: string | null;
         };
         SalesOrderDetailDto: {
             /** Format: uuid */
@@ -5778,6 +6535,14 @@ export interface components {
             orderDiscountValue?: number | null;
             notes?: string | null;
         };
+        UpdateMedicationReminderRequest: {
+            /** Format: uuid */
+            productId?: string | null;
+            dosageNote?: string | null;
+            remindTime?: string | null;
+            daysOfWeek?: number[] | null;
+            isActive?: boolean | null;
+        };
         UpdateProductRequest: {
             productName: string | null;
             genericName?: string | null;
@@ -5879,6 +6644,16 @@ export interface components {
         UpsertCustomerConsentsRequest: {
             items?: components["schemas"]["UpsertCustomerConsentRequest"][] | null;
         };
+        VerifyCustomerOtpRequest: {
+            phone?: string | null;
+            code?: string | null;
+            tenantCode?: string | null;
+        };
+        /**
+         * Format: int32
+         * @enum {integer}
+         */
+        VoucherDiscountType: 1 | 2;
         WarehouseDto: {
             /** Format: uuid */
             id?: string;

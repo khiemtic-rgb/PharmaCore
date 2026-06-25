@@ -25,10 +25,9 @@ export function batchLabelMatchesHints(label: string, hints?: PosBatchHint[]): b
 }
 
 export function initialBatchLabelForMode(
-  mode: TenantBatchModeValue,
+  _mode: TenantBatchModeValue,
   hints?: PosBatchHint[],
 ): string | undefined {
-  if (!requiresBatchLabel(mode)) return undefined;
   return defaultBatchLabel(hints);
 }
 
@@ -40,12 +39,7 @@ export function validateCartBatchLabels(
 
   for (const line of cart) {
     const label = line.batchLabel?.trim() ?? '';
-    if (!label) {
-      if (requiresBatchLabel(mode)) {
-        return `Nhập số lô cho "${line.productName}"`;
-      }
-      continue;
-    }
+    if (!label) continue;
     if (!batchLabelMatchesHints(label, line.batchHints)) {
       return `Số lô "${label}" không khớp tồn kho cho "${line.productName}"`;
     }

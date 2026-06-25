@@ -93,7 +93,9 @@ public sealed record CompleteDraftSaleRequest(
     Guid? CustomerId = null,
     short? OrderDiscountType = null,
     decimal? OrderDiscountValue = null,
-    string? Notes = null);
+    string? Notes = null,
+    int? LoyaltyPointsToRedeem = null,
+    decimal? LoyaltyDiscountAmount = null);
 
 public sealed record CreateSalePaymentRequest(
     short PaymentMethod,
@@ -108,7 +110,9 @@ public sealed record CreateSaleRequest(
     short? OrderDiscountType = null,
     decimal? OrderDiscountValue = null,
     string? Notes = null,
-    bool SaveAsDraft = false);
+    bool SaveAsDraft = false,
+    int? LoyaltyPointsToRedeem = null,
+    decimal? LoyaltyDiscountAmount = null);
 
 public sealed record UpdateDraftSaleRequest(
     Guid? CustomerId,
@@ -295,4 +299,7 @@ public sealed record SalesOrderDetailDto(
     IReadOnlyList<SalesPaymentDto> Payments,
     IReadOnlyList<SalesRefundPaymentSummaryDto> RefundPayments,
     Guid? SalesShiftId = null,
-    string? ShiftNumber = null);
+    string? ShiftNumber = null,
+    int? LoyaltyPointsEarned = null,
+    decimal LoyaltyPointsRedeemed = 0,
+    decimal LoyaltyDiscountAmount = 0);

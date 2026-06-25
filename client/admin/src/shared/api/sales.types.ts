@@ -188,6 +188,9 @@ export type SalesOrderDetail = Omit<
   items: SalesOrderItem[];
   payments?: SalesPaymentLine[];
   refundPayments?: Pick<SalesPaymentLine, 'paymentMethod' | 'amount'>[];
+  loyaltyPointsEarned?: number | null;
+  loyaltyPointsRedeemed?: number;
+  loyaltyDiscountAmount?: number;
 };
 
 export const SALES_DISCOUNT_TYPES = {
@@ -207,6 +210,22 @@ export const SALES_PAYMENT_METHOD_LABELS: Record<number, string> = {
 export interface PosCheckoutPaymentLine {
   paymentMethod: number;
   amount: number;
+}
+
+export type PosCheckoutConfirm = {
+  payments: PosCheckoutPaymentLine[];
+  loyaltyPointsToRedeem?: number;
+  loyaltyDiscountAmount?: number;
+};
+
+export interface PosCustomerLoyalty {
+  loyaltyEnabled: boolean;
+  pointsBalance: number;
+  amountPerPoint: number;
+  pointsPerAmount: number;
+  maxRedeemPercent: number;
+  maxRedeemDiscountAmount: number;
+  maxRedeemPoints: number;
 }
 
 export interface CartLine {

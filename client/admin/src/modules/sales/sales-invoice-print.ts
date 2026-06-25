@@ -124,6 +124,7 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
       ${rowBetween('Tạm tính', formatThermalMoney(order.subtotal), 'sub')}
       ${lineDiscountTotal > 0 ? rowBetween('Chiết khấu SP', `-${formatThermalMoney(lineDiscountTotal)}`, 'sub') : ''}
       ${order.discountAmount > 0 ? rowBetween('Chiết khấu đơn', `-${formatThermalMoney(order.discountAmount)}`, 'sub') : ''}
+      ${(order.loyaltyDiscountAmount ?? 0) > 0 ? rowBetween(`Đổi ${(order.loyaltyPointsRedeemed ?? 0).toLocaleString('vi-VN')} điểm`, `-${formatThermalMoney(order.loyaltyDiscountAmount ?? 0)}`, 'sub') : ''}
       ${rowBetween('TỔNG CỘNG', formatThermalMoney(order.totalAmount), 'total')}
     `;
 
@@ -140,7 +141,9 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
     <div class="meta">Số: <strong>${escapeHtml(order.orderNumber)}</strong></div>
     <div class="meta">Ngày: ${formatReceiptDateTime(order.orderDate)}</div>
     ${order.shiftNumber ? `<div class="meta">Ca: ${escapeHtml(order.shiftNumber)}</div>` : ''}
-    <div class="meta">Khách: ${escapeHtml(order.customerName ?? 'Khách lẻ')}</div>
+    ${order.customerName ? `<div class="meta">Khách: ${escapeHtml(order.customerName)}</div>` : `<div class="meta">Khách: Khách lẻ</div>`}
+    ${(order.loyaltyPointsEarned ?? 0) > 0 ? `<div class="meta">Tích điểm: +${order.loyaltyPointsEarned!.toLocaleString('vi-VN')} điểm</div>` : ''}
+    ${(order.loyaltyPointsRedeemed ?? 0) > 0 ? `<div class="meta">Đổi điểm: −${order.loyaltyPointsRedeemed!.toLocaleString('vi-VN')} điểm (−${formatThermalMoney(order.loyaltyDiscountAmount ?? 0)})</div>` : ''}
     ${hasReturns ? `<div class="meta">TT: ${escapeHtml(statusLabel)}</div>` : ''}
 
     ${dashedLine()}

@@ -6,6 +6,7 @@ using PharmaCore.Application.Auth;
 using PharmaCore.Application.Catalog;
 using PharmaCore.Application.Customers;
 using PharmaCore.Application.Inventory;
+using PharmaCore.Application.Loyalty;
 using PharmaCore.Application.Integration;
 using PharmaCore.Application.Procurement;
 using PharmaCore.Application.Sales;
@@ -16,9 +17,12 @@ using PharmaCore.Infrastructure.Configuration;
 using PharmaCore.Infrastructure.Customers;
 using PharmaCore.Infrastructure.Integration;
 using PharmaCore.Infrastructure.Inventory;
+using PharmaCore.Infrastructure.Loyalty;
 using PharmaCore.Infrastructure.Procurement;
 using PharmaCore.Infrastructure.Sales;
 using PharmaCore.Infrastructure.Data;
+using PharmaCore.Application.CustomerApp;
+using PharmaCore.Infrastructure.CustomerApp;
 using PharmaCore.Infrastructure.Security;
 
 namespace PharmaCore.Infrastructure;
@@ -31,14 +35,30 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+        services.Configure<CustomerAppAuthSettings>(configuration.GetSection(CustomerAppAuthSettings.SectionName));
 
         services.AddSingleton<IDbConnectionFactory>(_ => new NpgsqlConnectionFactory(connectionString));
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
+        services.AddScoped<ICurrentCustomerAccessor, CurrentCustomerAccessor>();
 
         services.AddScoped<AuthRepository>();
         services.AddSingleton<JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
+
+        services.AddScoped<CustomerAppAuthRepository>();
+        services.AddSingleton<CustomerAppJwtTokenService>();
+        services.AddScoped<ICustomerAppAuthService, CustomerAppAuthService>();
+
+        services.AddScoped<CustomerLoyaltyRepository>();
+        services.AddScoped<ICustomerLoyaltyService, CustomerLoyaltyService>();
+
+        services.AddScoped<CustomerReminderRepository>();
+        services.AddScoped<ICustomerReminderService, CustomerReminderService>();
+
+        services.AddScoped<LoyaltyAdminRepository>();
+        services.AddScoped<LoyaltyPosService>();
+        services.AddScoped<ILoyaltyAdminService, LoyaltyAdminService>();
 
         services.AddScoped<CatalogRepository>();
         services.AddScoped<ICatalogService, CatalogService>();

@@ -21,6 +21,19 @@ public sealed class SalesController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await _sales.SearchCustomersAsync(search, cancellationToken));
 
+    [HttpGet("pos/customer-loyalty")]
+    [Authorize(Policy = SalesPolicies.Read)]
+    [ProducesResponseType(typeof(PosCustomerLoyaltyDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PosCustomerLoyaltyDto>> GetPosCustomerLoyalty(
+        [FromQuery] Guid customerId,
+        [FromQuery] decimal orderTotal,
+        CancellationToken cancellationToken = default)
+    {
+        var item = await _sales.GetPosCustomerLoyaltyAsync(customerId, orderTotal, cancellationToken);
+        return item is null ? NotFound() : Ok(item);
+    }
+
     [HttpGet("pos/lookup")]
     [Authorize(Policy = SalesPolicies.Read)]
     public async Task<ActionResult<PosProductLookupDto>> Lookup(

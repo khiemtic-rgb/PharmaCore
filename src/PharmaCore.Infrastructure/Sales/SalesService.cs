@@ -1,22 +1,26 @@
 using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.Sales;
+using PharmaCore.Infrastructure.Loyalty;
 
 namespace PharmaCore.Infrastructure.Sales;
 
 internal sealed class SalesService : ISalesService
 {
     private readonly SalesRepository _repository;
+    private readonly LoyaltyPosService _loyaltyPos;
     private readonly ITenantContext _tenant;
     private readonly ICurrentUserAccessor _user;
     private readonly IAuditLogService _audit;
 
     public SalesService(
         SalesRepository repository,
+        LoyaltyPosService loyaltyPos,
         ITenantContext tenant,
         ICurrentUserAccessor user,
         IAuditLogService audit)
     {
         _repository = repository;
+        _loyaltyPos = loyaltyPos;
         _tenant = tenant;
         _user = user;
         _audit = audit;
@@ -70,6 +74,16 @@ internal sealed class SalesService : ISalesService
         PosAllocationPreviewRequest request,
         CancellationToken cancellationToken = default) =>
         _repository.PreviewPosAllocationAsync(request, cancellationToken);
+
+    public Task<PosCustomerLoyaltyDto?> GetPosCustomerLoyaltyAsync(
+        Guid customerId,
+        decimal orderTotalBeforeRedeem,
+        CancellationToken cancellationToken = default) =>
+        _loyaltyPos.GetPosCustomerLoyaltyAsync(
+            _tenant.TenantId,
+            customerId,
+            orderTotalBeforeRedeem,
+            cancellationToken);
 
     public Task<IReadOnlyList<SalesOrderListItemDto>> GetOrdersAsync(
         CancellationToken cancellationToken = default) =>

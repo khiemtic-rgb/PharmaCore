@@ -1034,6 +1034,727 @@
         }
       }
     },
+    "/api/customer-app/auth/request-otp": {
+      "post": {
+        "tags": [
+          "CustomerAppAuth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestCustomerOtpRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestCustomerOtpRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestCustomerOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerOtpSentResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerOtpSentResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerOtpSentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/auth/verify-otp": {
+      "post": {
+        "tags": [
+          "CustomerAppAuth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCustomerOtpRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCustomerOtpRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCustomerOtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/auth/refresh": {
+      "post": {
+        "tags": [
+          "CustomerAppAuth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRefreshTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoginResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoginResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/auth/logout": {
+      "post": {
+        "tags": [
+          "CustomerAppAuth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRefreshTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/customer-app/auth/me": {
+      "get": {
+        "tags": [
+          "CustomerAppAuth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProfileDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProfileDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProfileDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/loyalty/summary": {
+      "get": {
+        "tags": [
+          "CustomerAppLoyalty"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoyaltySummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoyaltySummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerLoyaltySummaryDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/loyalty/transactions": {
+      "get": {
+        "tags": [
+          "CustomerAppLoyalty"
+        ],
+        "parameters": [
+          {
+            "name": "programId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedLoyaltyTransactionsResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedLoyaltyTransactionsResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedLoyaltyTransactionsResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/loyalty/programs": {
+      "get": {
+        "tags": [
+          "CustomerAppLoyalty"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyProgramCatalogResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyProgramCatalogResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyProgramCatalogResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/loyalty/vouchers": {
+      "get": {
+        "tags": [
+          "CustomerAppLoyalty"
+        ],
+        "parameters": [
+          {
+            "name": "includeUsed",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerVoucherListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerVoucherListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerVoucherListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/reminders": {
+      "get": {
+        "tags": [
+          "CustomerAppReminders"
+        ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderListResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CustomerAppReminders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMedicationReminderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMedicationReminderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMedicationReminderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/reminders/{id}": {
+      "get": {
+        "tags": [
+          "CustomerAppReminders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CustomerAppReminders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMedicationReminderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMedicationReminderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMedicationReminderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicationReminderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CustomerAppReminders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/customers/{customerId}/consents": {
       "get": {
         "tags": [
@@ -6305,6 +7026,32 @@
         },
         "additionalProperties": false
       },
+      "CreateMedicationReminderRequest": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dosageNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "remindTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateOpeningBalanceRequest": {
         "type": "object",
         "properties": {
@@ -6828,6 +7575,167 @@
         },
         "additionalProperties": false
       },
+      "CustomerLoginResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/CustomerProfileDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerLoyaltySummaryDto": {
+        "type": "object",
+        "properties": {
+          "programs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyProgramSummaryDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerOtpSentResponse": {
+        "type": "object",
+        "properties": {
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cooldownSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerProfileDto": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerRefreshTokenRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerVoucherDto": {
+        "type": "object",
+        "properties": {
+          "customerVoucherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voucherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voucherCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "voucherName": {
+            "type": "string",
+            "nullable": true
+          },
+          "discountType": {
+            "$ref": "#/components/schemas/VoucherDiscountType"
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "minOrderAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isUsed": {
+            "type": "boolean"
+          },
+          "isExpired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerVoucherListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerVoucherDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "GoodsReceiptDetailDto": {
         "type": "object",
         "properties": {
@@ -7109,6 +8017,234 @@
         },
         "additionalProperties": false
       },
+      "LoyaltyProgramCatalogDto": {
+        "type": "object",
+        "properties": {
+          "programId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "programCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "programName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pointsPerAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "amountPerPoint": {
+            "type": "number",
+            "format": "double"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyTierDto"
+            },
+            "nullable": true
+          },
+          "isEnrolled": {
+            "type": "boolean"
+          },
+          "pointsBalance": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lifetimePoints": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyProgramCatalogResult": {
+        "type": "object",
+        "properties": {
+          "programs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyProgramCatalogDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyProgramSummaryDto": {
+        "type": "object",
+        "properties": {
+          "programId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "programCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "programName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pointsBalance": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lifetimePoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currentTier": {
+            "$ref": "#/components/schemas/LoyaltyTierDto"
+          },
+          "nextTier": {
+            "$ref": "#/components/schemas/LoyaltyTierDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyTierDto": {
+        "type": "object",
+        "properties": {
+          "tierCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "tierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "minPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountPercent": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyTransactionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "programId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "programCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "transactionType": {
+            "$ref": "#/components/schemas/LoyaltyTransactionType"
+          },
+          "points": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "salesOrderId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyTransactionType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "MedicationReminderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "dosageNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "remindTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "nextRemindAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MedicationReminderListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MedicationReminderDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "NextProductCodeDto": {
         "type": "object",
         "properties": {
@@ -7245,6 +8381,31 @@
               "format": "uuid"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PagedLoyaltyTransactionsResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyTransactionDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -8185,6 +9346,20 @@
         "type": "object",
         "properties": {
           "refreshToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestCustomerOtpRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantCode": {
             "type": "string",
             "nullable": true
           }
@@ -9469,6 +10644,37 @@
         },
         "additionalProperties": false
       },
+      "UpdateMedicationReminderRequest": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "dosageNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "remindTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdateProductRequest": {
         "required": [
           "productName"
@@ -9775,6 +10981,32 @@
           }
         },
         "additionalProperties": false
+      },
+      "VerifyCustomerOtpRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenantCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VoucherDiscountType": {
+        "enum": [
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
       },
       "WarehouseDto": {
         "type": "object",

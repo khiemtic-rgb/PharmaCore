@@ -8,6 +8,7 @@ const tabs = [
   { key: 'orders', label: 'Đơn bán', path: '/sales/orders' },
   { key: 'returns', label: 'Phiếu trả', path: '/sales/returns' },
   { key: 'customers', label: 'Đồng ý KH', path: '/sales/customers' },
+  { key: 'loyalty', label: 'Tích điểm', path: '/sales/loyalty' },
   { key: 'settings', label: 'Cài đặt', path: '/sales/settings' },
   { key: 'shift', label: 'Ca làm việc', path: '/sales/shift' },
 ];

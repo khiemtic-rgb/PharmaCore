@@ -28,11 +28,12 @@ import {
   completeDraftSale,
   createSaleReturn,
   fetchOrderReturns,
+  fetchPosCustomerLoyalty,
   fetchSalesOrder,
   fetchSalesOrders,
   fetchSalesReturn,
 } from '@/shared/api/sales.api';
-import type { SalesOrderDetail, SalesOrderListItem, SalesReturnListItem } from '@/shared/api/sales.types';
+import type { PosCheckoutConfirm, PosCustomerLoyalty, SalesOrderDetail, SalesOrderListItem, SalesReturnListItem } from '@/shared/api/sales.types';
 import { SALES_RETURN_STATUS_LABELS } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
@@ -47,6 +48,7 @@ import { PosCheckoutModal } from '@/modules/sales/PosCheckoutModal';
 import { SalesReturnDetailDrawer } from '@/modules/sales/SalesReturnDetailDrawer';
 import { SalesReturnModal } from '@/modules/sales/SalesReturnModal';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
+import { formatPosCheckoutSuccessMessage } from '@/modules/sales/pos-checkout-message';
 import { printSalesReturn } from '@/modules/sales/sales-return-print';
 import { filterBarStyle, sectionGapStyle, sectionGapTopStyle, TabularMoney } from '@/modules/sales/sales-ui-styles';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -77,6 +79,7 @@ export function SalesOrderListPage() {
   const [returnDetailOpen, setReturnDetailOpen] = useState(false);
   const [returnDetailId, setReturnDetailId] = useState<string | null>(null);
   const [draftCheckoutOpen, setDraftCheckoutOpen] = useState(false);
+  const [draftCustomerLoyalty, setDraftCustomerLoyalty] = useState<PosCustomerLoyalty | null>(null);
   const [draftCompleting, setDraftCompleting] = useState(false);
 
   const load = useCallback(async () => {
@@ -213,17 +216,37 @@ export function SalesOrderListPage() {
     setDraftCheckoutOpen(true);
   };
 
-  const confirmCompleteDraft = async (payments: { paymentMethod: number; amount: number }[]) => {
+  useEffect(() => {
+    if (!draftCheckoutOpen || !detail?.customerId || detail.totalAmount <= 0) {
+      setDraftCustomerLoyalty(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const loyalty = await fetchPosCustomerLoyalty(detail.customerId!, detail.totalAmount);
+      if (!cancelled) setDraftCustomerLoyalty(loyalty);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draftCheckoutOpen, detail?.customerId, detail?.totalAmount]);
+
+  const confirmCompleteDraft = async ({ payments, loyaltyDiscountAmount }: PosCheckoutConfirm) => {
     if (!detail) {
       message.error('Không tìm thấy đơn nháp');
       throw new Error('missing-draft');
     }
     setDraftCompleting(true);
     try {
-      const updated = await completeDraftSale(detail.id, { payments });
+      const updated = await completeDraftSale(detail.id, {
+        payments,
+        ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0
+          ? { loyaltyDiscountAmount }
+          : {}),
+      });
       setDetail(updated);
       setDraftCheckoutOpen(false);
-      message.success('Đã hoàn tất đơn nháp');
+      message.success(formatPosCheckoutSuccessMessage(updated));
       if (!(await printSalesInvoice(updated))) {
         message.warning('Trình duyệt chặn cửa sổ in — bấm In hóa đơn trong chi tiết đơn.');
       }
@@ -580,6 +603,17 @@ export function SalesOrderListPage() {
             <Descriptions column={2} size="small" bordered style={sectionGapStyle}>
               <Descriptions.Item label="Kho">{detail.warehouseName}</Descriptions.Item>
               <Descriptions.Item label="Khách">{detail.customerName ?? '—'}</Descriptions.Item>
+              {(detail.loyaltyPointsRedeemed ?? 0) > 0 ? (
+                <Descriptions.Item label="Đổi điểm">
+                  −{detail.loyaltyPointsRedeemed!.toLocaleString('vi-VN')} điểm (
+                  −{formatDisplayMoney(detail.loyaltyDiscountAmount ?? 0)})
+                </Descriptions.Item>
+              ) : null}
+              {(detail.loyaltyPointsEarned ?? 0) > 0 ? (
+                <Descriptions.Item label="Tích điểm">
+                  +{detail.loyaltyPointsEarned!.toLocaleString('vi-VN')} điểm
+                </Descriptions.Item>
+              ) : null}
               <Descriptions.Item label="Trạng thái">
                 {renderOrderStatus({
                   ...detail,
@@ -658,8 +692,9 @@ export function SalesOrderListPage() {
             detail.items.reduce((sum, line) => sum + (line.discountAmount ?? 0), 0)
           }
           orderDiscountAmount={detail.discountAmount}
+          customerLoyalty={draftCustomerLoyalty}
           onCancel={() => setDraftCheckoutOpen(false)}
-          onConfirm={(payments) => confirmCompleteDraft(payments)}
+          onConfirm={(result) => confirmCompleteDraft(result)}
         />
       )}
     </Card>

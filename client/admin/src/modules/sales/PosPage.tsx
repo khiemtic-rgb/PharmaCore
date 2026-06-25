@@ -18,13 +18,13 @@ import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, PrinterOutlined } from '@ant-design/icons';
 import { fetchWarehouses } from '@/shared/api/inventory.api';
 import type { Warehouse } from '@/shared/api/inventory.types';
-import { createSale, completeDraftSale, fetchBatchModeSettings, fetchOpenShift, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue } from '@/shared/api/sales.api';
+import { createSale, completeDraftSale, fetchBatchModeSettings, fetchOpenShift, fetchPosCustomerLoyalty, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue } from '@/shared/api/sales.api';
 import {
   isShiftAlreadyOpenError,
   loadOpenShiftForWarehouse,
   shiftAlreadyOpenMessage,
 } from '@/modules/sales/sales-shift-helpers';
-import type { CartLine, CustomerListItem, PosCheckoutPaymentLine, SalesOrderDetail, SalesShiftDetail } from '@/shared/api/sales.types';
+import type { CartLine, CustomerListItem, PosCheckoutConfirm, PosCustomerLoyalty, SalesOrderDetail, SalesShiftDetail } from '@/shared/api/sales.types';
 import { SALES_DISCOUNT_TYPES } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
@@ -44,6 +44,7 @@ import { buildCreateSalePayload, buildDraftCompletePayload, buildDraftUpdatePayl
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
 import { PosSummaryDivider, PosSummaryOrderDiscountRow, PosSummaryPanel, PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
+import { formatPosCheckoutSuccessMessage } from '@/modules/sales/pos-checkout-message';
 import { loadReceiptStoreSettings } from '@/modules/sales/receipt-settings';
 import {
   lineNet,
@@ -71,6 +72,7 @@ export function PosPage() {
   const [warehouseId, setWarehouseId] = useState<string>();
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [customerId, setCustomerId] = useState<string>();
+  const [customerLoyalty, setCustomerLoyalty] = useState<PosCustomerLoyalty | null>(null);
   const [barcode, setBarcode] = useState('');
   const [productSearchOptions, setProductSearchOptions] = useState<
     { value: string; label: string }[]
@@ -90,6 +92,21 @@ export function PosPage() {
   const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('suggest');
 
   const pricing = useMemo(() => priceCart(cart, orderDiscount), [cart, orderDiscount]);
+
+  useEffect(() => {
+    if (!customerId || pricing.totalAmount <= 0) {
+      setCustomerLoyalty(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const loyalty = await fetchPosCustomerLoyalty(customerId, pricing.totalAmount);
+      if (!cancelled) setCustomerLoyalty(loyalty);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, pricing.totalAmount]);
 
   const resetCart = useCallback(() => {
     setCart([]);
@@ -443,7 +460,7 @@ export function PosPage() {
     }
   };
 
-  const confirmCheckout = async (payments: PosCheckoutPaymentLine[]) => {
+  const confirmCheckout = async ({ payments, loyaltyDiscountAmount }: PosCheckoutConfirm) => {
     if (!warehouseId) {
       message.warning('Chọn kho bán trước');
       throw new Error('missing-warehouse');
@@ -465,15 +482,23 @@ export function PosPage() {
       if (editingDraftId) {
         order = await completeDraftSale(editingDraftId, {
           payments,
-          ...buildDraftCompletePayload(customerId, cart, orderDiscount),
+          ...buildDraftCompletePayload(customerId, cart, orderDiscount, undefined, loyaltyDiscountAmount),
         });
       } else {
         order = await createSale(
-          buildCreateSalePayload(warehouseId, customerId, cart, orderDiscount, false, payments),
+          buildCreateSalePayload(
+            warehouseId,
+            customerId,
+            cart,
+            orderDiscount,
+            false,
+            payments,
+            loyaltyDiscountAmount,
+          ),
         );
       }
       hideLoading();
-      message.success(`Đã bán ${order.orderNumber} — ${formatDisplayMoney(order.totalAmount)}`);
+      message.success(formatPosCheckoutSuccessMessage(order));
       setCheckoutOpen(false);
       clearDraftEdit();
       resetCart();
@@ -504,12 +529,20 @@ export function PosPage() {
     try {
       if (!(await validateStock())) return;
       if (!(await validateFefoAllocation())) return;
+      if (customerId && pricing.totalAmount > 0) {
+        const loyalty = await fetchPosCustomerLoyalty(customerId, pricing.totalAmount);
+        setCustomerLoyalty(loyalty);
+      } else {
+        setCustomerLoyalty(null);
+      }
       setCheckoutOpen(true);
     } finally {
       setCheckoutValidating(false);
     }
   }, [
+    customerId,
     openShift,
+    pricing.totalAmount,
     validateDiscounts,
     validateBatchLabels,
     validateFefoAllocation,
@@ -886,8 +919,9 @@ export function PosPage() {
         subtotalGross={pricing.subtotalGross}
         lineDiscountTotal={pricing.lineDiscountTotal}
         orderDiscountAmount={pricing.orderDiscountAmount}
+        customerLoyalty={customerLoyalty}
         onCancel={() => setCheckoutOpen(false)}
-        onConfirm={(payments) => confirmCheckout(payments)}
+        onConfirm={(result) => confirmCheckout(result)}
       />
 
       {lastCompletedOrder && (

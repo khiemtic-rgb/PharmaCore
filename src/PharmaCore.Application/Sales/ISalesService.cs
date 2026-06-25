@@ -32,6 +32,11 @@ public interface ISalesService
         PosAllocationPreviewRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<PosCustomerLoyaltyDto?> GetPosCustomerLoyaltyAsync(
+        Guid customerId,
+        decimal orderTotalBeforeRedeem,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<SalesOrderListItemDto>> GetOrdersAsync(
         CancellationToken cancellationToken = default);
 
