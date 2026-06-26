@@ -2,6 +2,7 @@ src/**/bin/
 src/**/obj/
 client/**/node_modules/
 client/**/dist/
+.dev/
 tests/
 docs/
 .env

@@ -47,7 +47,12 @@ $files = @(
     "seed\003_more_customers.sql",
     "024_loyalty_unify_redeem_value.sql",
     "025_loyalty_max_redeem_percent.sql",
-    "026_loyalty_fractional_points.sql"
+    "026_loyalty_fractional_points.sql",
+    "027_customer_app_cdp_consent_demo.sql",
+    "028_customer_chat.sql",
+    "029_customer_draft_orders.sql",
+    "030_customer_draft_order_customer_hide.sql",
+    "031_sales_voucher_discount.sql"
 )
 
 Write-Host "=== PharmaCore Migrations ===" -ForegroundColor Cyan

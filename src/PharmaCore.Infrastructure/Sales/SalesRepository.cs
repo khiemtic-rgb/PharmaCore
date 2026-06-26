@@ -20,6 +20,7 @@ internal sealed class SalesRepository
     private readonly ITenantSettingsService _tenantSettings;
     private readonly IIntegrationOutboxWriter _outbox;
     private readonly LoyaltyPosService _loyaltyPos;
+    private readonly VoucherPosService _voucherPos;
 
     public SalesRepository(
         IDbConnectionFactory db,
@@ -28,7 +29,8 @@ internal sealed class SalesRepository
         IBatchResolver batchResolver,
         ITenantSettingsService tenantSettings,
         IIntegrationOutboxWriter outbox,
-        LoyaltyPosService loyaltyPos)
+        LoyaltyPosService loyaltyPos,
+        VoucherPosService voucherPos)
     {
         _db = db;
         _tenant = tenant;
@@ -37,6 +39,7 @@ internal sealed class SalesRepository
         _tenantSettings = tenantSettings;
         _outbox = outbox;
         _loyaltyPos = loyaltyPos;
+        _voucherPos = voucherPos;
     }
 
     private Guid TenantId => _tenant.TenantId;
@@ -540,11 +543,15 @@ internal sealed class SalesRepository
                     LIMIT 1
                 ) AS LoyaltyPointsEarned,
                 o.loyalty_points_redeemed AS LoyaltyPointsRedeemed,
-                o.loyalty_discount_amount AS LoyaltyDiscountAmount
+                o.loyalty_discount_amount AS LoyaltyDiscountAmount,
+                o.voucher_discount_amount AS VoucherDiscountAmount,
+                v.voucher_code AS VoucherCode,
+                v.voucher_name AS VoucherName
             FROM sales_orders o
             INNER JOIN warehouses w ON w.id = o.warehouse_id
             LEFT JOIN customers c ON c.id = o.customer_id
             LEFT JOIN sales_shifts sh ON sh.id = o.sales_shift_id
+            LEFT JOIN vouchers v ON v.id = o.voucher_id
             WHERE o.id = @Id AND o.tenant_id = @TenantId
             """;
         const string itemsSql = """
@@ -632,7 +639,27 @@ internal sealed class SalesRepository
             header.OrderDiscountType, header.OrderDiscountValue, header.TotalAmount, totalRefunded,
             header.Notes, items, payments, refundPayments,
             header.SalesShiftId, header.ShiftNumber, header.LoyaltyPointsEarned,
-            header.LoyaltyPointsRedeemed, header.LoyaltyDiscountAmount);
+            header.LoyaltyPointsRedeemed, header.LoyaltyDiscountAmount,
+            header.VoucherDiscountAmount, header.VoucherCode, header.VoucherName);
+    }
+
+    public async Task<SaleOrderPricingResult> PriceSaleLinesAsync(
+        IReadOnlyList<CreateSaleLineRequest> items,
+        short priceType,
+        SaleDiscountInput? orderDiscount,
+        SalesDiscountPolicy discountPolicy,
+        CancellationToken cancellationToken)
+    {
+        if (items.Count == 0)
+            throw new InvalidOperationException("Thêm ít nhất một dòng bán.");
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+        var pricedInputs = await ResolveSaleLineInputsAsync(conn, tx, items, priceType, cancellationToken);
+        var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
+        SalesPricing.ValidateDiscounts(pricing, discountPolicy);
+        await tx.CommitAsync(cancellationToken);
+        return pricing;
     }
 
     public async Task<Guid> CreateCompletedSaleAsync(
@@ -658,12 +685,21 @@ internal sealed class SalesRepository
         var pricing = SalesPricing.PriceOrder(pricedInputs, orderDiscount);
         SalesPricing.ValidateDiscounts(pricing, discountPolicy);
 
+        var voucher = await _voucherPos.ResolveVoucherAsync(
+            TenantId,
+            request.CustomerId,
+            request.CustomerVoucherId,
+            pricing.TotalAmount,
+            conn,
+            tx,
+            cancellationToken);
+
         var redeem = await _loyaltyPos.ResolveRedeemAsync(
             TenantId,
             request.CustomerId,
             request.LoyaltyPointsToRedeem,
             request.LoyaltyDiscountAmount,
-            pricing.TotalAmount,
+            voucher.OrderTotalAfterVoucher,
             conn,
             tx,
             cancellationToken);
@@ -675,10 +711,15 @@ internal sealed class SalesRepository
             conn, tx, orderNumber, branchId, request.WarehouseId, request.CustomerId, employeeId,
             SalesOrderStatuses.Completed, request.PriceType, pricing.SubtotalGross, pricing.OrderDiscountAmount,
             request.OrderDiscountType, request.OrderDiscountValue ?? 0, redeem.FinalTotal, request.Notes,
-            shiftId, redeem.PointsRedeemed, redeem.DiscountAmount);
+            shiftId, voucher.VoucherId, voucher.DiscountAmount, redeem.PointsRedeemed, redeem.DiscountAmount);
 
         await InsertCompletedLinesAsync(conn, tx, orderId, request.WarehouseId, linePlans, cancellationToken);
         await InsertPaymentsAsync(conn, tx, orderId, payments);
+
+        if (voucher.VoucherId is Guid voucherId && voucher.CustomerVoucherId is Guid customerVoucherId)
+        {
+            await _voucherPos.TryMarkUsedAsync(customerVoucherId, voucherId, orderId, conn, tx);
+        }
 
         if (redeem.PointsRedeemed > 0 && request.CustomerId is Guid redeemCustomer)
         {
@@ -884,12 +925,21 @@ internal sealed class SalesRepository
         var customerId = syncFromRequest ? request!.CustomerId : header.CustomerId;
         var notes = syncFromRequest ? request!.Notes : null;
 
+        var voucher = await _voucherPos.ResolveVoucherAsync(
+            TenantId,
+            customerId,
+            request?.CustomerVoucherId,
+            pricing.TotalAmount,
+            conn,
+            tx,
+            cancellationToken);
+
         var redeem = await _loyaltyPos.ResolveRedeemAsync(
             TenantId,
             customerId,
             request?.LoyaltyPointsToRedeem,
             request?.LoyaltyDiscountAmount,
-            pricing.TotalAmount,
+            voucher.OrderTotalAfterVoucher,
             conn,
             tx,
             cancellationToken);
@@ -902,6 +952,8 @@ internal sealed class SalesRepository
                 status = @Completed, customer_id = @CustomerId, subtotal = @Subtotal,
                 discount_amount = @OrderDiscountAmount, order_discount_type = @OrderDiscountType,
                 order_discount_value = @OrderDiscountValue, total_amount = @TotalAmount,
+                voucher_id = @VoucherId,
+                voucher_discount_amount = @VoucherDiscountAmount,
                 loyalty_points_redeemed = @LoyaltyPointsRedeemed,
                 loyalty_discount_amount = @LoyaltyDiscountAmount,
                 sales_shift_id = @ShiftId, notes = COALESCE(@Notes, notes)
@@ -917,6 +969,8 @@ internal sealed class SalesRepository
             OrderDiscountType = orderDiscount.DiscountType,
             OrderDiscountValue = orderDiscount.DiscountValue ?? 0,
             TotalAmount = redeem.FinalTotal,
+            VoucherId = voucher.VoucherId,
+            VoucherDiscountAmount = voucher.DiscountAmount,
             LoyaltyPointsRedeemed = redeem.PointsRedeemed,
             LoyaltyDiscountAmount = redeem.DiscountAmount,
             ShiftId = shiftId,
@@ -929,6 +983,11 @@ internal sealed class SalesRepository
         var orderNumber = await conn.QuerySingleAsync<string>(
             "SELECT order_number FROM sales_orders WHERE id = @Id",
             new { Id = id }, tx);
+
+        if (voucher.VoucherId is Guid voucherId && voucher.CustomerVoucherId is Guid customerVoucherId)
+        {
+            await _voucherPos.TryMarkUsedAsync(customerVoucherId, voucherId, id, conn, tx);
+        }
 
         if (redeem.PointsRedeemed > 0 && customerId is Guid redeemCustomer)
         {
@@ -1855,6 +1914,8 @@ internal sealed class SalesRepository
         decimal totalAmount,
         string? notes,
         Guid? salesShiftId = null,
+        Guid? voucherId = null,
+        decimal voucherDiscountAmount = 0,
         decimal loyaltyPointsRedeemed = 0,
         decimal loyaltyDiscountAmount = 0)
     {
@@ -1862,12 +1923,14 @@ internal sealed class SalesRepository
             INSERT INTO sales_orders (
                 tenant_id, order_number, branch_id, warehouse_id, customer_id, employee_id,
                 status, price_type, subtotal, discount_amount, order_discount_type, order_discount_value,
-                total_amount, notes, sales_shift_id, loyalty_points_redeemed, loyalty_discount_amount
+                total_amount, notes, sales_shift_id, voucher_id, voucher_discount_amount,
+                loyalty_points_redeemed, loyalty_discount_amount
             )
             VALUES (
                 @TenantId, @OrderNumber, @BranchId, @WarehouseId, @CustomerId, @EmployeeId,
                 @Status, @PriceType, @Subtotal, @OrderDiscountAmount, @OrderDiscountType, @OrderDiscountValue,
-                @TotalAmount, @Notes, @SalesShiftId, @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount
+                @TotalAmount, @Notes, @SalesShiftId, @VoucherId, @VoucherDiscountAmount,
+                @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount
             )
             RETURNING id
             """;
@@ -1888,6 +1951,8 @@ internal sealed class SalesRepository
             TotalAmount = totalAmount,
             Notes = notes,
             SalesShiftId = salesShiftId,
+            VoucherId = voucherId,
+            VoucherDiscountAmount = voucherDiscountAmount,
             LoyaltyPointsRedeemed = loyaltyPointsRedeemed,
             LoyaltyDiscountAmount = loyaltyDiscountAmount,
         }, tx);
@@ -2200,6 +2265,9 @@ internal sealed class SalesRepository
         public int? LoyaltyPointsEarned { get; init; }
         public decimal LoyaltyPointsRedeemed { get; init; }
         public decimal LoyaltyDiscountAmount { get; init; }
+        public decimal VoucherDiscountAmount { get; init; }
+        public string? VoucherCode { get; init; }
+        public string? VoucherName { get; init; }
     }
 
     private sealed class DraftSaleLineRow

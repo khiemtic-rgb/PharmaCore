@@ -34,14 +34,15 @@ http.interceptors.response.use(
       }
 
       const newToken = await refreshPromise;
-      if (!newToken) {
-        useAuthStore.getState().clearSession();
-        window.location.href = '/login';
-        return Promise.reject(error);
+      if (newToken) {
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return http(original);
       }
 
-      original.headers.Authorization = `Bearer ${newToken}`;
-      return http(original);
+      if (!useAuthStore.getState().accessToken) {
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);
@@ -51,18 +52,21 @@ http.interceptors.response.use(
 async function refreshAccessToken(): Promise<string | null> {
   const { refreshToken, setSession, clearSession } = useAuthStore.getState();
   if (!refreshToken) {
-    clearSession();
     return null;
   }
 
   try {
-    const { data } = await axios.post<CustomerLoginResponse>('/api/customer-app/auth/refresh', {
-      refreshToken,
-    });
+    const { data } = await axios.post<CustomerLoginResponse>(
+      '/api/customer-app/auth/refresh',
+      { refreshToken },
+      { timeout: 10_000 },
+    );
     setSession(data);
     return data.accessToken;
-  } catch {
-    clearSession();
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearSession();
+    }
     return null;
   }
 }

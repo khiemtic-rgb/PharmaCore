@@ -170,7 +170,11 @@ export function LoyaltyPage() {
       )}
 
       {tab === 'vouchers' && (
-        <List
+        <>
+          <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 12 }}>
+            Voucher trong ví — đưa mã cho dược sĩ khi thanh toán tại quầy (POS).
+          </Typography.Paragraph>
+          <List
           dataSource={vouchers}
           locale={{ emptyText: 'Chưa có voucher' }}
           renderItem={(item) => (
@@ -205,6 +209,7 @@ export function LoyaltyPage() {
             </List.Item>
           )}
         />
+        </>
       )}
     </div>
   );

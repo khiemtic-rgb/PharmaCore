@@ -233,7 +233,7 @@ export function SalesOrderListPage() {
 
   const confirmCompleteDraft = async ({ payments, loyaltyDiscountAmount }: PosCheckoutConfirm) => {
     if (!detail) {
-      message.error('Không tìm thấy đơn nháp');
+      message.error('Không tìm thấy đơn tạm');
       throw new Error('missing-draft');
     }
     setDraftCompleting(true);
@@ -263,7 +263,7 @@ export function SalesOrderListPage() {
     if (!detail) return;
     try {
       await cancelDraftSale(detail.id);
-      message.success('Đã hủy đơn nháp');
+      message.success('Đã hủy đơn tạm');
       setDetailOpen(false);
       void load();
     } catch (error) {
@@ -487,6 +487,18 @@ export function SalesOrderListPage() {
 
   return (
     <Card title="Đơn bán hàng">
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Đơn gửi app khách (Gửi khách hàng tại POS) nằm tại tab Đơn hàng từ app"
+        description="Tab này chỉ liệt kê đơn bán nội bộ (tạm / hoàn tất). Đơn chờ khách xác nhận trên app xem tại Bán hàng → Đơn hàng từ app."
+        action={
+          <Button size="small" onClick={() => navigate('/sales/customer-drafts')}>
+            Mở Đơn hàng từ app
+          </Button>
+        }
+      />
       <Space wrap style={filterBarStyle}>
         <AutoComplete
           style={{ width: 280 }}
@@ -556,7 +568,7 @@ export function SalesOrderListPage() {
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}
-                message="Đơn nháp chưa trừ tồn kho"
+                message="Đơn tạm chưa trừ tồn kho"
                 description="Bấm Hoàn tất đơn để xuất hóa đơn, trừ tồn theo FEFO và cho phép trả hàng sau này."
               />
             )}
@@ -579,7 +591,7 @@ export function SalesOrderListPage() {
                       <Button type="primary" onClick={handleCompleteDraft}>
                         Hoàn tất đơn
                       </Button>
-                      <Popconfirm title="Hủy đơn nháp?" onConfirm={() => void handleCancelDraft()}>
+                      <Popconfirm title="Hủy đơn tạm?" onConfirm={() => void handleCancelDraft()}>
                         <Button danger>Hủy đơn</Button>
                       </Popconfirm>
                     </>
@@ -603,6 +615,12 @@ export function SalesOrderListPage() {
             <Descriptions column={2} size="small" bordered style={sectionGapStyle}>
               <Descriptions.Item label="Kho">{detail.warehouseName}</Descriptions.Item>
               <Descriptions.Item label="Khách">{detail.customerName ?? '—'}</Descriptions.Item>
+              {(detail.voucherDiscountAmount ?? 0) > 0 ? (
+                <Descriptions.Item label="Voucher">
+                  {detail.voucherCode ? `${detail.voucherCode} · ` : ''}
+                  −{formatDisplayMoney(detail.voucherDiscountAmount ?? 0)}
+                </Descriptions.Item>
+              ) : null}
               {(detail.loyaltyPointsRedeemed ?? 0) > 0 ? (
                 <Descriptions.Item label="Đổi điểm">
                   −{detail.loyaltyPointsRedeemed!.toLocaleString('vi-VN')} điểm (

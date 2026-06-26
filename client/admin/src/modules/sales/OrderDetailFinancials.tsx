@@ -66,6 +66,26 @@ export function OrderDetailFinancials({ order }: Props) {
             danger
           />
         )}
+        {(order.voucherDiscountAmount ?? 0) > 0 && (
+          <PosSummaryRow
+            label={
+              order.voucherCode
+                ? `Voucher ${order.voucherCode}`
+                : order.voucherName
+                  ? `Voucher ${order.voucherName}`
+                  : 'Voucher'
+            }
+            value={`−${formatDisplayMoney(order.voucherDiscountAmount ?? 0)}`}
+            danger
+          />
+        )}
+        {(order.loyaltyDiscountAmount ?? 0) > 0 && (
+          <PosSummaryRow
+            label={`Đổi ${(order.loyaltyPointsRedeemed ?? 0).toLocaleString('vi-VN')} điểm`}
+            value={`−${formatDisplayMoney(order.loyaltyDiscountAmount ?? 0)}`}
+            danger
+          />
+        )}
         <PosSummaryRow label="Khách phải trả" value={formatDisplayMoney(order.totalAmount)} strong />
         {totalRefunded > 0 && (
           <PosSummaryRow

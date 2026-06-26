@@ -74,11 +74,19 @@ const PosPage = lazy(() => import('@/modules/sales/PosPage').then((m) => ({ defa
 const SalesOrderListPage = lazy(() =>
   import('@/modules/sales/SalesOrderListPage').then((m) => ({ default: m.SalesOrderListPage })),
 );
+const CustomerDraftOrderListPage = lazy(() =>
+  import('@/modules/sales/CustomerDraftOrderListPage').then((m) => ({
+    default: m.CustomerDraftOrderListPage,
+  })),
+);
 const SalesReturnListPage = lazy(() =>
   import('@/modules/sales/SalesReturnListPage').then((m) => ({ default: m.SalesReturnListPage })),
 );
 const SalesShiftReportPage = lazy(() =>
   import('@/modules/sales/SalesShiftReportPage').then((m) => ({ default: m.SalesShiftReportPage })),
+);
+const CustomerChatPage = lazy(() =>
+  import('@/modules/sales/CustomerChatPage').then((m) => ({ default: m.CustomerChatPage })),
 );
 const CustomerConsentPage = lazy(() =>
   import('@/modules/sales/CustomerConsentPage').then((m) => ({ default: m.CustomerConsentPage })),
@@ -88,6 +96,9 @@ const ReceiptSettingsPage = lazy(() =>
 );
 const LoyaltySettingsPage = lazy(() =>
   import('@/modules/sales/LoyaltySettingsPage').then((m) => ({ default: m.LoyaltySettingsPage })),
+);
+const VoucherListPage = lazy(() =>
+  import('@/modules/sales/VoucherListPage').then((m) => ({ default: m.VoucherListPage })),
 );
 
 function RouteFallback() {
@@ -198,10 +209,13 @@ export function AppRouter() {
                 <Route index element={<Navigate to="/sales/pos" replace />} />
                 <Route path="pos" element={<PosPage />} />
                 <Route path="orders" element={<SalesOrderListPage />} />
+                <Route path="customer-drafts" element={<CustomerDraftOrderListPage />} />
                 <Route path="returns" element={<SalesReturnListPage />} />
                 <Route path="shift" element={<SalesShiftReportPage />} />
                 <Route path="customers" element={<CustomerConsentPage />} />
+                <Route path="chat" element={<CustomerChatPage />} />
                 <Route path="loyalty" element={<LoyaltySettingsPage />} />
+                <Route path="vouchers" element={<VoucherListPage />} />
                 <Route path="settings" element={<ReceiptSettingsPage />} />
               </Route>
             </Route>

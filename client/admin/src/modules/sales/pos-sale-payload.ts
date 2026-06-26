@@ -30,6 +30,7 @@ export function buildCreateSalePayload(
   saveAsDraft: boolean,
   payments?: PosCheckoutPaymentLine[],
   loyaltyDiscountAmount?: number,
+  customerVoucherId?: string,
 ) {
   return {
     warehouseId,
@@ -39,6 +40,7 @@ export function buildCreateSalePayload(
     orderDiscountValue: orderDiscount.discountValue,
     payments: payments?.map((p) => ({ paymentMethod: p.paymentMethod, amount: p.amount })),
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
+    ...(customerVoucherId ? { customerVoucherId } : {}),
     items: buildSaleLineItems(cart),
   };
 }
@@ -49,6 +51,7 @@ export function buildDraftCompletePayload(
   orderDiscount: OrderDiscountState,
   notes?: string,
   loyaltyDiscountAmount?: number,
+  customerVoucherId?: string,
 ) {
   return {
     customerId: customerId ?? null,
@@ -56,6 +59,7 @@ export function buildDraftCompletePayload(
     orderDiscountValue: orderDiscount.discountType ? (orderDiscount.discountValue ?? 0) : null,
     notes: notes ?? null,
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
+    ...(customerVoucherId ? { customerVoucherId } : {}),
     items: buildSaleLineItems(cart),
   };
 }

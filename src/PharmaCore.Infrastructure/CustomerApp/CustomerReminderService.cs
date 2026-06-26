@@ -5,8 +5,13 @@ namespace PharmaCore.Infrastructure.CustomerApp;
 internal sealed class CustomerReminderService : ICustomerReminderService
 {
     private readonly CustomerReminderRepository _repo;
+    private readonly ICustomerAppConsentService _consents;
 
-    public CustomerReminderService(CustomerReminderRepository repo) => _repo = repo;
+    public CustomerReminderService(CustomerReminderRepository repo, ICustomerAppConsentService consents)
+    {
+        _repo = repo;
+        _consents = consents;
+    }
 
     public async Task<MedicationReminderListResult> ListAsync(
         Guid tenantId,
@@ -36,6 +41,8 @@ internal sealed class CustomerReminderService : ICustomerReminderService
     {
         if (!await _repo.ProductExistsAsync(tenantId, request.ProductId, cancellationToken))
             throw new InvalidOperationException("Sản phẩm không tồn tại hoặc không thuộc nhà thuốc.");
+
+        await EnsureCareReminderConsentAsync(tenantId, customerId, cancellationToken);
 
         var remindTime = ReminderScheduleHelper.ParseRemindTime(request.RemindTime);
         var days = ReminderScheduleHelper.NormalizeDaysOfWeek(request.DaysOfWeek);
@@ -91,6 +98,9 @@ internal sealed class CustomerReminderService : ICustomerReminderService
             ? existing.DosageNote
             : NormalizeDosageNote(request.DosageNote);
 
+        if (isActive && !existing.IsActive)
+            await EnsureCareReminderConsentAsync(tenantId, customerId, cancellationToken);
+
         DateTimeOffset? nextRemindAt = null;
         if (isActive)
         {
@@ -126,6 +136,18 @@ internal sealed class CustomerReminderService : ICustomerReminderService
         CancellationToken cancellationToken = default) =>
         _repo.DeactivateAsync(tenantId, customerId, reminderId, cancellationToken);
 
+    private async Task EnsureCareReminderConsentAsync(
+        Guid tenantId,
+        Guid customerId,
+        CancellationToken cancellationToken)
+    {
+        if (await _consents.CanDispatchCareReminderAsync(tenantId, customerId, cancellationToken))
+            return;
+
+        throw new InvalidOperationException(
+            "Cần đồng ý nhận nhắc chăm sóc (SMS hoặc App push) trong mục Tài khoản trước khi bật lịch nhắc.");
+    }
+
     private static string? NormalizeDosageNote(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -137,7 +159,7 @@ internal sealed class CustomerReminderService : ICustomerReminderService
             row.ProductName,
             row.DosageNote,
             ReminderScheduleHelper.FormatRemindTime(row.RemindTime),
-            row.DaysOfWeek,
+            row.DaysOfWeek.Select(d => (int)d).ToArray(),
             row.NextRemindAt.HasValue
                 ? new DateTimeOffset(DateTime.SpecifyKind(row.NextRemindAt.Value, DateTimeKind.Utc))
                 : null,

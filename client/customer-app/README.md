@@ -30,7 +30,7 @@ cd client/customer-app && npm install && npm run dev
 - **Trang chủ** — tóm tắt điểm & nhắc thuốc
 - **Điểm thưởng** — số dư, lịch sử, voucher
 - **Nhắc thuốc** — CRUD lịch uống thuốc
-- **Tài khoản** — profile & đăng xuất
+- **Tài khoản** — profile, đồng ý CDP, bật push PWA & đăng xuất
 
 ## Cấu trúc
 
@@ -41,4 +41,4 @@ client/customer-app/src/
 └── shared/        # api, auth, layout
 ```
 
-Lưu ý: chọn sản phẩm khi tạo nhắc thuốc tạm dùng danh sách demo — sẽ thay bằng API tra cứu sản phẩm cho khách ở bước sau.
+Lưu ý: chọn sản phẩm khi tạo nhắc thuốc tra cứu qua API `/catalog/products`. Đồng ý CDP (SMS/App push — nhắc chăm sóc) quản lý tại **Tài khoản**. Bật **Thông báo push** sau khi API có `CustomerAppPush` VAPID keys (dev đã cấu hình trong `appsettings.Development.json`).

@@ -79,6 +79,15 @@ function buildPaymentSection(order: SalesOrderDetail, hasReturns: boolean): stri
     .join('');
 }
 
+function voucherDiscountLabel(order: SalesOrderDetail): string {
+  const code = order.voucherCode?.trim();
+  const name = order.voucherName?.trim();
+  if (code && name) return `Voucher ${code} — ${name}`;
+  if (code) return `Voucher ${code}`;
+  if (name) return `Voucher ${name}`;
+  return 'Voucher';
+}
+
 export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: ReceiptStoreSettings): string {
   const hasReturns = order.items.some((line) => returnedQty(line) > 0);
   const totalRefunded =
@@ -116,6 +125,8 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
       ${rowBetween('Tổng tiền hàng', formatThermalMoney(order.subtotal), 'sub')}
       ${lineDiscountTotal > 0 ? rowBetween('Chiết khấu SP', `-${formatThermalMoney(lineDiscountTotal)}`, 'sub') : ''}
       ${order.discountAmount > 0 ? rowBetween('Chiết khấu đơn', `-${formatThermalMoney(order.discountAmount)}`, 'sub') : ''}
+      ${(order.voucherDiscountAmount ?? 0) > 0 ? rowBetween(voucherDiscountLabel(order), `-${formatThermalMoney(order.voucherDiscountAmount ?? 0)}`, 'sub') : ''}
+      ${(order.loyaltyDiscountAmount ?? 0) > 0 ? rowBetween(`Đổi ${(order.loyaltyPointsRedeemed ?? 0).toLocaleString('vi-VN')} điểm`, `-${formatThermalMoney(order.loyaltyDiscountAmount ?? 0)}`, 'sub') : ''}
       ${rowBetween('Khách đã trả', formatThermalMoney(order.totalAmount), 'sub')}
       ${totalRefunded > 0 ? rowBetween('Đã hoàn trả', `-${formatThermalMoney(totalRefunded)}`, 'sub') : ''}
       ${rowBetween('Còn lại', formatThermalMoney(netPayable), 'total')}
@@ -124,6 +135,7 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
       ${rowBetween('Tạm tính', formatThermalMoney(order.subtotal), 'sub')}
       ${lineDiscountTotal > 0 ? rowBetween('Chiết khấu SP', `-${formatThermalMoney(lineDiscountTotal)}`, 'sub') : ''}
       ${order.discountAmount > 0 ? rowBetween('Chiết khấu đơn', `-${formatThermalMoney(order.discountAmount)}`, 'sub') : ''}
+      ${(order.voucherDiscountAmount ?? 0) > 0 ? rowBetween(voucherDiscountLabel(order), `-${formatThermalMoney(order.voucherDiscountAmount ?? 0)}`, 'sub') : ''}
       ${(order.loyaltyDiscountAmount ?? 0) > 0 ? rowBetween(`Đổi ${(order.loyaltyPointsRedeemed ?? 0).toLocaleString('vi-VN')} điểm`, `-${formatThermalMoney(order.loyaltyDiscountAmount ?? 0)}`, 'sub') : ''}
       ${rowBetween('TỔNG CỘNG', formatThermalMoney(order.totalAmount), 'total')}
     `;
@@ -144,6 +156,7 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
     ${order.customerName ? `<div class="meta">Khách: ${escapeHtml(order.customerName)}</div>` : `<div class="meta">Khách: Khách lẻ</div>`}
     ${(order.loyaltyPointsEarned ?? 0) > 0 ? `<div class="meta">Tích điểm: +${order.loyaltyPointsEarned!.toLocaleString('vi-VN')} điểm</div>` : ''}
     ${(order.loyaltyPointsRedeemed ?? 0) > 0 ? `<div class="meta">Đổi điểm: −${order.loyaltyPointsRedeemed!.toLocaleString('vi-VN')} điểm (−${formatThermalMoney(order.loyaltyDiscountAmount ?? 0)})</div>` : ''}
+    ${(order.voucherDiscountAmount ?? 0) > 0 ? `<div class="meta">Voucher: −${formatThermalMoney(order.voucherDiscountAmount ?? 0)}${order.voucherCode ? ` (${escapeHtml(order.voucherCode)})` : ''}</div>` : ''}
     ${hasReturns ? `<div class="meta">TT: ${escapeHtml(statusLabel)}</div>` : ''}
 
     ${dashedLine()}

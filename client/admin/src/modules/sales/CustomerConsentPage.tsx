@@ -19,8 +19,9 @@ const DEFAULT_MATRIX: { channel: number; purpose: number }[] = [
   { channel: 2, purpose: 1 },
   { channel: 3, purpose: 1 },
   { channel: 1, purpose: 2 },
+  { channel: 4, purpose: 2 },
   { channel: 3, purpose: 2 },
-  { channel: 3, purpose: 4 },
+  { channel: 5, purpose: 4 },
 ];
 
 type ConsentRow = {
@@ -164,7 +165,7 @@ export function CustomerConsentPage() {
         showIcon
         style={{ marginBottom: 16 }}
         message="Opt-in / opt-out theo kênh & mục đích"
-        description="Mỗi lần lưu ghi sự kiện customer.consent.updated vào integration_outbox để worker CDP xử lý sau."
+        description="Mỗi lần lưu ghi sự kiện customer.consent.updated vào integration_outbox để worker CDP xử lý sau. Đồng ý Trong app / Hỗ trợ AI dược sĩ bật chat hai chiều với khách trong app."
       />
       <Space wrap style={{ marginBottom: 16 }}>
         <Select

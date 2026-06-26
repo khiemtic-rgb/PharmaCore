@@ -37,6 +37,11 @@ public interface ISalesService
         decimal orderTotalBeforeRedeem,
         CancellationToken cancellationToken = default);
 
+    Task<PosCustomerVoucherListResult> GetPosCustomerVouchersAsync(
+        Guid customerId,
+        decimal orderTotalBeforeVoucher,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<SalesOrderListItemDto>> GetOrdersAsync(
         CancellationToken cancellationToken = default);
 

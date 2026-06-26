@@ -11,6 +11,7 @@ export const CONSENT_CHANNEL_LABELS: Record<number, string> = {
   2: 'Zalo',
   3: 'Email',
   4: 'App push',
+  5: 'Trong app',
 };
 
 export const CONSENT_PURPOSE_LABELS: Record<number, string> = {

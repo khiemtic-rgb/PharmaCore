@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -10,21 +10,22 @@ import {
   InputNumber,
   Select,
   Space,
+  Switch,
   Table,
   Tooltip,
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, PrinterOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PrinterOutlined, SendOutlined } from '@ant-design/icons';
 import { fetchWarehouses } from '@/shared/api/inventory.api';
 import type { Warehouse } from '@/shared/api/inventory.types';
-import { createSale, completeDraftSale, fetchBatchModeSettings, fetchOpenShift, fetchPosCustomerLoyalty, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue } from '@/shared/api/sales.api';
+import { createSale, completeDraftSale, fetchBatchModeSettings, fetchOpenShift, fetchPosCustomerLoyalty, fetchPosCustomerVouchers, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue } from '@/shared/api/sales.api';
 import {
   isShiftAlreadyOpenError,
   loadOpenShiftForWarehouse,
   shiftAlreadyOpenMessage,
 } from '@/modules/sales/sales-shift-helpers';
-import type { CartLine, CustomerListItem, PosCheckoutConfirm, PosCustomerLoyalty, SalesOrderDetail, SalesShiftDetail } from '@/shared/api/sales.types';
+import type { CartLine, CustomerListItem, PosCheckoutConfirm, PosCustomerLoyalty, PosCustomerVoucher, SalesOrderDetail, SalesShiftDetail } from '@/shared/api/sales.types';
 import { SALES_DISCOUNT_TYPES } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
@@ -60,6 +61,24 @@ import {
   persistPosDraftEdit,
   readPosDraftEditId,
 } from '@/modules/sales/sales-draft-helpers';
+import {
+  createCustomerDraftOrder,
+  fetchCustomerDraftOrder,
+  fetchCustomerDraftOrders,
+  linkCustomerDraftOrderSale,
+  loadCustomerDraftOrderForPos,
+  sendCustomerDraftOrder,
+  updateCustomerDraftOrder,
+  CUSTOMER_DRAFT_ORDER_STATUS,
+  type CustomerDraftOrder,
+  type CustomerDraftOrderListItem,
+} from '@/shared/api/customer-draft-orders.api';
+import {
+  loadCustomerDraftCartLines,
+  orderDiscountFromCustomerDraft,
+} from '@/modules/sales/customer-draft-order-helpers';
+import { buildCustomerDraftOrderPayload } from '@/modules/sales/pos-customer-draft-payload';
+import { CustomerDraftOrderStatusBar } from '@/modules/sales/CustomerDraftOrderStatusBar';
 import { formatDisplayMoney, moneyInputNumberPropsAllowZeroSuffix, moneyInputNumberStyle } from '@/shared/utils/money';
 
 export function PosPage() {
@@ -72,7 +91,11 @@ export function PosPage() {
   const [warehouseId, setWarehouseId] = useState<string>();
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [customerId, setCustomerId] = useState<string>();
+  const [customerDraftOrders, setCustomerDraftOrders] = useState<CustomerDraftOrderListItem[]>([]);
+  const [loadedCustomerDraftOrderId, setLoadedCustomerDraftOrderId] = useState<string>();
+  const [activeCustomerDraft, setActiveCustomerDraft] = useState<CustomerDraftOrder | null>(null);
   const [customerLoyalty, setCustomerLoyalty] = useState<PosCustomerLoyalty | null>(null);
+  const [customerVouchers, setCustomerVouchers] = useState<PosCustomerVoucher[]>([]);
   const [barcode, setBarcode] = useState('');
   const [productSearchOptions, setProductSearchOptions] = useState<
     { value: string; label: string }[]
@@ -90,12 +113,16 @@ export function PosPage() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [checkoutValidating, setCheckoutValidating] = useState(false);
   const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('suggest');
+  const [customerAppDraftMode, setCustomerAppDraftMode] = useState(false);
+  const pendingAutoCheckoutRef = useRef(false);
+  const [autoCheckoutTick, setAutoCheckoutTick] = useState(0);
 
   const pricing = useMemo(() => priceCart(cart, orderDiscount), [cart, orderDiscount]);
 
   useEffect(() => {
     if (!customerId || pricing.totalAmount <= 0) {
       setCustomerLoyalty(null);
+      setCustomerVouchers([]);
       return;
     }
     let cancelled = false;
@@ -108,9 +135,96 @@ export function PosPage() {
     };
   }, [customerId, pricing.totalAmount]);
 
+  useEffect(() => {
+    if (!customerId) {
+      setCustomerDraftOrders([]);
+      setLoadedCustomerDraftOrderId(undefined);
+      setActiveCustomerDraft(null);
+      return;
+    }
+    void fetchCustomerDraftOrders(customerId, [
+      CUSTOMER_DRAFT_ORDER_STATUS.Sent,
+      CUSTOMER_DRAFT_ORDER_STATUS.Confirmed,
+    ])
+      .then(setCustomerDraftOrders)
+      .catch(() => setCustomerDraftOrders([]));
+  }, [customerId]);
+
+  useEffect(() => {
+    if (!loadedCustomerDraftOrderId) {
+      setActiveCustomerDraft(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchCustomerDraftOrder(loadedCustomerDraftOrderId)
+      .then((draft) => {
+        if (!cancelled) setActiveCustomerDraft(draft);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveCustomerDraft(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadedCustomerDraftOrderId]);
+
+  useEffect(() => {
+    if (!loadedCustomerDraftOrderId || activeCustomerDraft?.status !== CUSTOMER_DRAFT_ORDER_STATUS.Sent) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void fetchCustomerDraftOrder(loadedCustomerDraftOrderId)
+        .then((draft) => {
+          setActiveCustomerDraft(draft);
+          if (draft.status === CUSTOMER_DRAFT_ORDER_STATUS.Confirmed) {
+            setCustomerDraftOrders((prev) =>
+              prev.map((item) =>
+                item.id === draft.id
+                  ? { ...item, status: draft.status, confirmedAt: draft.confirmedAt }
+                  : item,
+              ),
+            );
+          }
+        })
+        .catch(() => {});
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [loadedCustomerDraftOrderId, activeCustomerDraft?.status]);
+
+  const loadCustomerDraftIntoPos = async (
+    draftOrderId: string,
+    options?: { autoCheckout?: boolean },
+  ) => {
+    try {
+      const payload = await loadCustomerDraftOrderForPos(draftOrderId);
+      setWarehouseId(payload.warehouseId);
+      setCustomerId(payload.customerId);
+      setCart(await loadCustomerDraftCartLines(payload));
+      setOrderDiscount(orderDiscountFromCustomerDraft(payload));
+      setLoadedCustomerDraftOrderId(payload.draftOrderId);
+      setCustomerAppDraftMode(false);
+      setEditingDraftId(null);
+      setEditingDraftNumber(null);
+      clearPosDraftEdit();
+      if (options?.autoCheckout) {
+        setOpenShift(await loadOpenShiftForWarehouse(payload.warehouseId));
+        pendingAutoCheckoutRef.current = true;
+        setAutoCheckoutTick((t) => t + 1);
+        message.success(`Đã nạp ${payload.draftNumber} — mở thanh toán...`);
+      } else {
+        message.success(`Đã nạp ${payload.draftNumber} vào giỏ — bấm Thanh toán khi sẵn sàng`);
+      }
+    } catch (error) {
+      pendingAutoCheckoutRef.current = false;
+      message.error(apiErrorMessage(error, 'Không nạp được đơn tạm'));
+    }
+  };
+
   const resetCart = useCallback(() => {
     setCart([]);
     setOrderDiscount({});
+    setLoadedCustomerDraftOrderId(undefined);
+    setActiveCustomerDraft(null);
   }, []);
 
   const clearDraftEdit = useCallback(() => {
@@ -227,6 +341,23 @@ export function PosPage() {
     }
     void loadDraftFromUrl(draftId);
   }, [searchParams, editingDraftId, loadDraftFromUrl, setSearchParams]);
+
+  const deepLinkHandled = useRef<string | null>(null);
+
+  useEffect(() => {
+    const customerDraftId = searchParams.get('customerDraftId');
+    if (!customerDraftId) {
+      deepLinkHandled.current = null;
+      return;
+    }
+    if (deepLinkHandled.current === customerDraftId) return;
+    deepLinkHandled.current = customerDraftId;
+    const autoCheckout = searchParams.get('checkout') === '1';
+    void loadCustomerDraftIntoPos(customerDraftId, { autoCheckout }).finally(() => {
+      deepLinkHandled.current = null;
+      setSearchParams({}, { replace: true });
+    });
+  }, [searchParams, setSearchParams]);
 
   const validateDiscounts = useCallback(() => {
     if (!canDiscount) {
@@ -413,6 +544,27 @@ export function PosPage() {
     clearDraftEdit();
   };
 
+  const saveCustomerDraftTemp = async (): Promise<CustomerDraftOrder> => {
+    if (!customerId) throw new Error('missing-customer');
+    const payload = buildCustomerDraftOrderPayload(customerId, warehouseId, cart, orderDiscount);
+    if (loadedCustomerDraftOrderId) {
+      return updateCustomerDraftOrder(loadedCustomerDraftOrderId, payload);
+    }
+    const created = await createCustomerDraftOrder(payload);
+    setLoadedCustomerDraftOrderId(created.id);
+    return created;
+  };
+
+  const refreshCustomerDraftList = () => {
+    if (!customerId) return;
+    void fetchCustomerDraftOrders(customerId, [
+      CUSTOMER_DRAFT_ORDER_STATUS.Sent,
+      CUSTOMER_DRAFT_ORDER_STATUS.Confirmed,
+    ])
+      .then(setCustomerDraftOrders)
+      .catch(() => setCustomerDraftOrders([]));
+  };
+
   const saveDraft = async () => {
     if (!warehouseId) {
       message.warning('Chọn kho bán trước');
@@ -425,12 +577,21 @@ export function PosPage() {
     if (!validateDiscounts()) return;
     if (!validateBatchLabels()) return;
     const updatingExisting = Boolean(editingDraftId);
+    const useCustomerDraft = Boolean(customerAppDraftMode && customerId && !editingDraftId);
     setSaving(true);
     const hideLoading = message.loading(
-      updatingExisting ? 'Đang cập nhật đơn nháp...' : 'Đang lưu đơn nháp...',
+      updatingExisting ? 'Đang cập nhật đơn tạm...' : 'Đang lưu đơn tạm...',
       0,
     );
     try {
+      if (useCustomerDraft) {
+        const order = await saveCustomerDraftTemp();
+        hideLoading();
+        message.success(`Đã lưu tạm ${order.draftNumber} — ${formatDisplayMoney(order.totalAmount)}`);
+        setActiveCustomerDraft(order);
+        refreshCustomerDraftList();
+        return;
+      }
       if (editingDraftId) {
         const order = await updateDraftSale(
           editingDraftId,
@@ -438,7 +599,7 @@ export function PosPage() {
         );
         hideLoading();
         message.success(
-          `Đã cập nhật nháp ${order.orderNumber} — ${formatDisplayMoney(order.totalAmount)}`,
+          `Đã cập nhật tạm ${order.orderNumber} — ${formatDisplayMoney(order.totalAmount)}`,
         );
         clearDraftEdit();
         navigate(`/sales/orders?orderId=${order.id}`);
@@ -448,19 +609,63 @@ export function PosPage() {
         );
         hideLoading();
         clearPosDraftEdit();
-        message.success(`Đã lưu nháp ${order.orderNumber}`);
+        message.success(`Đã lưu tạm ${order.orderNumber}`);
         resetCart();
         navigate(`/sales/orders?orderId=${order.id}`);
       }
     } catch (error) {
       hideLoading();
-      message.error(apiErrorMessage(error, updatingExisting ? 'Không cập nhật được đơn nháp' : 'Không lưu được đơn nháp'));
+      message.error(apiErrorMessage(error, updatingExisting ? 'Không cập nhật được đơn tạm' : 'Không lưu được đơn tạm'));
     } finally {
       setSaving(false);
     }
   };
 
-  const confirmCheckout = async ({ payments, loyaltyDiscountAmount }: PosCheckoutConfirm) => {
+  const sendCustomerDraftToApp = async () => {
+    if (!warehouseId) {
+      message.warning('Chọn kho bán trước');
+      return;
+    }
+    if (!customerId) {
+      message.warning('Chọn khách hàng trước khi gửi app');
+      return;
+    }
+    if (cart.length === 0) {
+      message.warning('Thêm ít nhất một sản phẩm');
+      return;
+    }
+    if (!validateDiscounts()) return;
+    if (!validateBatchLabels()) return;
+    setSaving(true);
+    const hideLoading = message.loading('Đang gửi đơn tạm lên app khách...', 0);
+    try {
+      let order = await saveCustomerDraftTemp();
+      if (order.status === CUSTOMER_DRAFT_ORDER_STATUS.Draft) {
+        order = await sendCustomerDraftOrder(order.id);
+        hideLoading();
+        message.success(`Đã gửi ${order.draftNumber} lên app khách`);
+      } else if (order.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent) {
+        hideLoading();
+        message.info(`${order.draftNumber} đã gửi app — chờ khách xác nhận tạm`);
+      } else if (order.status === CUSTOMER_DRAFT_ORDER_STATUS.Confirmed) {
+        hideLoading();
+        message.success(`${order.draftNumber} — khách đã xác nhận tạm trên app`);
+      } else {
+        hideLoading();
+        message.success(`Đã cập nhật ${order.draftNumber}`);
+      }
+      setActiveCustomerDraft(order);
+      setLoadedCustomerDraftOrderId(order.id);
+      refreshCustomerDraftList();
+    } catch (error) {
+      hideLoading();
+      message.error(apiErrorMessage(error, 'Không gửi được đơn tạm'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmCheckout = async ({ payments, loyaltyDiscountAmount, customerVoucherId }: PosCheckoutConfirm) => {
     if (!warehouseId) {
       message.warning('Chọn kho bán trước');
       throw new Error('missing-warehouse');
@@ -482,7 +687,7 @@ export function PosPage() {
       if (editingDraftId) {
         order = await completeDraftSale(editingDraftId, {
           payments,
-          ...buildDraftCompletePayload(customerId, cart, orderDiscount, undefined, loyaltyDiscountAmount),
+          ...buildDraftCompletePayload(customerId, cart, orderDiscount, undefined, loyaltyDiscountAmount, customerVoucherId),
         });
       } else {
         order = await createSale(
@@ -494,11 +699,19 @@ export function PosPage() {
             false,
             payments,
             loyaltyDiscountAmount,
+            customerVoucherId,
           ),
         );
       }
       hideLoading();
       message.success(formatPosCheckoutSuccessMessage(order));
+      if (loadedCustomerDraftOrderId) {
+        try {
+          await linkCustomerDraftOrderSale(loadedCustomerDraftOrderId, order.id);
+        } catch {
+          message.warning('Đã bán nhưng chưa liên kết được đơn tạm — liên hệ IT nếu cần.');
+        }
+      }
       setCheckoutOpen(false);
       clearDraftEdit();
       resetCart();
@@ -530,10 +743,15 @@ export function PosPage() {
       if (!(await validateStock())) return;
       if (!(await validateFefoAllocation())) return;
       if (customerId && pricing.totalAmount > 0) {
-        const loyalty = await fetchPosCustomerLoyalty(customerId, pricing.totalAmount);
+        const [loyalty, vouchers] = await Promise.all([
+          fetchPosCustomerLoyalty(customerId, pricing.totalAmount),
+          fetchPosCustomerVouchers(customerId, pricing.totalAmount),
+        ]);
         setCustomerLoyalty(loyalty);
+        setCustomerVouchers(vouchers);
       } else {
         setCustomerLoyalty(null);
+        setCustomerVouchers([]);
       }
       setCheckoutOpen(true);
     } finally {
@@ -548,6 +766,13 @@ export function PosPage() {
     validateFefoAllocation,
     validateStock,
   ]);
+
+  useEffect(() => {
+    if (!pendingAutoCheckoutRef.current) return;
+    if (draftLoading || cart.length === 0 || !warehouseId) return;
+    pendingAutoCheckoutRef.current = false;
+    void openCheckout();
+  }, [autoCheckoutTick, cart.length, warehouseId, draftLoading, openCheckout]);
 
   const cartLocked = checkoutOpen || saving;
 
@@ -763,8 +988,8 @@ export function PosPage() {
           type="info"
           showIcon
           style={{ marginBottom: 16 }}
-          message={`Đang sửa đơn nháp ${editingDraftNumber}`}
-          description="Thêm/bớt sản phẩm rồi bấm Cập nhật nháp, hoặc Thanh toán để hoàn tất."
+          message={`Đang sửa đơn tạm ${editingDraftNumber}`}
+          description="Thêm/bớt sản phẩm rồi bấm Cập nhật tạm, hoặc Thanh toán để hoàn tất."
           action={
             <Button size="small" onClick={resetCartAndExitDraft}>
               Bỏ sửa
@@ -795,6 +1020,45 @@ export function PosPage() {
           description={`Mở lúc ${dayjs(openShift.openedAt).format('DD-MM-YYYY HH:mm')} — Thu ròng ca: ${formatDisplayMoney(openShift.summary.netTotal)}`}
         />
       )}
+      {customerDraftOrders.length > 0 ? (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Khách có đơn tạm chờ lấy"
+          description={
+            <Space direction="vertical" size={4}>
+              {customerDraftOrders.map((draft) => (
+                <Space key={draft.id} wrap>
+                  <span>
+                    {draft.draftNumber} · {draft.totalAmount.toLocaleString('vi-VN')}đ
+                    {draft.confirmedAt ? ' · Khách đã xác nhận tạm' : ''}
+                  </span>
+                  <Button
+                    size="small"
+                    type="primary"
+                    onClick={() => void loadCustomerDraftIntoPos(draft.id, { autoCheckout: true })}
+                  >
+                    Nạp POS
+                  </Button>
+                </Space>
+              ))}
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Hỏi khách xác nhận lại tại quầy. Bấm Nạp POS để mở thanh toán và in hóa đơn.
+              </Typography.Text>
+            </Space>
+          }
+        />
+      ) : null}
+      {customerAppDraftMode && !editingDraftId ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="Chế độ gửi đơn qua app khách"
+          description="Soạn giỏ → bấm Gửi khách hàng. Khách xem/xác nhận trên app; thanh toán tại quầy khi khách đến lấy."
+        />
+      ) : null}
       <Space wrap style={{ marginBottom: 16 }}>
         <Select
           style={{ width: 200 }}
@@ -809,11 +1073,11 @@ export function PosPage() {
           options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
         />
         <Select
-          allowClear
+          allowClear={!customerAppDraftMode}
           showSearch
           optionFilterProp="label"
           style={{ width: 220 }}
-          placeholder="Khách hàng (tùy chọn)"
+          placeholder={customerAppDraftMode ? 'Chọn khách hàng' : 'Khách hàng (tùy chọn)'}
           value={customerId}
           onChange={setCustomerId}
           options={customers.map((c) => ({
@@ -821,6 +1085,21 @@ export function PosPage() {
             label: `${c.customerCode} — ${c.fullName}`,
           }))}
         />
+        {!editingDraftId ? (
+          <Space align="center" size={8}>
+            <Switch
+              checked={customerAppDraftMode}
+              disabled={!canWrite}
+              onChange={(checked) => {
+                setCustomerAppDraftMode(checked);
+                if (checked && !customerId) {
+                  message.info('Chọn khách hàng để gửi đơn qua app');
+                }
+              }}
+            />
+            <Typography.Text>Gửi đơn qua app khách</Typography.Text>
+          </Space>
+        ) : null}
         <Space direction="vertical" size={2}>
           <AutoComplete
             style={{ width: 320 }}
@@ -892,23 +1171,44 @@ export function PosPage() {
             strong
           />
         </PosSummaryPanel>
-        <Space>
-          <Button
-            disabled={!canWrite || cart.length === 0 || draftLoading}
-            loading={saving}
-            onClick={() => void saveDraft()}
-          >
-            {editingDraftId ? 'Cập nhật nháp' : 'Lưu nháp'}
-          </Button>
-          <Button
-            type="primary"
-            size="large"
-            disabled={!canWrite || cart.length === 0 || !openShift || cart.some((l) => l.quantity <= 0)}
-            loading={checkoutValidating}
-            onClick={() => void openCheckout()}
-          >
-            Thanh toán
-          </Button>
+        <Space direction="vertical" align="end">
+          {customerAppDraftMode && activeCustomerDraft && customerId && !editingDraftId ? (
+            <CustomerDraftOrderStatusBar draft={activeCustomerDraft} />
+          ) : null}
+          <Space>
+            {customerAppDraftMode && !editingDraftId ? (
+              <Tooltip title={!customerId ? 'Chọn khách hàng trước khi gửi app' : undefined}>
+                <span>
+                  <Button
+                    type="primary"
+                    icon={<SendOutlined />}
+                    disabled={!canWrite || !customerId || cart.length === 0 || draftLoading}
+                    loading={saving}
+                    onClick={() => void sendCustomerDraftToApp()}
+                  >
+                    Gửi khách hàng
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button
+                disabled={!canWrite || cart.length === 0 || draftLoading}
+                loading={saving}
+                onClick={() => void saveDraft()}
+              >
+                {editingDraftId ? 'Cập nhật tạm' : 'Lưu tạm'}
+              </Button>
+            )}
+            <Button
+              type={customerAppDraftMode && !editingDraftId ? 'default' : 'primary'}
+              size="large"
+              disabled={!canWrite || cart.length === 0 || !openShift || cart.some((l) => l.quantity <= 0)}
+              loading={checkoutValidating}
+              onClick={() => void openCheckout()}
+            >
+              Thanh toán
+            </Button>
+          </Space>
         </Space>
       </div>
 
@@ -920,6 +1220,7 @@ export function PosPage() {
         lineDiscountTotal={pricing.lineDiscountTotal}
         orderDiscountAmount={pricing.orderDiscountAmount}
         customerLoyalty={customerLoyalty}
+        customerVouchers={customerVouchers}
         onCancel={() => setCheckoutOpen(false)}
         onConfirm={(result) => confirmCheckout(result)}
       />

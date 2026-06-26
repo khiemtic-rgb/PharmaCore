@@ -8,6 +8,7 @@ internal sealed class SalesService : ISalesService
 {
     private readonly SalesRepository _repository;
     private readonly LoyaltyPosService _loyaltyPos;
+    private readonly VoucherPosService _voucherPos;
     private readonly ITenantContext _tenant;
     private readonly ICurrentUserAccessor _user;
     private readonly IAuditLogService _audit;
@@ -15,12 +16,14 @@ internal sealed class SalesService : ISalesService
     public SalesService(
         SalesRepository repository,
         LoyaltyPosService loyaltyPos,
+        VoucherPosService voucherPos,
         ITenantContext tenant,
         ICurrentUserAccessor user,
         IAuditLogService audit)
     {
         _repository = repository;
         _loyaltyPos = loyaltyPos;
+        _voucherPos = voucherPos;
         _tenant = tenant;
         _user = user;
         _audit = audit;
@@ -83,6 +86,16 @@ internal sealed class SalesService : ISalesService
             _tenant.TenantId,
             customerId,
             orderTotalBeforeRedeem,
+            cancellationToken);
+
+    public Task<PosCustomerVoucherListResult> GetPosCustomerVouchersAsync(
+        Guid customerId,
+        decimal orderTotalBeforeVoucher,
+        CancellationToken cancellationToken = default) =>
+        _voucherPos.GetPosCustomerVouchersAsync(
+            _tenant.TenantId,
+            customerId,
+            orderTotalBeforeVoucher,
             cancellationToken);
 
     public Task<IReadOnlyList<SalesOrderListItemDto>> GetOrdersAsync(

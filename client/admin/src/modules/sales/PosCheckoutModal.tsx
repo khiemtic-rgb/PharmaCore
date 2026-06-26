@@ -4,7 +4,7 @@ import { Alert, Button, Form, InputNumber, Modal, Select, Space, Switch, Typogra
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 
-import type { PosCheckoutConfirm, PosCheckoutPaymentLine, PosCustomerLoyalty } from '@/shared/api/sales.types';
+import type { PosCheckoutConfirm, PosCheckoutPaymentLine, PosCustomerLoyalty, PosCustomerVoucher } from '@/shared/api/sales.types';
 
 import { SALES_PAYMENT_METHOD_LABELS } from '@/shared/api/sales.types';
 
@@ -43,6 +43,8 @@ type Props = {
   orderDiscountAmount: number;
 
   customerLoyalty?: PosCustomerLoyalty | null;
+
+  customerVouchers?: PosCustomerVoucher[] | null;
 
   onCancel: () => void;
 
@@ -194,6 +196,8 @@ export function PosCheckoutModal({
 
   customerLoyalty,
 
+  customerVouchers,
+
   onCancel,
 
   onConfirm,
@@ -202,7 +206,22 @@ export function PosCheckoutModal({
 
   const showLoyaltyPanel = Boolean(customerLoyalty?.loyaltyEnabled);
 
-  const maxRedeemMoney = customerLoyalty?.maxRedeemDiscountAmount ?? 0;
+  const [selectedCustomerVoucherId, setSelectedCustomerVoucherId] = useState<string>();
+
+  const selectedVoucher = useMemo(
+    () => customerVouchers?.find((v) => v.customerVoucherId === selectedCustomerVoucherId),
+    [customerVouchers, selectedCustomerVoucherId],
+  );
+
+  const voucherDiscount = selectedVoucher ? roundMoney(selectedVoucher.discountAmount) : 0;
+
+  const orderAfterVoucher = roundMoney(Math.max(0, totalAmount - voucherDiscount));
+
+  const maxRedeemMoney = useMemo(() => {
+    if (!customerLoyalty || orderAfterVoucher <= 0) return 0;
+    const capByPercent = roundMoney((orderAfterVoucher * customerLoyalty.maxRedeemPercent) / 100);
+    return Math.min(customerLoyalty.maxRedeemDiscountAmount, capByPercent, orderAfterVoucher);
+  }, [customerLoyalty, orderAfterVoucher]);
 
   const canOfferRedeem =
 
@@ -230,7 +249,7 @@ export function PosCheckoutModal({
 
     redeemEnabled && canOfferRedeem ? roundMoney(Math.max(0, redeemDiscountAmount)) : 0;
 
-  const payableTotal = roundMoney(Math.max(0, totalAmount - loyaltyDiscount));
+  const payableTotal = roundMoney(Math.max(0, orderAfterVoucher - loyaltyDiscount));
 
   const redeemPointsUsed =
 
@@ -263,6 +282,8 @@ export function PosCheckoutModal({
     setRedeemEnabled(false);
 
     setRedeemDiscountAmount(0);
+
+    setSelectedCustomerVoucherId(undefined);
 
   }, [open, totalAmount]);
 
@@ -436,6 +457,8 @@ export function PosCheckoutModal({
 
             payments: [],
 
+            ...(selectedCustomerVoucherId ? { customerVoucherId: selectedCustomerVoucherId } : {}),
+
             ...(loyaltyDiscount > 0 ? { loyaltyDiscountAmount: loyaltyDiscount } : {}),
 
           }),
@@ -469,6 +492,8 @@ export function PosCheckoutModal({
         onConfirm({
 
           payments: normalizePaymentsForApi(rows, payableTotal),
+
+          ...(selectedCustomerVoucherId ? { customerVoucherId: selectedCustomerVoucherId } : {}),
 
           ...(loyaltyDiscount > 0 ? { loyaltyDiscountAmount: loyaltyDiscount } : {}),
 
@@ -594,6 +619,20 @@ export function PosCheckoutModal({
 
         )}
 
+        {voucherDiscount > 0 && (
+
+          <PosSummaryRow
+
+            label="Voucher"
+
+            value={`−${formatDisplayMoney(voucherDiscount)}`}
+
+            danger
+
+          />
+
+        )}
+
         {loyaltyDiscount > 0 && (
 
           <PosSummaryRow
@@ -611,6 +650,50 @@ export function PosCheckoutModal({
         <PosSummaryRow label="Khách phải trả" value={formatDisplayMoney(payableTotal)} strong />
 
       </Space>
+
+
+
+      {(customerVouchers?.length ?? 0) > 0 ? (
+
+        <div style={{ marginBottom: 16 }}>
+
+          <Typography.Text strong>Voucher khách</Typography.Text>
+
+          <Select
+
+            allowClear
+
+            placeholder="Chọn voucher (tuỳ chọn)"
+
+            style={{ width: '100%', marginTop: 8 }}
+
+            value={selectedCustomerVoucherId}
+
+            options={customerVouchers!.map((v) => ({
+
+              value: v.customerVoucherId,
+
+              label: `${v.voucherCode} · −${formatDisplayMoney(v.discountAmount)} (${v.voucherName})`,
+
+            }))}
+
+            onChange={(value) => {
+
+              setSubmitError(null);
+
+              setSelectedCustomerVoucherId(value);
+
+              setRedeemEnabled(false);
+
+              setRedeemDiscountAmount(0);
+
+            }}
+
+          />
+
+        </div>
+
+      ) : null}
 
 
 

@@ -1,12 +1,38 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Tabs } from 'antd';
+import {
+  ContainerOutlined,
+  CreditCardOutlined,
+  FileTextOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
+import {
+  moduleTabsShellStyle,
+  secondaryTabLabel,
+  secondaryTabsBarStyle,
+} from '@/shared/components/module-tabs.ui';
 
 const tabs = [
-  { key: 'orders', label: 'Đơn đặt hàng', path: '/procurement/purchase-orders' },
-  { key: 'receipts', label: 'Phiếu nhập hàng', path: '/procurement/goods-receipts' },
-  { key: 'suppliers', label: 'Nhà cung cấp', path: '/procurement/suppliers' },
-  { key: 'payments', label: 'Thanh toán NCC', path: '/procurement/supplier-payments' },
+  {
+    key: 'orders',
+    label: 'Đơn đặt hàng',
+    path: '/procurement/purchase-orders',
+    icon: <FileTextOutlined />,
+  },
+  {
+    key: 'receipts',
+    label: 'Phiếu nhập hàng',
+    path: '/procurement/goods-receipts',
+    icon: <ContainerOutlined />,
+  },
+  { key: 'suppliers', label: 'Nhà cung cấp', path: '/procurement/suppliers', icon: <TeamOutlined /> },
+  {
+    key: 'payments',
+    label: 'Thanh toán NCC',
+    path: '/procurement/supplier-payments',
+    icon: <CreditCardOutlined />,
+  },
 ];
 
 export function ProcurementLayout() {
@@ -23,15 +49,22 @@ export function ProcurementLayout() {
 
   return (
     <div>
-      <Tabs
-        activeKey={activeKey}
-        items={tabs.map((t) => ({ key: t.key, label: t.label }))}
-        onChange={(key) => {
-          const tab = tabs.find((t) => t.key === key);
-          if (tab) navigate(tab.path);
-        }}
-        style={{ marginBottom: 16 }}
-      />
+      <div style={moduleTabsShellStyle}>
+        <div style={secondaryTabsBarStyle}>
+          <Tabs
+            activeKey={activeKey}
+            size="small"
+            items={tabs.map((t) => ({
+              key: t.key,
+              label: secondaryTabLabel(t.label, t.icon),
+            }))}
+            onChange={(key) => {
+              const tab = tabs.find((t) => t.key === key);
+              if (tab) navigate(tab.path);
+            }}
+          />
+        </div>
+      </div>
       <Outlet />
     </div>
   );

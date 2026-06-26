@@ -6,6 +6,7 @@ public static class CustomerConsentChannels
     public const short Zalo = 2;
     public const short Email = 3;
     public const short AppPush = 4;
+    public const short InApp = 5;
 }
 
 public static class CustomerConsentPurposes

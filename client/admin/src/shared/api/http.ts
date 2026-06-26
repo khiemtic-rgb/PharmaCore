@@ -24,27 +24,18 @@ let refreshPromise: Promise<string | null> | null = null;
 http.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-      _retry403?: boolean;
-    };
+    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
 
+    // Chi refresh token khi 401 ro rang — khong logout khi API mat ket noi (khong co response).
     if (
-      (status === 401 || status === 403) &&
+      status === 401 &&
       original &&
+      !original._retry &&
       !original.url?.includes('/auth/login') &&
       !original.url?.includes('/auth/refresh')
     ) {
-      if (status === 403 && original._retry403) {
-        return Promise.reject(error);
-      }
-      if (status === 401 && original._retry) {
-        return Promise.reject(error);
-      }
-
-      if (status === 403) original._retry403 = true;
-      if (status === 401) original._retry = true;
+      original._retry = true;
 
       if (!refreshPromise) {
         refreshPromise = refreshAccessToken().finally(() => {
@@ -53,14 +44,15 @@ http.interceptors.response.use(
       }
 
       const newToken = await refreshPromise;
-      if (!newToken) {
-        useAuthStore.getState().clearSession();
-        window.location.href = '/login';
-        return Promise.reject(error);
+      if (newToken) {
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return http(original);
       }
 
-      original.headers.Authorization = `Bearer ${newToken}`;
-      return http(original);
+      if (!useAuthStore.getState().accessToken) {
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);
@@ -70,16 +62,21 @@ http.interceptors.response.use(
 async function refreshAccessToken(): Promise<string | null> {
   const { refreshToken, setSession, clearSession } = useAuthStore.getState();
   if (!refreshToken) {
-    clearSession();
     return null;
   }
 
   try {
-    const { data } = await axios.post<LoginResponse>('/api/auth/refresh', { refreshToken });
+    const { data } = await axios.post<LoginResponse>(
+      '/api/auth/refresh',
+      { refreshToken },
+      { timeout: 10_000 },
+    );
     setSession(data);
     return data.accessToken;
-  } catch {
-    clearSession();
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearSession();
+    }
     return null;
   }
 }

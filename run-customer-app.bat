@@ -4,7 +4,7 @@ cd /d "%~dp0"
 title PharmaCore Customer App
 
 echo === PharmaCore Customer App ===
-echo Web:  https://localhost:5174  (hoac http://localhost:5174)
+echo Web:  http://localhost:5174  (dung http — push/PWA dev)
 echo API:  http://localhost:5290 (can chay rieng)
 echo Demo: 0909123456 / OTP 000000 / DEMO_PHARMACY
 echo.
@@ -28,8 +28,13 @@ if not exist "client\customer-app\node_modules" (
     popd
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $h = Invoke-RestMethod -Uri 'http://localhost:5290/api/health' -TimeoutSec 3; if ($h.status -ne 'ok') { throw 'bad' } } catch { Write-Host '[CANH BAO] API chua chay tai http://localhost:5290' -ForegroundColor Yellow; Write-Host '         Chay run-dev.bat hoac .\scripts\restart-api.ps1 truoc.' -ForegroundColor Yellow; Write-Host '' }"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\ensure-api.ps1"
+if errorlevel 1 (
+    echo [LOI] Khong khoi dong duoc API. Xem .dev\api.err.log
+    pause
+    exit /b 1
+)
 
 pushd client\customer-app
-call npm run dev
+call npm run dev:vite
 popd

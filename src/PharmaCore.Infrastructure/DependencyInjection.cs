@@ -36,6 +36,7 @@ public static class DependencyInjection
 
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<CustomerAppAuthSettings>(configuration.GetSection(CustomerAppAuthSettings.SectionName));
+        services.Configure<CustomerAppPushOptions>(configuration.GetSection(CustomerAppPushSettings.SectionName));
 
         services.AddSingleton<IDbConnectionFactory>(_ => new NpgsqlConnectionFactory(connectionString));
         services.AddScoped<ITenantContext, TenantContext>();
@@ -56,8 +57,28 @@ public static class DependencyInjection
         services.AddScoped<CustomerReminderRepository>();
         services.AddScoped<ICustomerReminderService, CustomerReminderService>();
 
+        services.AddScoped<CustomerCatalogRepository>();
+        services.AddScoped<ICustomerCatalogService, CustomerCatalogService>();
+
+        services.AddScoped<CustomerAppConsentRepository>();
+        services.AddScoped<ICustomerAppConsentService, CustomerAppConsentService>();
+
+        services.AddScoped<CustomerPushRepository>();
+        services.AddScoped<ICustomerPushService, CustomerPushService>();
+        services.AddHostedService<MedicationReminderPushWorker>();
+
+        services.AddSingleton<IChatEventHub, ChatEventHub>();
+        services.AddScoped<CustomerChatRepository>();
+        services.AddScoped<ICustomerChatService, CustomerChatService>();
+
+        services.AddScoped<CustomerDraftOrderRepository>();
+        services.AddScoped<ICustomerDraftOrderService, CustomerDraftOrderService>();
+
         services.AddScoped<LoyaltyAdminRepository>();
         services.AddScoped<LoyaltyPosService>();
+        services.AddScoped<VoucherRepository>();
+        services.AddScoped<VoucherPosService>();
+        services.AddScoped<IVoucherAdminService, VoucherAdminService>();
         services.AddScoped<ILoyaltyAdminService, LoyaltyAdminService>();
 
         services.AddScoped<CatalogRepository>();

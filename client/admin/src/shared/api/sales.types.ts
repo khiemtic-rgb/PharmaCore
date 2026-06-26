@@ -191,6 +191,9 @@ export type SalesOrderDetail = Omit<
   loyaltyPointsEarned?: number | null;
   loyaltyPointsRedeemed?: number;
   loyaltyDiscountAmount?: number;
+  voucherDiscountAmount?: number;
+  voucherCode?: string | null;
+  voucherName?: string | null;
 };
 
 export const SALES_DISCOUNT_TYPES = {
@@ -216,7 +219,19 @@ export type PosCheckoutConfirm = {
   payments: PosCheckoutPaymentLine[];
   loyaltyPointsToRedeem?: number;
   loyaltyDiscountAmount?: number;
+  customerVoucherId?: string;
 };
+
+export interface PosCustomerVoucher {
+  customerVoucherId: string;
+  voucherId: string;
+  voucherCode: string;
+  voucherName: string;
+  discountType: number;
+  discountValue: number;
+  minOrderAmount: number;
+  discountAmount: number;
+}
 
 export interface PosCustomerLoyalty {
   loyaltyEnabled: boolean;

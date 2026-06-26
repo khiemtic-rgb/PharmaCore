@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Checkbox,
@@ -21,13 +21,11 @@ import {
   createReminder,
   fetchReminders,
   getApiErrorMessage,
+  searchProducts,
   updateReminder,
 } from '@/shared/api/customer-app.api';
-import type { MedicationReminder } from '@/shared/api/customer-app.types';
-import {
-  DAY_LABELS,
-  DEMO_REMINDER_PRODUCTS,
-} from '@/shared/api/customer-app.types';
+import type { CustomerProductSearchItem, MedicationReminder } from '@/shared/api/customer-app.types';
+import { DAY_LABELS } from '@/shared/api/customer-app.types';
 import { normalizeReminderId } from '@/shared/api/reminder-normalize';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 
@@ -35,6 +33,11 @@ const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({
   label,
   value: Number(value),
 }));
+
+function formatProductLabel(product: CustomerProductSearchItem) {
+  const unit = product.saleUnitName ? ` · ${product.saleUnitName}` : '';
+  return `${product.productName} (${product.productCode})${unit}`;
+}
 
 function stableReminderOrder(items: MedicationReminder[]): MedicationReminder[] {
   return [...items].sort((a, b) => {
@@ -127,7 +130,7 @@ function ReminderRow({
           loading={togglingId === reminderId}
           checkedChildren="Bật"
           unCheckedChildren="Tắt"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(_, e) => e.stopPropagation()}
           onChange={(checked) => onToggle(reminderId, checked)}
         />
         <Button type="link" size="small" style={{ padding: 0 }} onClick={() => onEdit(item)}>
@@ -145,12 +148,27 @@ export function RemindersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MedicationReminder | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [productOptions, setProductOptions] = useState<CustomerProductSearchItem[]>([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
   const [form] = Form.useForm();
+  const searchTimerRef = useRef<number | null>(null);
 
   const visibleItems = useMemo(() => {
     const ordered = stableReminderOrder(items);
     return includeInactive ? ordered : ordered.filter((item) => item.isActive);
   }, [items, includeInactive]);
+
+  const loadProducts = useCallback(async (search?: string) => {
+    setProductSearchLoading(true);
+    try {
+      const result = await searchProducts(search, 1, 30);
+      setProductOptions(result.items);
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Không tải được danh sách sản phẩm'));
+    } finally {
+      setProductSearchLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -170,10 +188,24 @@ export function RemindersPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    void loadProducts();
+  }, [modalOpen, loadProducts]);
+
+  const onProductSearch = (value: string) => {
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = window.setTimeout(() => {
+      void loadProducts(value);
+    }, 300);
+  };
+
   const openCreate = () => {
     setEditing(null);
     form.setFieldsValue({
-      productId: DEMO_REMINDER_PRODUCTS[0].id,
+      productId: undefined,
       dosageNote: '',
       remindTime: dayjs('08:00', 'HH:mm'),
       daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
@@ -183,6 +215,19 @@ export function RemindersPage() {
 
   const openEdit = (item: MedicationReminder) => {
     setEditing(item);
+    setProductOptions((prev) => {
+      if (prev.some((p) => p.id === item.productId)) return prev;
+      return [
+        {
+          id: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          genericName: null,
+          saleUnitName: null,
+        },
+        ...prev,
+      ];
+    });
     form.setFieldsValue({
       productId: item.productId,
       dosageNote: item.dosageNote ?? '',
@@ -248,6 +293,11 @@ export function RemindersPage() {
     }
   };
 
+  const selectOptions = productOptions.map((p) => ({
+    value: p.id,
+    label: formatProductLabel(p),
+  }));
+
   return (
     <div>
       <BackToHomeButton />
@@ -297,8 +347,16 @@ export function RemindersPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="productId" label="Sản phẩm" rules={[{ required: true }]}>
-            <Select options={DEMO_REMINDER_PRODUCTS.map((p) => ({ value: p.id, label: p.label }))} />
+          <Form.Item name="productId" label="Sản phẩm" rules={[{ required: true, message: 'Chọn sản phẩm' }]}>
+            <Select
+              showSearch
+              filterOption={false}
+              loading={productSearchLoading}
+              options={selectOptions}
+              placeholder="Gõ tên hoặc mã sản phẩm"
+              onSearch={onProductSearch}
+              notFoundContent={productSearchLoading ? <Spin size="small" /> : 'Không tìm thấy sản phẩm'}
+            />
           </Form.Item>
           <Form.Item name="dosageNote" label="Liều dùng / ghi chú">
             <Input placeholder="1 viên sau ăn sáng" />

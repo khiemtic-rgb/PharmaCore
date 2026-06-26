@@ -45,7 +45,7 @@ import { apiErrorMessage } from '@/shared/api/api-error';
 import { uploadImage } from '@/shared/api/files.api';
 import type { LookupItem, ProductDetail } from '@/shared/api/catalog.types';
 import { DRUG_TYPE_LABELS, PRICE_TYPE_LABELS, SALE_UNIT_OPTIONS, STATUS_LABELS, BARCODE_TYPE_LABELS } from '@/shared/api/catalog.types';
-import { formatDisplayMoney } from '@/shared/utils/money';
+import { formatDisplayMoney, moneyInputNumberPropsAllowZeroSuffix, moneyInputNumberStyle } from '@/shared/utils/money';
 
 type TabKey = 'general' | 'details' | 'ingredients';
 
@@ -1329,11 +1329,11 @@ export function ProductFormDrawer({ open, editing, onClose, onCreated, onUpdated
           disabled={!unitOptions.length}
         />
         <InputNumber
-          min={0}
-          placeholder="Giá (VND)"
+          placeholder="Giá bán"
           value={draftPrice}
-          onChange={(v) => setDraftPrice(v ?? undefined)}
-          style={{ width: 140 }}
+          onChange={(v) => setDraftPrice(v && v > 0 ? v : undefined)}
+          style={{ ...moneyInputNumberStyle, width: 160 }}
+          {...moneyInputNumberPropsAllowZeroSuffix}
         />
         <Button type="primary" onClick={() => void handleAddPrice()} loading={commercialSaving}>
           Thêm

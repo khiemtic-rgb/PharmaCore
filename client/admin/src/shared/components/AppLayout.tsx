@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Space, Typography, theme } from 'antd';
 import {
   MenuFoldOutlined,
@@ -8,6 +8,8 @@ import {
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { buildMenuItems, moduleRegistry } from '@/modules/registry';
+import { ApiHealthBanner } from '@/shared/components/ApiHealthBanner';
+import { MODULE_PRIMARY_BG, primaryTabLabel } from '@/shared/components/module-tabs.ui';
 import { useAuthStore } from '@/shared/auth/auth.store';
 import { logoutApi } from '@/shared/api/auth.api';
 
@@ -57,16 +59,47 @@ export function AppLayout() {
   };
 
   const moduleNav = (
-    <Menu
-      mode="horizontal"
-      selectedKeys={[activeKey]}
-      items={enabledModules.map((m) => ({ key: m.key, label: m.label }))}
-      onClick={({ key }) => {
-        const module = moduleRegistry.find((m) => m.key === key);
-        if (module?.enabled) navigate(module.path);
+    <nav
+      aria-label="Module chính"
+      style={{
+        display: 'flex',
+        flex: 1,
+        minWidth: 0,
+        alignItems: 'stretch',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        scrollbarWidth: 'thin',
       }}
-      style={{ flex: 1, minWidth: 0, borderBottom: 'none', lineHeight: '46px' }}
-    />
+    >
+      {enabledModules.map((m) => {
+        const selected = activeKey === m.key;
+        const itemStyle: CSSProperties = {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '0 14px',
+          height: 46,
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+          borderBottom: `2px solid ${selected ? token.colorPrimary : 'transparent'}`,
+          color: selected ? token.colorPrimary : token.colorText,
+        };
+        return (
+          <button
+            key={m.key}
+            type="button"
+            style={itemStyle}
+            onClick={() => navigate(m.path)}
+          >
+            {m.icon}
+            {primaryTabLabel(m.label)}
+          </button>
+        );
+      })}
+    </nav>
   );
 
   return (
@@ -112,7 +145,7 @@ export function AppLayout() {
         <Header
           style={{
             padding: '0 16px',
-            background: token.colorBgContainer,
+            background: MODULE_PRIMARY_BG,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -143,6 +176,7 @@ export function AppLayout() {
             </Space>
           </Dropdown>
         </Header>
+        <ApiHealthBanner />
         <Content style={{ margin: 24 }}>
           <Outlet />
         </Content>

@@ -34,6 +34,15 @@ public sealed class SalesController : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [HttpGet("pos/customer-vouchers")]
+    [Authorize(Policy = SalesPolicies.Read)]
+    [ProducesResponseType(typeof(PosCustomerVoucherListResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PosCustomerVoucherListResult>> GetPosCustomerVouchers(
+        [FromQuery] Guid customerId,
+        [FromQuery] decimal orderTotal,
+        CancellationToken cancellationToken = default) =>
+        Ok(await _sales.GetPosCustomerVouchersAsync(customerId, orderTotal, cancellationToken));
+
     [HttpGet("pos/lookup")]
     [Authorize(Policy = SalesPolicies.Read)]
     public async Task<ActionResult<PosProductLookupDto>> Lookup(

@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/ensure-api.ps1 && vite",
+    "dev:vite": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
@@ -24,6 +25,9 @@
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.8.2",
-    "vite": "^6.2.2"
+    "vite": "^6.2.2",
+    "vite-plugin-pwa": "^0.21.2",
+    "workbox-core": "^7.3.0",
+    "workbox-precaching": "^7.3.0"
   }
 }

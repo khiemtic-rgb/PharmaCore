@@ -1278,6 +1278,557 @@
         }
       }
     },
+    "/api/customer-app/catalog/products": {
+      "get": {
+        "tags": [
+          "CustomerAppCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProductSearchResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProductSearchResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerProductSearchResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/chat/thread": {
+      "get": {
+        "tags": [
+          "CustomerAppChat"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatThreadDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatThreadDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatThreadDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/chat/messages": {
+      "get": {
+        "tags": [
+          "CustomerAppChat"
+        ],
+        "parameters": [
+          {
+            "name": "beforeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageListResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CustomerAppChat"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendCustomerChatMessageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendCustomerChatMessageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendCustomerChatMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/chat/read": {
+      "post": {
+        "tags": [
+          "CustomerAppChat"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/customer-app/chat/events": {
+      "get": {
+        "tags": [
+          "CustomerAppChat"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/customer-app/consents": {
+      "get": {
+        "tags": [
+          "CustomerAppConsent"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsentDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsentDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CustomerAppConsent"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerConsentsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerConsentsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerConsentsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsentDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsentDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerConsentDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/consents/care-reminder-eligible": {
+      "get": {
+        "tags": [
+          "CustomerAppConsent"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/draft-orders": {
+      "get": {
+        "tags": [
+          "CustomerAppDraftOrders"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/draft-orders/{id}": {
+      "get": {
+        "tags": [
+          "CustomerAppDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/draft-orders/{id}/confirm": {
+      "post": {
+        "tags": [
+          "CustomerAppDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/draft-orders/{id}/hide": {
+      "post": {
+        "tags": [
+          "CustomerAppDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/customer-app/loyalty/summary": {
       "get": {
         "tags": [
@@ -1445,6 +1996,125 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CustomerVoucherListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/push/status": {
+      "get": {
+        "tags": [
+          "CustomerAppPush"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-app/push/subscribe": {
+      "post": {
+        "tags": [
+          "CustomerAppPush"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPushSubscriptionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPushSubscriptionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPushSubscriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CustomerAppPush"
+        ],
+        "parameters": [
+          {
+            "name": "endpoint",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1734,6 +2404,699 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-chat/threads": {
+      "get": {
+        "tags": [
+          "CustomerChat"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChatThreadListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChatThreadListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChatThreadListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-chat/threads/{customerId}/messages": {
+      "get": {
+        "tags": [
+          "CustomerChat"
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "beforeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChatMessageListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChatMessageListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChatMessageListResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CustomerChat"
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendStaffChatMessageRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendStaffChatMessageRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendStaffChatMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerChatMessageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-chat/threads/{customerId}/read": {
+      "post": {
+        "tags": [
+          "CustomerChat"
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/sales/customer-chat/events": {
+      "get": {
+        "tags": [
+          "CustomerChat"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/sales/customer-draft-orders": {
+      "get": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderListResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDraftOrderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDraftOrderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDraftOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-draft-orders/{id}": {
+      "get": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDraftOrderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDraftOrderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDraftOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-draft-orders/{id}/send": {
+      "post": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-draft-orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-draft-orders/{id}/pos-load": {
+      "get": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderPosLoadDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderPosLoadDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDraftOrderPosLoadDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/customer-draft-orders/{id}/link-sale": {
+      "post": {
+        "tags": [
+          "CustomerDraftOrders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCustomerDraftOrderRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCustomerDraftOrderRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCustomerDraftOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2313,6 +3676,81 @@
         }
       }
     },
+    "/api/loyalty/settings": {
+      "get": {
+        "tags": [
+          "LoyaltySettings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyAdminSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyAdminSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyAdminSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "LoyaltySettings"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLoyaltyAdminSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLoyaltyAdminSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLoyaltyAdminSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyAdminSettingsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyAdminSettingsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyAdminSettingsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/inventory/opening-balance/batches": {
       "get": {
         "tags": [
@@ -2424,6 +3862,18 @@
               "format": "uuid"
             }
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "PharmaCore.Api"
         ],
         "responses": {
           "200": {
@@ -4203,6 +5653,120 @@
                   "items": {
                     "$ref": "#/components/schemas/CustomerListItemDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/pos/customer-loyalty": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderTotal",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCustomerLoyaltyDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCustomerLoyaltyDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCustomerLoyaltyDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/pos/customer-vouchers": {
+      "get": {
+        "tags": [
+          "Sales"
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "orderTotal",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCustomerVoucherListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCustomerVoucherListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCustomerVoucherListResult"
                 }
               }
             }
@@ -6216,6 +7780,459 @@
         }
       }
     },
+    "/api/loyalty/vouchers": {
+      "get": {
+        "tags": [
+          "Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherListResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Vouchers"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVoucherRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVoucherRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVoucherRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loyalty/vouchers/{id}": {
+      "get": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVoucherRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVoucherRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertVoucherRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherAdminDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loyalty/vouchers/{id}/issue": {
+      "post": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueVoucherRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueVoucherRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueVoucherRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/loyalty/vouchers/{id}/issue-candidates/search": {
+      "post": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoucherIssueCandidateSearchRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoucherIssueCandidateSearchRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoucherIssueCandidateSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherIssueCandidateListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherIssueCandidateListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoucherIssueCandidateListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loyalty/vouchers/{id}/issue-bulk": {
+      "post": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueVoucherBulkRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueVoucherBulkRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueVoucherBulkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueVoucherBulkResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueVoucherBulkResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueVoucherBulkResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loyalty/vouchers/{id}/issued": {
+      "get": {
+        "tags": [
+          "Vouchers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedCustomerVoucherListResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedCustomerVoucherListResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedCustomerVoucherListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/inventory/warehouses/branches": {
       "get": {
         "tags": [
@@ -6606,6 +8623,74 @@
         },
         "additionalProperties": false
       },
+      "AdminChatMessageListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerChatMessageDto"
+            },
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminChatThreadListItemDto": {
+        "type": "object",
+        "properties": {
+          "threadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "staffUnreadCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastMessagePreview": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdminChatThreadListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminChatThreadListItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AuthUserDto": {
         "type": "object",
         "properties": {
@@ -6823,6 +8908,21 @@
           },
           "notes": {
             "type": "string",
+            "nullable": true
+          },
+          "loyaltyPointsToRedeem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "loyaltyDiscountAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "customerVoucherId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -7321,6 +9421,21 @@
           },
           "saveAsDraft": {
             "type": "boolean"
+          },
+          "loyaltyPointsToRedeem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "loyaltyDiscountAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "customerVoucherId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -7506,6 +9621,76 @@
         },
         "additionalProperties": false
       },
+      "CustomerChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "senderType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "senderName": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerChatMessageListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerChatMessageDto"
+            },
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerChatThreadDto": {
+        "type": "object",
+        "properties": {
+          "threadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastMessageAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastMessagePreview": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CustomerConsentDto": {
         "type": "object",
         "properties": {
@@ -7544,6 +9729,357 @@
           },
           "notes": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "draftNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "chatThreadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "subtotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "orderDiscountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "orderDiscountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "salesOrderId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "salesOrderNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDraftOrderLineDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderLineDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitName": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "lineDiscountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lineDiscountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "lineAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "dosageNote": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderLineRequest": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "dosageNote": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "draftNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "itemCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "hiddenByCustomerAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDraftOrderListItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderPosLineDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitName": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "dosageNote": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerDraftOrderPosLoadDto": {
+        "type": "object",
+        "properties": {
+          "draftOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "draftNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderDiscountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "orderDiscountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDraftOrderPosLineDto"
+            },
             "nullable": true
           }
         },
@@ -7623,6 +10159,57 @@
           "message": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerProductSearchItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "genericName": {
+            "type": "string",
+            "nullable": true
+          },
+          "saleUnitName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CustomerProductSearchResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerProductSearchItemDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -7954,6 +10541,92 @@
         },
         "additionalProperties": false
       },
+      "IssueVoucherBulkRequest": {
+        "type": "object",
+        "properties": {
+          "customerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IssueVoucherBulkResult": {
+        "type": "object",
+        "properties": {
+          "issuedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedAlreadyHad": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalidCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IssueVoucherRequest": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
+      "IssuedCustomerVoucherDto": {
+        "type": "object",
+        "properties": {
+          "customerVoucherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "IssuedCustomerVoucherListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IssuedCustomerVoucherDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "LastPurchasePriceHintDto": {
         "type": "object",
         "properties": {
@@ -7974,6 +10647,16 @@
           "documentNumber": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LinkCustomerDraftOrderRequest": {
+        "type": "object",
+        "properties": {
+          "salesOrderId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -8017,6 +10700,60 @@
         },
         "additionalProperties": false
       },
+      "LoyaltyAdminSettingsDto": {
+        "type": "object",
+        "properties": {
+          "loyaltyEnabled": {
+            "type": "boolean"
+          },
+          "program": {
+            "$ref": "#/components/schemas/LoyaltyProgramAdminDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyProgramAdminDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "programCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "programName": {
+            "type": "string",
+            "nullable": true
+          },
+          "pointsPerAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "amountPerPoint": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxRedeemPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoyaltyTierAdminDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "LoyaltyProgramCatalogDto": {
         "type": "object",
         "properties": {
@@ -8051,13 +10788,13 @@
             "type": "boolean"
           },
           "pointsBalance": {
-            "type": "integer",
-            "format": "int32",
+            "type": "number",
+            "format": "double",
             "nullable": true
           },
           "lifetimePoints": {
-            "type": "integer",
-            "format": "int32",
+            "type": "number",
+            "format": "double",
             "nullable": true
           }
         },
@@ -8092,18 +10829,49 @@
             "nullable": true
           },
           "pointsBalance": {
-            "type": "integer",
-            "format": "int32"
+            "type": "number",
+            "format": "double"
           },
           "lifetimePoints": {
-            "type": "integer",
-            "format": "int32"
+            "type": "number",
+            "format": "double"
           },
           "currentTier": {
             "$ref": "#/components/schemas/LoyaltyTierDto"
           },
           "nextTier": {
             "$ref": "#/components/schemas/LoyaltyTierDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoyaltyTierAdminDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "tierCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "tierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "minPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -8149,8 +10917,8 @@
             "$ref": "#/components/schemas/LoyaltyTransactionType"
           },
           "points": {
-            "type": "integer",
-            "format": "int32"
+            "type": "number",
+            "format": "double"
           },
           "salesOrderId": {
             "type": "string",
@@ -8639,6 +11407,90 @@
             "items": {
               "type": "string",
               "format": "uuid"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PosCustomerLoyaltyDto": {
+        "type": "object",
+        "properties": {
+          "loyaltyEnabled": {
+            "type": "boolean"
+          },
+          "pointsBalance": {
+            "type": "number",
+            "format": "double"
+          },
+          "amountPerPoint": {
+            "type": "number",
+            "format": "double"
+          },
+          "pointsPerAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxRedeemPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxRedeemDiscountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxRedeemPoints": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PosCustomerVoucherDto": {
+        "type": "object",
+        "properties": {
+          "customerVoucherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voucherId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voucherCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "voucherName": {
+            "type": "string",
+            "nullable": true
+          },
+          "discountType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "minOrderAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PosCustomerVoucherListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosCustomerVoucherDto"
             },
             "nullable": true
           }
@@ -9342,10 +12194,48 @@
         },
         "additionalProperties": false
       },
+      "PushSubscriptionStatusDto": {
+        "type": "object",
+        "properties": {
+          "supported": {
+            "type": "boolean"
+          },
+          "subscribed": {
+            "type": "boolean"
+          },
+          "subscriptionCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "publicKey": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RefreshTokenRequest": {
         "type": "object",
         "properties": {
           "refreshToken": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterPushSubscriptionRequest": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "nullable": true
+          },
+          "p256dh": {
+            "type": "string",
+            "nullable": true
+          },
+          "auth": {
             "type": "string",
             "nullable": true
           }
@@ -9464,6 +12354,19 @@
           "shiftNumber": {
             "type": "string",
             "nullable": true
+          },
+          "loyaltyPointsEarned": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "loyaltyPointsRedeemed": {
+            "type": "number",
+            "format": "double"
+          },
+          "loyaltyDiscountAmount": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -9980,6 +12883,26 @@
           "cashVariance": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendCustomerChatMessageRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendStaffChatMessageRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -10644,6 +13567,18 @@
         },
         "additionalProperties": false
       },
+      "UpdateLoyaltyAdminSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "loyaltyEnabled": {
+            "type": "boolean"
+          },
+          "program": {
+            "$ref": "#/components/schemas/LoyaltyProgramAdminDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdateMedicationReminderRequest": {
         "type": "object",
         "properties": {
@@ -10982,6 +13917,94 @@
         },
         "additionalProperties": false
       },
+      "UpsertCustomerDraftOrderRequest": {
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chatThreadId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "priceType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDraftOrderLineRequest"
+            },
+            "nullable": true
+          },
+          "orderDiscountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "orderDiscountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpsertVoucherRequest": {
+        "type": "object",
+        "properties": {
+          "voucherCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "voucherName": {
+            "type": "string",
+            "nullable": true
+          },
+          "discountType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "minOrderAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "VerifyCustomerOtpRequest": {
         "type": "object",
         "properties": {
@@ -11000,6 +14023,61 @@
         },
         "additionalProperties": false
       },
+      "VoucherAdminDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "voucherCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "voucherName": {
+            "type": "string",
+            "nullable": true
+          },
+          "discountType": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "minOrderAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "usedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "issuedCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "VoucherDiscountType": {
         "enum": [
           1,
@@ -11007,6 +14085,156 @@
         ],
         "type": "integer",
         "format": "int32"
+      },
+      "VoucherIssueCandidateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "tierName": {
+            "type": "string",
+            "nullable": true
+          },
+          "periodRevenue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "alreadyIssued": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VoucherIssueCandidateListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoucherIssueCandidateDto"
+            },
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VoucherIssueCandidateSearchRequest": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "nullable": true
+          },
+          "revenueEnabled": {
+            "type": "boolean"
+          },
+          "revenueFrom": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revenueTo": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "minRevenue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "birthdayEnabled": {
+            "type": "boolean"
+          },
+          "birthdayFromMonth": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "birthdayFromDay": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "birthdayToMonth": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "birthdayToDay": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "tierEnabled": {
+            "type": "boolean"
+          },
+          "tierIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "excludeAlreadyIssued": {
+            "type": "boolean"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VoucherListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoucherAdminDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "WarehouseDto": {
         "type": "object",

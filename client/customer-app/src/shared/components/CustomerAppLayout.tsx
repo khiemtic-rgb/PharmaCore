@@ -1,15 +1,21 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { GiftOutlined, HomeOutlined, MedicineBoxOutlined, UserOutlined } from '@ant-design/icons';
-
+import { Badge } from 'antd';
+import { GiftOutlined, HomeOutlined, MedicineBoxOutlined, MessageOutlined, UserOutlined } from '@ant-design/icons';
+import { ApiHealthBanner } from '@/shared/components/ApiHealthBanner';
+import { useCustomerChatUnread } from '@/shared/hooks/useCustomerChatUnread';
+import { useCustomerDraftOrderAlerts } from '@/shared/hooks/useCustomerDraftOrderAlerts';
 const tabs = [
   { to: '/', icon: <HomeOutlined />, label: 'Trang chủ' },
   { to: '/loyalty', icon: <GiftOutlined />, label: 'Điểm thưởng' },
   { to: '/reminders', icon: <MedicineBoxOutlined />, label: 'Nhắc thuốc' },
+  { to: '/chat', icon: <MessageOutlined />, label: 'Chat' },
   { to: '/profile', icon: <UserOutlined />, label: 'Tài khoản' },
 ] as const;
 
 export function CustomerAppLayout() {
   const location = useLocation();
+  const chatUnread = useCustomerChatUnread();
+  const draftOrderAlerts = useCustomerDraftOrderAlerts();
 
   return (
     <div style={{ minHeight: '100vh', background: '#f0fdfa' }}>
@@ -30,6 +36,9 @@ export function CustomerAppLayout() {
       </header>
 
       <main className="customer-app-content">
+        <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 12px' }}>
+          <ApiHealthBanner />
+        </div>
         <Outlet />
       </main>
 
@@ -39,7 +48,7 @@ export function CustomerAppLayout() {
             maxWidth: 480,
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(5, 1fr)',
           }}
         >
           {tabs.map((tab) => {
@@ -63,7 +72,17 @@ export function CustomerAppLayout() {
                   fontWeight: active ? 600 : 500,
                 }}
               >
-                <span style={{ fontSize: 20 }}>{tab.icon}</span>
+                {tab.to === '/' && draftOrderAlerts > 0 && !active ? (
+                  <Badge count={draftOrderAlerts > 99 ? '99+' : draftOrderAlerts} size="small" offset={[-2, 2]}>
+                    <span style={{ fontSize: 20 }}>{tab.icon}</span>
+                  </Badge>
+                ) : tab.to === '/chat' && chatUnread > 0 && !active ? (
+                  <Badge count={chatUnread > 99 ? '99+' : chatUnread} size="small" offset={[-2, 2]}>
+                    <span style={{ fontSize: 20 }}>{tab.icon}</span>
+                  </Badge>
+                ) : (
+                  <span style={{ fontSize: 20 }}>{tab.icon}</span>
+                )}
                 {tab.label}
               </NavLink>
             );

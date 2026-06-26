@@ -9,6 +9,10 @@ const CustomerAppLayout = lazy(() =>
 const OtpLoginPage = lazy(() =>
   import('@/modules/auth/OtpLoginPage').then((m) => ({ default: m.OtpLoginPage })),
 );
+const ChatPage = lazy(() => import('@/modules/chat/ChatPage').then((m) => ({ default: m.ChatPage })));
+const DraftOrdersPage = lazy(() =>
+  import('@/modules/orders/DraftOrdersPage').then((m) => ({ default: m.DraftOrdersPage })),
+);
 const HomePage = lazy(() => import('@/modules/home/HomePage').then((m) => ({ default: m.HomePage })));
 const LoyaltyPage = lazy(() =>
   import('@/modules/loyalty/LoyaltyPage').then((m) => ({ default: m.LoyaltyPage })),
@@ -77,6 +81,22 @@ export function AppRouter() {
                 element={
                   <SuspenseRoute>
                     <RemindersPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="chat"
+                element={
+                  <SuspenseRoute>
+                    <ChatPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="orders"
+                element={
+                  <SuspenseRoute>
+                    <DraftOrdersPage />
                   </SuspenseRoute>
                 }
               />

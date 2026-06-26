@@ -10,6 +10,7 @@ import type {
   PosAllocationPreview,
   PosBatchHint,
   PosCustomerLoyalty,
+  PosCustomerVoucher,
   PosProductLookup,
   PosProductSearchItem,
   ReceiptStoreSettings,
@@ -160,6 +161,9 @@ function normalizeSalesOrderDetail(
     loyaltyPointsEarned: optionalInt(data.loyaltyPointsEarned ?? data.LoyaltyPointsEarned),
     loyaltyPointsRedeemed: Number(data.loyaltyPointsRedeemed ?? data.LoyaltyPointsRedeemed ?? 0),
     loyaltyDiscountAmount: Number(data.loyaltyDiscountAmount ?? data.LoyaltyDiscountAmount ?? 0),
+    voucherDiscountAmount: Number(data.voucherDiscountAmount ?? data.VoucherDiscountAmount ?? 0),
+    voucherCode: (data.voucherCode ?? data.VoucherCode) as string | null | undefined,
+    voucherName: (data.voucherName ?? data.VoucherName) as string | null | undefined,
   };
 }
 
@@ -371,6 +375,7 @@ type CreateSalePayload = Pick<
 > & {
   items: SaleLinePayload[];
   loyaltyDiscountAmount?: number;
+  customerVoucherId?: string;
 };
 
 export type CompleteDraftSaleOptions = CompleteDraftSaleRequest & {
@@ -401,6 +406,28 @@ export async function fetchPosCustomerLoyalty(
   } catch {
     return null;
   }
+}
+
+export function normalizePosCustomerVoucher(row: Record<string, unknown>): PosCustomerVoucher {
+  return {
+    customerVoucherId: String(row.customerVoucherId ?? row.CustomerVoucherId ?? ''),
+    voucherId: String(row.voucherId ?? row.VoucherId ?? ''),
+    voucherCode: String(row.voucherCode ?? row.VoucherCode ?? ''),
+    voucherName: String(row.voucherName ?? row.VoucherName ?? ''),
+    discountType: Number(row.discountType ?? row.DiscountType ?? 2),
+    discountValue: Number(row.discountValue ?? row.DiscountValue ?? 0),
+    minOrderAmount: Number(row.minOrderAmount ?? row.MinOrderAmount ?? 0),
+    discountAmount: Number(row.discountAmount ?? row.DiscountAmount ?? 0),
+  };
+}
+
+export async function fetchPosCustomerVouchers(customerId: string, orderTotal: number) {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/sales/pos/customer-vouchers',
+    { params: { customerId, orderTotal } },
+  );
+  const rows = data.items ?? data.Items ?? [];
+  return rows.map(normalizePosCustomerVoucher);
 }
 
 export async function createSale(payload: CreateSalePayload): Promise<SalesOrderDetail> {
