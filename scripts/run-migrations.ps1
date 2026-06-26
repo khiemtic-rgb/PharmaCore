@@ -55,7 +55,8 @@ $files = @(
     "031_sales_voucher_discount.sql",
     "032_customer_address_demo.sql",
     "033_customer_reservations.sql",
-    "034_customer_reservation_sales_order.sql"
+    "034_customer_reservation_sales_order.sql",
+    "035_inventory_adjustment_count_entries.sql"
 )
 
 Write-Host "=== PharmaCore Migrations ===" -ForegroundColor Cyan

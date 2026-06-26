@@ -47,6 +47,38 @@ export function parseMoneyInput(value: string | undefined): number | undefined {
   return Number(digits);
 }
 
+/** Hiển thị số lượng — ví dụ `10.000` hoặc `1.234,5` */
+export function formatQuantityInput(value: number | string | undefined): string {
+  if (value === undefined || value === null || value === '') return '';
+  const n =
+    typeof value === 'number'
+      ? value
+      : parseQuantityInput(typeof value === 'string' ? value : String(value));
+  if (n == null || Number.isNaN(n)) return '';
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(n);
+}
+
+export function parseQuantityInput(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim().replace(/\s/g, '');
+  const decimalComma = trimmed.match(/^([\d.]*),(\d{1,3})$/);
+  if (decimalComma) {
+    const intPart = decimalComma[1].replace(/\./g, '');
+    const n = Number(`${intPart}.${decimalComma[2]}`);
+    return Number.isNaN(n) ? undefined : n;
+  }
+  const normalized = trimmed.replace(/\./g, '').replace(',', '.');
+  if (!normalized) return undefined;
+  const n = Number(normalized);
+  return Number.isNaN(n) ? undefined : n;
+}
+
+/** Hiển thị số lượng trên bảng */
+export function formatDisplayQuantity(v?: number | null): string {
+  if (v == null) return '—';
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(v);
+}
+
 /** Hiển thị tiền trên danh sách — ví dụ `15.000 ₫` */
 export function formatDisplayMoney(v?: number | null): string {
   if (v == null) return '—';
@@ -55,6 +87,16 @@ export function formatDisplayMoney(v?: number | null): string {
 
 /** Căn phải + định dạng nghìn (vi-VN) cho InputNumber tiền */
 export const moneyInputClassName = 'money-input';
+
+export const quantityInputNumberProps = {
+  min: 0.001,
+  step: 1,
+  precision: 3,
+  controls: false,
+  className: moneyInputClassName,
+  formatter: (value: number | string | undefined) => formatQuantityInput(value),
+  parser: (value: string | undefined) => parseQuantityInput(value) ?? 0,
+} as const;
 
 export const moneyInputNumberStyle = { width: '100%' } as const;
 

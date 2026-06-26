@@ -46,6 +46,9 @@ const TransferListPage = lazy(() =>
 const AdjustmentListPage = lazy(() =>
   import('@/modules/inventory/AdjustmentListPage').then((m) => ({ default: m.AdjustmentListPage })),
 );
+const InventoryCountPage = lazy(() =>
+  import('@/modules/inventory/InventoryCountPage').then((m) => ({ default: m.InventoryCountPage })),
+);
 const ProcurementLayout = lazy(() =>
   import('@/modules/procurement/ProcurementLayout').then((m) => ({ default: m.ProcurementLayout })),
 );
@@ -188,6 +191,7 @@ export function AppRouter() {
                 <Route path="opening-balance" element={<OpeningBalancePage />} />
                 <Route path="transfers" element={<TransferListPage />} />
                 <Route path="adjustments" element={<AdjustmentListPage />} />
+                <Route path="adjustments/:id/count" element={<InventoryCountPage />} />
               </Route>
               <Route
                 path="procurement"

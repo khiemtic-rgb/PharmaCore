@@ -37,6 +37,60 @@ public sealed class AdjustmentsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = item.Id }, item);
     }
 
+    [HttpPost("counting-sessions")]
+    [Authorize(Policy = InventoryPolicies.Write)]
+    public async Task<ActionResult<AdjustmentDetailDto>> CreateCountingSession(
+        [FromBody] CreateCountingSessionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var item = await _inventory.CreateCountingSessionAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(Get), new { id = item.Id }, item);
+    }
+
+    [HttpGet("{id:guid}/count-preview")]
+    [Authorize(Policy = InventoryPolicies.Read)]
+    public async Task<ActionResult<AdjustmentCountPreviewResultDto>> CountPreview(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        Ok(await _inventory.GetCountPreviewAsync(id, cancellationToken));
+
+    [HttpGet("{id:guid}/count-entries")]
+    [Authorize(Policy = InventoryPolicies.Read)]
+    public async Task<ActionResult<IReadOnlyList<AdjustmentCountEntryDto>>> CountEntries(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        Ok(await _inventory.GetCountEntriesAsync(id, cancellationToken));
+
+    [HttpPost("{id:guid}/count-entries")]
+    [Authorize(Policy = InventoryPolicies.Write)]
+    public async Task<ActionResult<IReadOnlyList<AdjustmentCountEntryDto>>> AddCountEntries(
+        Guid id,
+        [FromBody] AddCountEntriesRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await _inventory.AddCountEntriesAsync(id, request, cancellationToken));
+
+    [HttpDelete("{id:guid}/count-entries/{entryId:guid}")]
+    [Authorize(Policy = InventoryPolicies.Write)]
+    public async Task<IActionResult> DeleteCountEntry(
+        Guid id,
+        Guid entryId,
+        CancellationToken cancellationToken)
+    {
+        await _inventory.DeleteCountEntryAsync(id, entryId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpGet("resolve-barcode")]
+    [Authorize(Policy = InventoryPolicies.Read)]
+    public async Task<ActionResult<InventoryBarcodeResolveDto>> ResolveBarcode(
+        [FromQuery] Guid warehouseId,
+        [FromQuery] string barcode,
+        CancellationToken cancellationToken)
+    {
+        var result = await _inventory.ResolveInventoryBarcodeAsync(warehouseId, barcode, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
     [HttpPost("{id:guid}/approve")]
     [Authorize(Policy = InventoryPolicies.Write)]
     public async Task<ActionResult<AdjustmentDetailDto>> Approve(Guid id, CancellationToken cancellationToken)

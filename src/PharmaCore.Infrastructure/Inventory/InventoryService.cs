@@ -201,4 +201,62 @@ internal sealed class InventoryService : IInventoryService
         await _repository.ApproveAdjustmentAsync(id, _tenant.UserId, cancellationToken);
         return await _repository.GetAdjustmentAsync(id, cancellationToken);
     }
+
+    public async Task<AdjustmentDetailDto> CreateCountingSessionAsync(
+        CreateCountingSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await _repository.WarehouseExistsAsync(request.WarehouseId, cancellationToken))
+            throw new InvalidOperationException("Kho không tồn tại.");
+
+        if (await _repository.HasActiveCountingSessionAsync(request.WarehouseId, cancellationToken))
+            throw new InvalidOperationException("Kho đang có phiên kiểm kê chưa duyệt.");
+
+        var adjustmentId = await _repository.CreateCountingAdjustmentAsync(
+            request.WarehouseId, request.Reason, cancellationToken);
+
+        return (await _repository.GetAdjustmentAsync(adjustmentId, cancellationToken))!;
+    }
+
+    public async Task<IReadOnlyList<AdjustmentCountEntryDto>> AddCountEntriesAsync(
+        Guid adjustmentId,
+        AddCountEntriesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.Entries.Count == 0)
+            throw new InvalidOperationException("Thêm ít nhất một dòng đếm.");
+
+        foreach (var entry in request.Entries)
+        {
+            if (entry.Quantity <= 0)
+                throw new InvalidOperationException("Số lượng đếm phải lớn hơn 0.");
+            if (entry.BatchId is null || entry.BatchId == Guid.Empty)
+                throw new InvalidOperationException("Phải chọn lô khi ghi nhận đếm.");
+        }
+
+        return await _repository.AddCountEntriesAsync(adjustmentId, request.Entries, _tenant.UserId, cancellationToken);
+    }
+
+    public Task DeleteCountEntryAsync(Guid adjustmentId, Guid entryId, CancellationToken cancellationToken = default) =>
+        _repository.DeleteCountEntryAsync(adjustmentId, entryId, cancellationToken);
+
+    public Task<AdjustmentCountPreviewResultDto> GetCountPreviewAsync(
+        Guid adjustmentId,
+        CancellationToken cancellationToken = default) =>
+        _repository.GetCountPreviewAsync(adjustmentId, cancellationToken);
+
+    public Task<IReadOnlyList<AdjustmentCountEntryDto>> GetCountEntriesAsync(
+        Guid adjustmentId,
+        CancellationToken cancellationToken = default) =>
+        _repository.GetCountEntriesAsync(adjustmentId, cancellationToken);
+
+    public Task<InventoryBarcodeResolveDto?> ResolveInventoryBarcodeAsync(
+        Guid warehouseId,
+        string barcode,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(barcode))
+            return Task.FromResult<InventoryBarcodeResolveDto?>(null);
+        return _repository.ResolveInventoryBarcodeAsync(warehouseId, barcode.Trim(), cancellationToken);
+    }
 }

@@ -143,6 +143,48 @@ export type AdjustmentDetail = Omit<
   itemCount?: number;
 };
 
+export type AdjustmentCountEntry = {
+  id: string;
+  productId: string;
+  productCode: string;
+  productName: string;
+  batchId?: string;
+  batchNumber?: string;
+  quantity: number;
+  counterUserId?: string;
+  counterUserName?: string;
+  zone?: string;
+  scannedBarcode?: string;
+  note?: string;
+  createdAt: string;
+};
+
+export type AdjustmentCountPreviewLine = {
+  productId: string;
+  productCode: string;
+  productName: string;
+  batchId?: string;
+  batchNumber?: string;
+  countedQuantity: number;
+  systemQuantity: number;
+  differenceQuantity: number;
+  entryCount: number;
+};
+
+export type AdjustmentCountPreview = {
+  byBatch: AdjustmentCountPreviewLine[];
+  byProduct: AdjustmentCountPreviewLine[];
+};
+
+export type InventoryBarcodeResolve = {
+  productId: string;
+  productCode: string;
+  productName: string;
+  saleUnitName?: string;
+  suggestedBatchId?: string;
+  suggestedBatchNumber?: string;
+};
+
 export const WAREHOUSE_TYPE_LABELS: Record<number, string> = {
   1: 'Kho chính',
   2: 'Kho bán lẻ',

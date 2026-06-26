@@ -177,3 +177,53 @@ public sealed record CreateAdjustmentRequest(
     Guid WarehouseId,
     string? Reason,
     IReadOnlyList<CreateAdjustmentItemRequest> Items);
+
+public sealed record CreateCountingSessionRequest(Guid WarehouseId, string? Reason);
+
+public sealed record AddCountEntryRequest(
+    Guid? ProductId,
+    Guid? BatchId,
+    decimal Quantity,
+    string? ScannedBarcode,
+    string? Zone,
+    string? Note);
+
+public sealed record AddCountEntriesRequest(IReadOnlyList<AddCountEntryRequest> Entries);
+
+public sealed record AdjustmentCountEntryDto(
+    Guid Id,
+    Guid ProductId,
+    string ProductCode,
+    string ProductName,
+    Guid? BatchId,
+    string? BatchNumber,
+    decimal Quantity,
+    Guid? CounterUserId,
+    string? CounterUserName,
+    string? Zone,
+    string? ScannedBarcode,
+    string? Note,
+    DateTime CreatedAt);
+
+public sealed record AdjustmentCountPreviewLineDto(
+    Guid ProductId,
+    string ProductCode,
+    string ProductName,
+    Guid? BatchId,
+    string? BatchNumber,
+    decimal CountedQuantity,
+    decimal SystemQuantity,
+    decimal DifferenceQuantity,
+    int EntryCount);
+
+public sealed record AdjustmentCountPreviewResultDto(
+    IReadOnlyList<AdjustmentCountPreviewLineDto> ByBatch,
+    IReadOnlyList<AdjustmentCountPreviewLineDto> ByProduct);
+
+public sealed record InventoryBarcodeResolveDto(
+    Guid ProductId,
+    string ProductCode,
+    string ProductName,
+    string? SaleUnitName,
+    Guid? SuggestedBatchId,
+    string? SuggestedBatchNumber);

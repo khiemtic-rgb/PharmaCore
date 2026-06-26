@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -14,10 +15,11 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { isAxiosError } from 'axios';
-import { PlusOutlined, ReloadOutlined, EyeOutlined, CheckOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, EyeOutlined, CheckOutlined, TeamOutlined } from '@ant-design/icons';
 import {
   approveAdjustment,
   createAdjustment,
+  createCountingSession,
   fetchAdjustment,
   fetchAdjustments,
   fetchStockBatches,
@@ -40,14 +42,17 @@ interface AdjustmentLineForm {
 }
 
 export function AdjustmentListPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<AdjustmentListItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [warehouseBatches, setWarehouseBatches] = useState<StockBatch[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sessionDrawerOpen, setSessionDrawerOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<AdjustmentDetail | null>(null);
   const [form] = Form.useForm();
+  const [sessionForm] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const warehouseId = Form.useWatch('warehouseId', form);
 
@@ -82,6 +87,31 @@ export function AdjustmentListPage() {
     form.resetFields();
     form.setFieldsValue({ items: [{ actualQuantity: 0 }] });
     setDrawerOpen(true);
+  };
+
+  const openCreateSession = () => {
+    sessionForm.resetFields();
+    setSessionDrawerOpen(true);
+  };
+
+  const handleCreateSession = async () => {
+    try {
+      const values = await sessionForm.validateFields();
+      setSaving(true);
+      const created = await createCountingSession({
+        warehouseId: values.warehouseId,
+        reason: values.reason,
+      });
+      message.success(`Đã mở phiên ${created.adjustmentNumber}`);
+      setSessionDrawerOpen(false);
+      navigate(`/inventory/adjustments/${created.id}/count`);
+    } catch (error) {
+      if (isAxiosError(error)) {
+        message.error(apiErrorMessage(error, 'Không mở được phiên kiểm kê'));
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openDetail = async (id: string) => {
@@ -139,7 +169,9 @@ export function AdjustmentListPage() {
       dataIndex: 'status',
       width: 110,
       render: (v: number) => (
-        <Tag color={v === 3 ? 'green' : 'default'}>{ADJUSTMENT_STATUS_LABELS[v] ?? v}</Tag>
+        <Tag color={v === 3 ? 'green' : v === 2 ? 'processing' : 'default'}>
+          {ADJUSTMENT_STATUS_LABELS[v] ?? v}
+        </Tag>
       ),
     },
     {
@@ -152,9 +184,19 @@ export function AdjustmentListPage() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 160,
+      width: 220,
       render: (_, row) => (
         <Space size={4} onClick={(e) => e.stopPropagation()}>
+          {row.status === 2 && (
+            <Tag
+              color="processing"
+              icon={<TeamOutlined />}
+              style={{ cursor: 'pointer', margin: 0 }}
+              onClick={() => navigate(`/inventory/adjustments/${row.id}/count`)}
+            >
+              Đếm
+            </Tag>
+          )}
           <Tag
             color="blue"
             icon={<EyeOutlined />}
@@ -187,8 +229,11 @@ export function AdjustmentListPage() {
             <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>
               Tải lại
             </Button>
+            <Button icon={<TeamOutlined />} onClick={openCreateSession}>
+              Phiên kiểm kê
+            </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              Tạo phiếu
+              Phiếu theo lô
             </Button>
           </Space>
         }
@@ -197,7 +242,7 @@ export function AdjustmentListPage() {
       </Card>
 
       <Drawer
-        title="Tạo phiếu kiểm kê"
+        title="Tạo phiếu kiểm kê theo lô"
         width={600}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -262,15 +307,47 @@ export function AdjustmentListPage() {
       </Drawer>
 
       <Drawer
+        title="Mở phiên kiểm kê (nhiều người)"
+        width={480}
+        open={sessionDrawerOpen}
+        onClose={() => setSessionDrawerOpen(false)}
+        extra={
+          <Space>
+            <Button onClick={() => setSessionDrawerOpen(false)}>Hủy</Button>
+            <Button type="primary" loading={saving} onClick={handleCreateSession}>
+              Bắt đầu đếm
+            </Button>
+          </Space>
+        }
+      >
+        <Form form={sessionForm} layout="vertical">
+          <Form.Item name="warehouseId" label="Kho kiểm kê" rules={[{ required: true }]}>
+            <Select
+              options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
+              placeholder="Chọn kho"
+            />
+          </Form.Item>
+          <Form.Item name="reason" label="Lý do / ghi chú">
+            <Input.TextArea rows={2} placeholder="Kiểm kê định kỳ, cuối tháng..." />
+          </Form.Item>
+        </Form>
+      </Drawer>
+
+      <Drawer
         title={detail ? `Phiếu ${detail.adjustmentNumber}` : 'Chi tiết kiểm kê'}
         width={640}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         extra={
           detail && detail.status !== 3 && detail.status !== 4 ? (
-            <Button type="primary" onClick={() => handleApprove(detail.id)}>
-              Duyệt
-            </Button>
+            <Space>
+              {detail.status === 2 && (
+                <Button onClick={() => navigate(`/inventory/adjustments/${detail.id}/count`)}>Màn đếm</Button>
+              )}
+              <Button type="primary" onClick={() => handleApprove(detail.id)}>
+                Duyệt
+              </Button>
+            </Space>
           ) : null
         }
       >
@@ -287,19 +364,25 @@ export function AdjustmentListPage() {
                 <strong>Lý do:</strong> {detail.reason}
               </p>
             )}
-            <Table
-              rowKey="id"
-              size="small"
-              pagination={false}
-              dataSource={detail.items}
-              columns={[
-                { title: 'SP', dataIndex: 'productName' },
-                { title: 'Lô', dataIndex: 'batchNumber', width: 90 },
-                { title: 'HT', dataIndex: 'systemQuantity', width: 70, align: 'right' },
-                { title: 'Thực', dataIndex: 'actualQuantity', width: 70, align: 'right' },
-                { title: 'Lệch', dataIndex: 'differenceQuantity', width: 70, align: 'right' },
-              ]}
-            />
+            {detail.status === 2 ? (
+              <p style={{ color: '#1677ff' }}>
+                Phiên đang kiểm — dùng màn <strong>Đếm</strong> để quét barcode và ghi nhận.
+              </p>
+            ) : (
+              <Table
+                rowKey="id"
+                size="small"
+                pagination={false}
+                dataSource={detail.items}
+                columns={[
+                  { title: 'SP', dataIndex: 'productName' },
+                  { title: 'Lô', dataIndex: 'batchNumber', width: 90 },
+                  { title: 'HT', dataIndex: 'systemQuantity', width: 70, align: 'right' },
+                  { title: 'Thực', dataIndex: 'actualQuantity', width: 70, align: 'right' },
+                  { title: 'Lệch', dataIndex: 'differenceQuantity', width: 70, align: 'right' },
+                ]}
+              />
+            )}
           </>
         )}
       </Drawer>

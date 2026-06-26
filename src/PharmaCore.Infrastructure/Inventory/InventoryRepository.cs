@@ -771,7 +771,8 @@ internal sealed class InventoryRepository
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
         var adjustmentNumber = await NextDocumentNumberAsync(conn, tx, "ADJ", "inventory_adjustments", cancellationToken);
-        var adjustmentId = await InsertAdjustmentAsync(conn, tx, adjustmentNumber, warehouseId, reason, cancellationToken);
+        var adjustmentId = await InsertAdjustmentAsync(
+            conn, tx, adjustmentNumber, warehouseId, reason, AdjustmentStatuses.Draft, cancellationToken);
 
         foreach (var item in items)
         {
@@ -995,6 +996,7 @@ internal sealed class InventoryRepository
         string adjustmentNumber,
         Guid warehouseId,
         string? reason,
+        short status,
         CancellationToken cancellationToken)
     {
         const string sql = """
@@ -1008,8 +1010,151 @@ internal sealed class InventoryRepository
             WarehouseId = warehouseId,
             AdjustmentNumber = adjustmentNumber,
             Reason = reason,
-            Status = AdjustmentStatuses.Draft,
+            Status = status,
         }, tx);
+    }
+
+    public async Task<bool> HasActiveCountingSessionAsync(Guid warehouseId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM inventory_adjustments
+                WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId AND status = @Counting
+            )
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleAsync<bool>(sql, new
+        {
+            TenantId,
+            WarehouseId = warehouseId,
+            Counting = AdjustmentStatuses.Counting,
+        });
+    }
+
+    public async Task<Guid> CreateCountingAdjustmentAsync(
+        Guid warehouseId,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        var adjustmentNumber = await NextDocumentNumberAsync(conn, tx, "ADJ", "inventory_adjustments", cancellationToken);
+        var adjustmentId = await InsertAdjustmentAsync(
+            conn, tx, adjustmentNumber, warehouseId, reason, AdjustmentStatuses.Counting, cancellationToken);
+
+        await tx.CommitAsync(cancellationToken);
+        return adjustmentId;
+    }
+
+    public async Task<InventoryBarcodeResolveDto?> ResolveInventoryBarcodeAsync(
+        Guid warehouseId,
+        string barcode,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+
+        const string productSql = """
+            SELECT
+                p.id AS ProductId,
+                p.product_code AS ProductCode,
+                p.product_name AS ProductName,
+                (SELECT u.unit_name FROM product_units u
+                 WHERE u.product_id = p.id AND u.is_sale_unit = TRUE AND u.status = 1
+                 ORDER BY u.is_base_unit DESC, u.unit_name LIMIT 1) AS SaleUnitName
+            FROM product_barcodes bc
+            INNER JOIN products p ON p.id = bc.product_id
+            WHERE bc.tenant_id = @TenantId AND bc.barcode = @Barcode
+              AND bc.status = 1 AND p.deleted_at IS NULL
+            LIMIT 1
+            """;
+        var product = await conn.QuerySingleOrDefaultAsync<(Guid ProductId, string ProductCode, string ProductName, string? SaleUnitName)?>(
+            productSql, new { TenantId, Barcode = barcode });
+        if (product is null || product.Value.ProductId == Guid.Empty)
+            return null;
+
+        var suggested = await GetFefoBatchSuggestionAsync(conn, warehouseId, product.Value.ProductId, cancellationToken);
+        return new InventoryBarcodeResolveDto(
+            product.Value.ProductId,
+            product.Value.ProductCode,
+            product.Value.ProductName,
+            product.Value.SaleUnitName,
+            suggested?.BatchId,
+            suggested?.BatchNumber);
+    }
+
+    private sealed record FefoBatchSuggestion(Guid BatchId, string BatchNumber);
+
+    private async Task<FefoBatchSuggestion?> GetFefoBatchSuggestionAsync(
+        IDbConnection conn,
+        Guid warehouseId,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS BatchId, batch_number AS BatchNumber
+            FROM inventory_batches
+            WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId AND product_id = @ProductId
+            ORDER BY
+                CASE WHEN quantity_available > 0 THEN 0 ELSE 1 END,
+                expiry_date ASC NULLS LAST,
+                batch_number,
+                id
+            LIMIT 1
+            """;
+        return await conn.QuerySingleOrDefaultAsync<FefoBatchSuggestion>(
+            sql, new { TenantId, WarehouseId = warehouseId, ProductId = productId });
+    }
+
+    public async Task<Guid?> ResolveProductIdByBarcodeAsync(string barcode, CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await ResolveProductIdByBarcodeOnConnectionAsync(conn, barcode, cancellationToken);
+    }
+
+    private async Task<Guid?> ResolveProductIdByBarcodeOnConnectionAsync(
+        IDbConnection conn,
+        string barcode,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT bc.product_id
+            FROM product_barcodes bc
+            INNER JOIN products p ON p.id = bc.product_id
+            WHERE bc.tenant_id = @TenantId AND bc.barcode = @Barcode
+              AND bc.status = 1 AND p.deleted_at IS NULL
+            LIMIT 1
+            """;
+        var id = await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new { TenantId, Barcode = barcode });
+        return id is null || id == Guid.Empty ? null : id;
+    }
+
+    private async Task<bool> ProductExistsOnConnectionAsync(
+        IDbConnection conn,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM products WHERE id = @ProductId AND tenant_id = @TenantId AND deleted_at IS NULL
+            )
+            """;
+        return await conn.QuerySingleAsync<bool>(sql, new { ProductId = productId, TenantId });
+    }
+
+    private sealed record BatchInfoRow(decimal QuantityAvailable, string BatchNumber);
+
+    private async Task<BatchInfoRow?> GetBatchInfoAsync(
+        IDbConnection conn,
+        Guid batchId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT quantity_available AS QuantityAvailable, batch_number AS BatchNumber
+            FROM inventory_batches
+            WHERE id = @BatchId AND tenant_id = @TenantId
+            """;
+        return await conn.QuerySingleOrDefaultAsync<BatchInfoRow>(sql, new { BatchId = batchId, TenantId });
     }
 
     public async Task InsertAdjustmentItemAsync(
@@ -1063,14 +1208,51 @@ internal sealed class InventoryRepository
         if (header.Status == AdjustmentStatuses.Cancelled)
             throw new InvalidOperationException("Phiếu đã hủy.");
 
-        const string itemsSql = """
-            SELECT batch_id AS BatchId, product_id AS ProductId,
-                   system_quantity AS SystemQuantity, actual_quantity AS ActualQuantity,
-                   difference_quantity AS DifferenceQuantity
-            FROM inventory_adjustment_items WHERE adjustment_id = @AdjustmentId
-            """;
-        var items = (await conn.QueryAsync<(Guid BatchId, Guid ProductId, decimal SystemQuantity, decimal ActualQuantity, decimal DifferenceQuantity)>(
-            itemsSql, new { AdjustmentId = adjustmentId }, tx)).ToList();
+        List<(Guid BatchId, Guid ProductId, decimal SystemQuantity, decimal ActualQuantity, decimal DifferenceQuantity)> items;
+
+        if (header.Status == AdjustmentStatuses.Counting)
+        {
+            var entryCount = await conn.QuerySingleAsync<int>(
+                "SELECT COUNT(*)::int FROM inventory_adjustment_count_entries WHERE adjustment_id = @AdjustmentId",
+                new { AdjustmentId = adjustmentId }, tx);
+            if (entryCount == 0)
+                throw new InvalidOperationException("Phiên kiểm kê chưa có dòng đếm.");
+
+            var missingBatchCount = await conn.QuerySingleAsync<int>(
+                """
+                SELECT COUNT(*)::int FROM inventory_adjustment_count_entries
+                WHERE adjustment_id = @AdjustmentId AND batch_id IS NULL
+                """,
+                new { AdjustmentId = adjustmentId }, tx);
+            if (missingBatchCount > 0)
+                throw new InvalidOperationException(
+                    $"Còn {missingBatchCount} dòng đếm chưa có lô. Xóa các dòng cũ (nhập trước khi bắt buộc chọn lô) rồi thử lại.");
+
+            items = await BuildAdjustmentItemsFromCountEntriesAsync(
+                conn, tx, adjustmentId, header.WarehouseId, cancellationToken);
+
+            foreach (var item in items)
+            {
+                await InsertAdjustmentItemAsync(
+                    conn, tx, adjustmentId, item.BatchId, item.ProductId,
+                    item.SystemQuantity, item.ActualQuantity, item.DifferenceQuantity, null, cancellationToken);
+            }
+        }
+        else if (header.Status == AdjustmentStatuses.Draft)
+        {
+            const string itemsSql = """
+                SELECT batch_id AS BatchId, product_id AS ProductId,
+                       system_quantity AS SystemQuantity, actual_quantity AS ActualQuantity,
+                       difference_quantity AS DifferenceQuantity
+                FROM inventory_adjustment_items WHERE adjustment_id = @AdjustmentId
+                """;
+            items = (await conn.QueryAsync<(Guid BatchId, Guid ProductId, decimal SystemQuantity, decimal ActualQuantity, decimal DifferenceQuantity)>(
+                itemsSql, new { AdjustmentId = adjustmentId }, tx)).ToList();
+        }
+        else
+        {
+            throw new InvalidOperationException("Trạng thái phiếu không cho phép duyệt.");
+        }
 
         foreach (var item in items)
         {
@@ -1117,6 +1299,339 @@ internal sealed class InventoryRepository
         await tx.CommitAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AdjustmentCountEntryDto>> AddCountEntriesAsync(
+        Guid adjustmentId,
+        IReadOnlyList<AddCountEntryRequest> entries,
+        Guid counterUserId,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        var header = await GetAdjustmentHeaderForUpdateAsync(conn, tx, adjustmentId, cancellationToken)
+            ?? throw new InvalidOperationException("Phiếu kiểm kê không tồn tại.");
+        if (header.Status != AdjustmentStatuses.Counting)
+            throw new InvalidOperationException("Chỉ thêm dòng đếm khi phiếu đang kiểm.");
+
+        foreach (var entry in entries)
+        {
+            var productId = entry.ProductId;
+            if (productId is null || productId == Guid.Empty)
+            {
+                if (string.IsNullOrWhiteSpace(entry.ScannedBarcode))
+                    throw new InvalidOperationException("Cần productId hoặc barcode.");
+                productId = await ResolveProductIdByBarcodeOnConnectionAsync(conn, entry.ScannedBarcode.Trim(), cancellationToken)
+                    ?? throw new InvalidOperationException($"Không tìm thấy sản phẩm theo barcode: {entry.ScannedBarcode}");
+            }
+
+            if (!await ProductExistsOnConnectionAsync(conn, productId.Value, cancellationToken))
+                throw new InvalidOperationException("Sản phẩm không tồn tại.");
+
+            if (entry.BatchId is not Guid batchId || batchId == Guid.Empty)
+                throw new InvalidOperationException("Phải chọn lô khi ghi nhận đếm.");
+
+            var batch = await GetBatchForUpdateAsync(conn, tx, batchId, cancellationToken)
+                ?? throw new InvalidOperationException("Lô không tồn tại.");
+            if (batch.WarehouseId != header.WarehouseId)
+                throw new InvalidOperationException("Lô không thuộc kho kiểm kê.");
+            if (batch.ProductId != productId.Value)
+                throw new InvalidOperationException("Lô không thuộc sản phẩm đã chọn.");
+
+            const string insertSql = """
+                INSERT INTO inventory_adjustment_count_entries (
+                    adjustment_id, product_id, batch_id, quantity, counter_user_id,
+                    zone, scanned_barcode, note
+                )
+                VALUES (
+                    @AdjustmentId, @ProductId, @BatchId, @Quantity, @CounterUserId,
+                    @Zone, @ScannedBarcode, @Note
+                )
+                """;
+            await conn.ExecuteAsync(insertSql, new
+            {
+                AdjustmentId = adjustmentId,
+                ProductId = productId.Value,
+                entry.BatchId,
+                entry.Quantity,
+                CounterUserId = counterUserId,
+                entry.Zone,
+                ScannedBarcode = entry.ScannedBarcode?.Trim(),
+                entry.Note,
+            }, tx);
+        }
+
+        await tx.CommitAsync(cancellationToken);
+        return await GetCountEntriesAsync(adjustmentId, cancellationToken);
+    }
+
+    public async Task DeleteCountEntryAsync(Guid adjustmentId, Guid entryId, CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        var header = await GetAdjustmentHeaderForUpdateAsync(conn, tx, adjustmentId, cancellationToken)
+            ?? throw new InvalidOperationException("Phiếu kiểm kê không tồn tại.");
+        if (header.Status != AdjustmentStatuses.Counting)
+            throw new InvalidOperationException("Chỉ xóa dòng đếm khi phiếu đang kiểm.");
+
+        const string deleteSql = """
+            DELETE FROM inventory_adjustment_count_entries
+            WHERE id = @EntryId AND adjustment_id = @AdjustmentId
+            """;
+        var rows = await conn.ExecuteAsync(deleteSql, new { EntryId = entryId, AdjustmentId = adjustmentId }, tx);
+        if (rows == 0)
+            throw new InvalidOperationException("Dòng đếm không tồn tại.");
+
+        await tx.CommitAsync(cancellationToken);
+    }
+
+    public async Task<AdjustmentCountPreviewResultDto> GetCountPreviewAsync(
+        Guid adjustmentId,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var header = await conn.QuerySingleOrDefaultAsync<(Guid WarehouseId, short Status)>(
+            """
+            SELECT warehouse_id AS WarehouseId, status AS Status
+            FROM inventory_adjustments
+            WHERE id = @Id AND tenant_id = @TenantId
+            """,
+            new { Id = adjustmentId, TenantId });
+        if (header.WarehouseId == Guid.Empty)
+            throw new InvalidOperationException("Phiếu kiểm kê không tồn tại.");
+
+        var groups = await GetCountEntryGroupsAsync(conn, adjustmentId, cancellationToken);
+        var byBatch = new List<AdjustmentCountPreviewLineDto>();
+        var byProductMap = new Dictionary<Guid, (decimal Counted, int EntryCount)>();
+
+        foreach (var group in groups)
+        {
+            if (group.BatchId is not Guid batchId)
+                continue;
+
+            var productInfo = await GetProductInfoAsync(conn, group.ProductId, cancellationToken);
+            var batchInfo = await GetBatchInfoAsync(conn, batchId, cancellationToken);
+            var systemQty = batchInfo?.QuantityAvailable ?? 0;
+            var diff = group.CountedQuantity - systemQty;
+            byBatch.Add(new AdjustmentCountPreviewLineDto(
+                group.ProductId,
+                productInfo.Code,
+                productInfo.Name,
+                batchId,
+                batchInfo?.BatchNumber,
+                group.CountedQuantity,
+                systemQty,
+                diff,
+                group.EntryCount));
+
+            if (byProductMap.TryGetValue(group.ProductId, out var existing))
+                byProductMap[group.ProductId] = (existing.Counted + group.CountedQuantity, existing.EntryCount + group.EntryCount);
+            else
+                byProductMap[group.ProductId] = (group.CountedQuantity, group.EntryCount);
+        }
+
+        var byProduct = new List<AdjustmentCountPreviewLineDto>();
+        foreach (var (productId, totals) in byProductMap)
+        {
+            var productInfo = await GetProductInfoAsync(conn, productId, cancellationToken);
+            var systemQty = await GetProductSystemQuantityAsync(conn, header.WarehouseId, productId, cancellationToken);
+            byProduct.Add(new AdjustmentCountPreviewLineDto(
+                productId,
+                productInfo.Code,
+                productInfo.Name,
+                null,
+                null,
+                totals.Counted,
+                systemQty,
+                totals.Counted - systemQty,
+                totals.EntryCount));
+        }
+
+        return new AdjustmentCountPreviewResultDto(
+            byBatch.OrderBy(p => p.ProductName).ThenBy(p => p.BatchNumber).ToList(),
+            byProduct.OrderBy(p => p.ProductName).ToList());
+    }
+
+    public async Task<IReadOnlyList<AdjustmentCountEntryDto>> GetCountEntriesAsync(
+        Guid adjustmentId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                e.id AS Id,
+                e.product_id AS ProductId,
+                p.product_code AS ProductCode,
+                p.product_name AS ProductName,
+                e.batch_id AS BatchId,
+                b.batch_number AS BatchNumber,
+                e.quantity AS Quantity,
+                e.counter_user_id AS CounterUserId,
+                COALESCE(emp.full_name, u.username) AS CounterUserName,
+                e.zone AS Zone,
+                e.scanned_barcode AS ScannedBarcode,
+                e.note AS Note,
+                e.created_at AS CreatedAt
+            FROM inventory_adjustment_count_entries e
+            INNER JOIN products p ON p.id = e.product_id
+            LEFT JOIN inventory_batches b ON b.id = e.batch_id
+            LEFT JOIN users u ON u.id = e.counter_user_id
+            LEFT JOIN employees emp ON emp.id = u.employee_id
+            INNER JOIN inventory_adjustments a ON a.id = e.adjustment_id
+            WHERE e.adjustment_id = @AdjustmentId AND a.tenant_id = @TenantId
+            ORDER BY e.created_at DESC
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<AdjustmentCountEntryDto>(sql, new { AdjustmentId = adjustmentId, TenantId })).ToList();
+    }
+
+    private async Task<(Guid WarehouseId, short Status)?> GetAdjustmentHeaderForUpdateAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid adjustmentId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT warehouse_id AS WarehouseId, status AS Status
+            FROM inventory_adjustments
+            WHERE id = @Id AND tenant_id = @TenantId
+            FOR UPDATE
+            """;
+        var row = await conn.QuerySingleOrDefaultAsync<(Guid WarehouseId, short Status)>(
+            sql, new { Id = adjustmentId, TenantId }, tx);
+        return row.WarehouseId == Guid.Empty ? null : row;
+    }
+
+    private sealed record CountEntryGroup(Guid ProductId, Guid? BatchId, decimal CountedQuantity, int EntryCount);
+
+    private async Task<IReadOnlyList<CountEntryGroup>> GetCountEntryGroupsAsync(
+        IDbConnection conn,
+        Guid adjustmentId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                product_id AS ProductId,
+                batch_id AS BatchId,
+                SUM(quantity) AS CountedQuantity,
+                COUNT(*)::int AS EntryCount
+            FROM inventory_adjustment_count_entries
+            WHERE adjustment_id = @AdjustmentId
+            GROUP BY product_id, batch_id
+            """;
+        return (await conn.QueryAsync<CountEntryGroup>(sql, new { AdjustmentId = adjustmentId })).ToList();
+    }
+
+    private async Task<(string Code, string Name)> GetProductInfoAsync(
+        IDbConnection conn,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT product_code AS Code, product_name AS Name
+            FROM products WHERE id = @ProductId AND tenant_id = @TenantId
+            """;
+        var row = await conn.QuerySingleAsync<(string Code, string Name)>(sql, new { ProductId = productId, TenantId });
+        return row;
+    }
+
+    private async Task<decimal> GetProductSystemQuantityAsync(
+        IDbConnection conn,
+        Guid warehouseId,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT COALESCE(SUM(quantity_available), 0)
+            FROM inventory_batches
+            WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId AND product_id = @ProductId
+            """;
+        return await conn.QuerySingleAsync<decimal>(sql, new { TenantId, WarehouseId = warehouseId, ProductId = productId });
+    }
+
+    private async Task<IReadOnlyList<BatchRow>> GetBatchesFefoAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid warehouseId,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                id AS Id,
+                warehouse_id AS WarehouseId,
+                product_id AS ProductId,
+                batch_number AS BatchNumber,
+                manufacture_date AS ManufactureDate,
+                expiry_date AS ExpiryDate,
+                unit_cost AS UnitCost,
+                quantity_available AS QuantityAvailable,
+                quantity_received AS QuantityReceived
+            FROM inventory_batches
+            WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId AND product_id = @ProductId
+            ORDER BY expiry_date ASC NULLS LAST, batch_number, id
+            """;
+        return (await conn.QueryAsync<BatchRow>(sql, new { TenantId, WarehouseId = warehouseId, ProductId = productId }, tx)).ToList();
+    }
+
+    private async Task<List<(Guid BatchId, Guid ProductId, decimal SystemQuantity, decimal ActualQuantity, decimal DifferenceQuantity)>>
+        BuildAdjustmentItemsFromCountEntriesAsync(
+            IDbConnection conn,
+            IDbTransaction tx,
+            Guid adjustmentId,
+            Guid warehouseId,
+            CancellationToken cancellationToken)
+    {
+        var groups = await GetCountEntryGroupsAsync(conn, adjustmentId, cancellationToken);
+        var items = new List<(Guid, Guid, decimal, decimal, decimal)>();
+
+        foreach (var group in groups)
+        {
+            if (group.BatchId is not Guid batchId)
+                throw new InvalidOperationException("Mỗi dòng đếm phải có lô. Vui lòng xóa dòng cũ không có lô hoặc thêm lại.");
+
+            var batch = await GetBatchForUpdateAsync(conn, tx, batchId, cancellationToken)
+                ?? throw new InvalidOperationException("Lô không tồn tại.");
+            if (batch.WarehouseId != warehouseId)
+                throw new InvalidOperationException("Lô không thuộc kho kiểm kê.");
+
+            var diff = group.CountedQuantity - batch.QuantityAvailable;
+            if (diff != 0)
+            {
+                items.Add((batchId, group.ProductId, batch.QuantityAvailable, group.CountedQuantity, diff));
+            }
+        }
+
+        return items;
+    }
+
+    private static List<(Guid BatchId, Guid ProductId, decimal SystemQuantity, decimal ActualQuantity, decimal DifferenceQuantity)>
+        AllocateDifferenceFefo(Guid productId, decimal difference, IReadOnlyList<BatchRow> batches)
+    {
+        var result = new List<(Guid, Guid, decimal, decimal, decimal)>();
+
+        if (difference > 0)
+        {
+            var head = batches.FirstOrDefault()
+                ?? throw new InvalidOperationException("Sản phẩm không có lô tại kho để ghi tăng.");
+            result.Add((head.Id, productId, head.QuantityAvailable, head.QuantityAvailable + difference, difference));
+            return result;
+        }
+
+        var remaining = Math.Abs(difference);
+        foreach (var batch in batches.Where(b => b.QuantityAvailable > 0))
+        {
+            if (remaining <= 0) break;
+            var take = Math.Min(batch.QuantityAvailable, remaining);
+            result.Add((batch.Id, productId, batch.QuantityAvailable, batch.QuantityAvailable - take, -take));
+            remaining -= take;
+        }
+
+        if (remaining > 0)
+            throw new InvalidOperationException("Không đủ tồn lô để ghi giảm theo FEFO.");
+
+        return result;
+    }
+
     public async Task<IReadOnlyList<AdjustmentListItemDto>> GetAdjustmentsAsync(CancellationToken cancellationToken)
     {
         const string sql = """
@@ -1127,14 +1642,18 @@ internal sealed class InventoryRepository
                 w.warehouse_name AS WarehouseName,
                 a.status AS Status,
                 a.adjustment_date AS AdjustmentDate,
-                (SELECT COUNT(*)::int FROM inventory_adjustment_items i WHERE i.adjustment_id = a.id) AS ItemCount
+                (CASE WHEN a.status = @Counting THEN
+                    (SELECT COUNT(*)::int FROM inventory_adjustment_count_entries e WHERE e.adjustment_id = a.id)
+                 ELSE
+                    (SELECT COUNT(*)::int FROM inventory_adjustment_items i WHERE i.adjustment_id = a.id)
+                 END) AS ItemCount
             FROM inventory_adjustments a
             INNER JOIN warehouses w ON w.id = a.warehouse_id
             WHERE a.tenant_id = @TenantId
             ORDER BY a.adjustment_date DESC
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return (await conn.QueryAsync<AdjustmentListItemDto>(sql, new { TenantId })).ToList();
+        return (await conn.QueryAsync<AdjustmentListItemDto>(sql, new { TenantId, Counting = AdjustmentStatuses.Counting })).ToList();
     }
 
     public async Task<AdjustmentDetailDto?> GetAdjustmentAsync(Guid id, CancellationToken cancellationToken)

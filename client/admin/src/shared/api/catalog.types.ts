@@ -29,7 +29,7 @@ export type PagedResult<T> = {
 
 export type ProductListItem = Req<
   ProductListItemDto,
-  'id' | 'productCode' | 'productName' | 'drugType' | 'status'
+  'id' | 'productCode' | 'productName' | 'drugType' | 'status' | 'saleUnitName'
 >;
 
 export type PagedProductList = Omit<Req<PagedProductListResult, 'total' | 'page' | 'pageSize'>, 'items'> & {

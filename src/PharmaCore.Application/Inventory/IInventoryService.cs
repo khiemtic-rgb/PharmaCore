@@ -43,4 +43,28 @@ public interface IInventoryService
     Task<AdjustmentDetailDto?> GetAdjustmentAsync(Guid id, CancellationToken cancellationToken = default);
     Task<AdjustmentDetailDto> CreateAdjustmentAsync(CreateAdjustmentRequest request, CancellationToken cancellationToken = default);
     Task<AdjustmentDetailDto?> ApproveAdjustmentAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<AdjustmentDetailDto> CreateCountingSessionAsync(
+        CreateCountingSessionRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdjustmentCountEntryDto>> AddCountEntriesAsync(
+        Guid adjustmentId,
+        AddCountEntriesRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteCountEntryAsync(Guid adjustmentId, Guid entryId, CancellationToken cancellationToken = default);
+
+    Task<AdjustmentCountPreviewResultDto> GetCountPreviewAsync(
+        Guid adjustmentId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdjustmentCountEntryDto>> GetCountEntriesAsync(
+        Guid adjustmentId,
+        CancellationToken cancellationToken = default);
+
+    Task<InventoryBarcodeResolveDto?> ResolveInventoryBarcodeAsync(
+        Guid warehouseId,
+        string barcode,
+        CancellationToken cancellationToken = default);
 }

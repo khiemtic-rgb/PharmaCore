@@ -1,6 +1,10 @@
 import { http } from '@/shared/api/http';
 import type {
   AdjustmentDetail,
+  AdjustmentCountEntry,
+  AdjustmentCountPreviewLine,
+  AdjustmentCountPreview,
+  InventoryBarcodeResolve,
   AdjustmentListItem,
   BranchLookup,
   OpeningBalanceBatch,
@@ -293,4 +297,106 @@ export async function createAdjustment(payload: {
 export async function approveAdjustment(id: string): Promise<AdjustmentDetail> {
   const { data } = await http.post<Record<string, unknown>>(`/inventory/adjustments/${id}/approve`);
   return normalizeAdjustmentDetail(data);
+}
+
+function normalizeCountEntry(row: Record<string, unknown>): AdjustmentCountEntry {
+  return {
+    id: String(row.id ?? row.Id),
+    productId: String(row.productId ?? row.ProductId),
+    productCode: String(row.productCode ?? row.ProductCode ?? ''),
+    productName: String(row.productName ?? row.ProductName ?? ''),
+    batchId: (row.batchId ?? row.BatchId) as string | undefined,
+    batchNumber: (row.batchNumber ?? row.BatchNumber) as string | undefined,
+    quantity: Number(row.quantity ?? row.Quantity ?? 0),
+    counterUserId: (row.counterUserId ?? row.CounterUserId) as string | undefined,
+    counterUserName: (row.counterUserName ?? row.CounterUserName) as string | undefined,
+    zone: (row.zone ?? row.Zone) as string | undefined,
+    scannedBarcode: (row.scannedBarcode ?? row.ScannedBarcode) as string | undefined,
+    note: (row.note ?? row.Note) as string | undefined,
+    createdAt: String(row.createdAt ?? row.CreatedAt ?? ''),
+  };
+}
+
+function normalizeCountPreviewLine(row: Record<string, unknown>): AdjustmentCountPreviewLine {
+  return {
+    productId: String(row.productId ?? row.ProductId),
+    productCode: String(row.productCode ?? row.ProductCode ?? ''),
+    productName: String(row.productName ?? row.ProductName ?? ''),
+    batchId: (row.batchId ?? row.BatchId) as string | undefined,
+    batchNumber: (row.batchNumber ?? row.BatchNumber) as string | undefined,
+    countedQuantity: Number(row.countedQuantity ?? row.CountedQuantity ?? 0),
+    systemQuantity: Number(row.systemQuantity ?? row.SystemQuantity ?? 0),
+    differenceQuantity: Number(row.differenceQuantity ?? row.DifferenceQuantity ?? 0),
+    entryCount: Number(row.entryCount ?? row.EntryCount ?? 0),
+  };
+}
+
+export async function createCountingSession(payload: {
+  warehouseId: string;
+  reason?: string;
+}): Promise<AdjustmentDetail> {
+  const { data } = await http.post<Record<string, unknown>>('/inventory/adjustments/counting-sessions', payload);
+  return normalizeAdjustmentDetail(data);
+}
+
+export async function fetchCountPreview(adjustmentId: string): Promise<AdjustmentCountPreview> {
+  const { data } = await http.get<Record<string, unknown>>(`/inventory/adjustments/${adjustmentId}/count-preview`);
+  const byBatchRaw = (data.byBatch ?? data.ByBatch ?? []) as Record<string, unknown>[];
+  const byProductRaw = (data.byProduct ?? data.ByProduct ?? []) as Record<string, unknown>[];
+  return {
+    byBatch: byBatchRaw.map((row) => normalizeCountPreviewLine(row)),
+    byProduct: byProductRaw.map((row) => normalizeCountPreviewLine(row)),
+  };
+}
+
+export async function fetchCountEntries(adjustmentId: string): Promise<AdjustmentCountEntry[]> {
+  const { data } = await http.get<Record<string, unknown>[]>(`/inventory/adjustments/${adjustmentId}/count-entries`);
+  return data.map((row) => normalizeCountEntry(row));
+}
+
+export async function addCountEntries(
+  adjustmentId: string,
+  entries: {
+    productId?: string;
+    batchId: string;
+    quantity: number;
+    scannedBarcode?: string;
+    zone?: string;
+    note?: string;
+  }[],
+): Promise<AdjustmentCountEntry[]> {
+  const { data } = await http.post<Record<string, unknown>[]>(
+    `/inventory/adjustments/${adjustmentId}/count-entries`,
+    { entries },
+  );
+  return data.map((row) => normalizeCountEntry(row));
+}
+
+export async function deleteCountEntry(adjustmentId: string, entryId: string): Promise<void> {
+  await http.delete(`/inventory/adjustments/${adjustmentId}/count-entries/${entryId}`);
+}
+
+function normalizeBarcodeResolve(data: Record<string, unknown>): InventoryBarcodeResolve {
+  return {
+    productId: String(data.productId ?? data.ProductId),
+    productCode: String(data.productCode ?? data.ProductCode ?? ''),
+    productName: String(data.productName ?? data.ProductName ?? ''),
+    saleUnitName: (data.saleUnitName ?? data.SaleUnitName) as string | undefined,
+    suggestedBatchId: (data.suggestedBatchId ?? data.SuggestedBatchId) as string | undefined,
+    suggestedBatchNumber: (data.suggestedBatchNumber ?? data.SuggestedBatchNumber) as string | undefined,
+  };
+}
+
+export async function resolveInventoryBarcode(
+  warehouseId: string,
+  barcode: string,
+): Promise<InventoryBarcodeResolve | null> {
+  try {
+    const { data } = await http.get<Record<string, unknown>>('/inventory/adjustments/resolve-barcode', {
+      params: { warehouseId, barcode },
+    });
+    return normalizeBarcodeResolve(data);
+  } catch {
+    return null;
+  }
 }
