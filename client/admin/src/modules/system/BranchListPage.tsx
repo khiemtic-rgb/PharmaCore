@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Drawer, Form, Input, Select, Space, Switch, Table, Tag, message } from 'antd';
+import { Button, Card, Drawer, Form, Input, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
   createBranch,
+  deleteBranch,
   fetchBranches,
   updateBranch,
 } from '@/shared/api/identity-admin.api';
@@ -66,7 +67,12 @@ export function BranchListPage() {
   };
 
   const handleSave = async () => {
-    const values = await form.validateFields();
+    let values: BranchFormValues;
+    try {
+      values = await form.validateFields();
+    } catch {
+      return;
+    }
     setSaving(true);
     try {
       const code = values.branchCode.trim().toUpperCase();
@@ -100,6 +106,16 @@ export function BranchListPage() {
     }
   };
 
+  const handleDelete = async (row: BranchListItem) => {
+    try {
+      await deleteBranch(row.id);
+      message.success(`Đã xóa chi nhánh ${row.branchCode}`);
+      await load();
+    } catch (error) {
+      message.error(apiErrorMessage(error, 'Không xóa được chi nhánh'));
+    }
+  };
+
   const columns: ColumnsType<BranchListItem> = [
     { title: 'Mã CN', dataIndex: 'branchCode', width: 100 },
     { title: 'Tên chi nhánh', dataIndex: 'branchName' },
@@ -119,13 +135,40 @@ export function BranchListPage() {
       ),
     },
     {
-      title: '',
-      width: 80,
+      title: 'Tác vụ',
+      width: 100,
       render: (_, row) =>
         canWrite ? (
-          <Button type="link" icon={<EditOutlined />} onClick={() => openEdit(row)}>
-            Sửa
-          </Button>
+          <Space size={4}>
+            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>
+              Sửa
+            </Button>
+            <Popconfirm
+              title={`Xóa «${row.branchCode}»?`}
+              description="Chi nhánh sẽ bị vô hiệu hóa."
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+              disabled={row.isHeadOffice}
+              onConfirm={() => void handleDelete(row)}
+            >
+              <Tooltip
+                title={row.isHeadOffice ? 'Không thể xóa chi nhánh trụ sở chính' : 'Xóa'}
+              >
+                <span>
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    disabled={row.isHeadOffice}
+                    icon={<DeleteOutlined />}
+                    aria-label="Xóa"
+                    style={row.isHeadOffice ? { opacity: 0.35 } : undefined}
+                  />
+                </span>
+              </Tooltip>
+            </Popconfirm>
+          </Space>
         ) : null,
     },
   ];

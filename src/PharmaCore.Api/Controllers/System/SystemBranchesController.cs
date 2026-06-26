@@ -61,4 +61,19 @@ public sealed class SystemBranchesController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpDelete("{branchId:guid}")]
+    [Authorize(Policy = IdentityPolicies.Write)]
+    public async Task<IActionResult> Delete(Guid branchId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var deleted = await _identity.DeleteBranchAsync(branchId, cancellationToken);
+            return deleted ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

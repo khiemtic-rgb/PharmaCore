@@ -27,6 +27,41 @@ public sealed class SystemRolesController : ControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    [HttpPost("roles")]
+    [Authorize(Policy = IdentityPolicies.Write)]
+    public async Task<ActionResult<RoleDetailDto>> CreateRole(
+        [FromBody] CreateRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var item = await _identity.CreateRoleAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetRole), new { roleId = item.Id }, item);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("roles/{roleId:guid}")]
+    [Authorize(Policy = IdentityPolicies.Write)]
+    public async Task<ActionResult<RoleDetailDto>> UpdateRole(
+        Guid roleId,
+        [FromBody] UpdateRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var item = await _identity.UpdateRoleAsync(roleId, request, cancellationToken);
+            return item is null ? NotFound() : Ok(item);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPut("roles/{roleId:guid}/permissions")]
     [Authorize(Policy = IdentityPolicies.Write)]
     public async Task<ActionResult<RoleDetailDto>> UpdateRolePermissions(
@@ -56,4 +91,41 @@ public sealed class SystemRolesController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<EmployeeLookupDto>>> ListEmployees(
         CancellationToken cancellationToken) =>
         Ok(await _identity.ListEmployeesAsync(cancellationToken));
+
+    [HttpGet("employees/next-code")]
+    [Authorize(Policy = IdentityPolicies.Read)]
+    public async Task<ActionResult<NextEmployeeCodeDto>> NextEmployeeCode(CancellationToken cancellationToken) =>
+        Ok(new NextEmployeeCodeDto(await _identity.GetNextEmployeeCodeAsync(cancellationToken)));
+
+    [HttpPost("employees")]
+    [Authorize(Policy = IdentityPolicies.Write)]
+    public async Task<ActionResult<EmployeeLookupDto>> CreateEmployee(
+        [FromBody] CreateEmployeeRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var item = await _identity.CreateEmployeeAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(ListEmployees), item);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("employees/{employeeId:guid}")]
+    [Authorize(Policy = IdentityPolicies.Write)]
+    public async Task<IActionResult> DeleteEmployee(Guid employeeId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var deleted = await _identity.DeleteEmployeeAsync(employeeId, cancellationToken);
+            return deleted ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

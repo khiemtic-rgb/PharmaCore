@@ -3,6 +3,7 @@ import type {
   BranchDetail,
   BranchListItem,
   CreateBranchPayload,
+  CreateRolePayload,
   CreateUserPayload,
   EmployeeLookup,
   PagedUsersResult,
@@ -10,6 +11,7 @@ import type {
   RoleDetail,
   RoleListItem,
   UpdateBranchPayload,
+  UpdateRolePayload,
   UpdateUserPayload,
   UserDetail,
   UserListItem,
@@ -36,6 +38,7 @@ function normalizeUserListItem(row: Record<string, unknown>): UserListItem {
     email: String(row.email ?? row.Email ?? ''),
     status: Number(row.status ?? row.Status ?? 1),
     employeeName: (row.employeeName ?? row.EmployeeName) as string | undefined,
+    employeePhone: (row.employeePhone ?? row.EmployeePhone) as string | undefined,
     roleCodes: Array.isArray(roleCodes) ? roleCodes : [],
     lastLoginAt: (row.lastLoginAt ?? row.LastLoginAt) as string | undefined,
     createdAt: String(row.createdAt ?? row.CreatedAt ?? ''),
@@ -52,6 +55,7 @@ function normalizeUserDetail(row: Record<string, unknown>): UserDetail {
     status: Number(row.status ?? row.Status ?? 1),
     employeeId: (row.employeeId ?? row.EmployeeId) as string | undefined,
     employeeName: (row.employeeName ?? row.EmployeeName) as string | undefined,
+    employeePhone: (row.employeePhone ?? row.EmployeePhone) as string | undefined,
     roleIds: Array.isArray(roleIds) ? roleIds.map(String) : [],
     roleCodes: Array.isArray(roleCodes) ? roleCodes : [],
     lastLoginAt: (row.lastLoginAt ?? row.LastLoginAt) as string | undefined,
@@ -103,6 +107,10 @@ export async function updateBranch(branchId: string, payload: UpdateBranchPayloa
   return normalizeBranch(data);
 }
 
+export async function deleteBranch(branchId: string): Promise<void> {
+  await http.delete(`/system/branches/${branchId}`);
+}
+
 export async function fetchUsers(params: {
   search?: string;
   page?: number;
@@ -133,6 +141,10 @@ export async function updateUser(userId: string, payload: UpdateUserPayload): Pr
   return normalizeUserDetail(data);
 }
 
+export async function deleteUser(userId: string): Promise<void> {
+  await http.delete(`/system/users/${userId}`);
+}
+
 export async function fetchRoles(): Promise<RoleListItem[]> {
   const { data } = await http.get<Record<string, unknown>[]>('/system/roles');
   return (data ?? []).map(normalizeRoleListItem);
@@ -140,6 +152,16 @@ export async function fetchRoles(): Promise<RoleListItem[]> {
 
 export async function fetchRole(roleId: string): Promise<RoleDetail> {
   const { data } = await http.get<Record<string, unknown>>(`/system/roles/${roleId}`);
+  return normalizeRoleDetail(data);
+}
+
+export async function createRole(payload: CreateRolePayload): Promise<RoleDetail> {
+  const { data } = await http.post<Record<string, unknown>>('/system/roles', payload);
+  return normalizeRoleDetail(data);
+}
+
+export async function updateRole(roleId: string, payload: UpdateRolePayload): Promise<RoleDetail> {
+  const { data } = await http.put<Record<string, unknown>>(`/system/roles/${roleId}`, payload);
   return normalizeRoleDetail(data);
 }
 
@@ -169,6 +191,28 @@ export async function fetchEmployees(): Promise<EmployeeLookup[]> {
     id: String(row.id ?? row.Id),
     employeeCode: String(row.employeeCode ?? row.EmployeeCode ?? ''),
     fullName: String(row.fullName ?? row.FullName ?? ''),
+    phone: (row.phone ?? row.Phone) as string | undefined,
     hasUserAccount: Boolean(row.hasUserAccount ?? row.HasUserAccount),
   }));
+}
+
+export async function fetchNextEmployeeCode(): Promise<string> {
+  const { data } = await http.get<Record<string, unknown>>('/system/employees/next-code');
+  return String(data.employeeCode ?? data.EmployeeCode ?? '');
+}
+
+export async function createEmployee(payload: {
+  fullName: string;
+  phone?: string;
+  email?: string;
+  employeeCode?: string;
+}): Promise<EmployeeLookup> {
+  const { data } = await http.post<Record<string, unknown>>('/system/employees', payload);
+  return {
+    id: String(data.id ?? data.Id),
+    employeeCode: String(data.employeeCode ?? data.EmployeeCode ?? ''),
+    fullName: String(data.fullName ?? data.FullName ?? ''),
+    phone: (data.phone ?? data.Phone) as string | undefined,
+    hasUserAccount: Boolean(data.hasUserAccount ?? data.HasUserAccount),
+  };
 }

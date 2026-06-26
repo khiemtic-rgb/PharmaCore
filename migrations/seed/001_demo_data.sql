@@ -45,15 +45,15 @@ INSERT INTO user_roles (user_id, role_id)
 VALUES ('11111111-1111-1111-1111-111111111401', '11111111-1111-1111-1111-111111111501');
 
 INSERT INTO permissions (permission_code, permission_name, module_name) VALUES
-('catalog.read', 'Xem danh mục', 'Catalog'),
-('catalog.write', 'Sửa danh mục', 'Catalog'),
-('inventory.read', 'Xem kho', 'Inventory'),
-('inventory.write', 'Sửa kho', 'Inventory'),
-('procurement.read', 'Xem mua hàng', 'Procurement'),
-('procurement.write', 'Mua hàng', 'Procurement'),
-('sales.write', 'Bán hàng', 'Sales'),
-('sales.read', 'Xem bán hàng', 'Sales'),
-('system.delete_permanent', 'Xóa vĩnh viễn', 'System');
+('catalog.read', 'Xem danh mục', 'Danh mục'),
+('catalog.write', 'Sửa danh mục', 'Danh mục'),
+('inventory.read', 'Xem kho', 'Kho hàng'),
+('inventory.write', 'Sửa kho', 'Kho hàng'),
+('procurement.read', 'Xem mua hàng', 'Mua hàng'),
+('procurement.write', 'Mua hàng', 'Mua hàng'),
+('sales.read', 'Xem bán hàng', 'Bán hàng'),
+('sales.write', 'Bán hàng', 'Bán hàng'),
+('system.delete_permanent', 'Xóa vĩnh viễn', 'Hệ thống');
 
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT '11111111-1111-1111-1111-111111111501', id FROM permissions;

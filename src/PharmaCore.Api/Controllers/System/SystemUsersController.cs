@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PharmaCore.Api.Authorization;
+using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.Identity;
 
 namespace PharmaCore.Api.Controllers.IdentityAdmin;
@@ -11,8 +12,13 @@ namespace PharmaCore.Api.Controllers.IdentityAdmin;
 public sealed class SystemUsersController : ControllerBase
 {
     private readonly IIdentityAdminService _identity;
+    private readonly ITenantContext _tenant;
 
-    public SystemUsersController(IIdentityAdminService identity) => _identity = identity;
+    public SystemUsersController(IIdentityAdminService identity, ITenantContext tenant)
+    {
+        _identity = identity;
+        _tenant = tenant;
+    }
 
     [HttpGet]
     [Authorize(Policy = IdentityPolicies.Read)]
@@ -59,6 +65,21 @@ public sealed class SystemUsersController : ControllerBase
         {
             var item = await _identity.UpdateUserAsync(userId, request, cancellationToken);
             return item is null ? NotFound() : Ok(item);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{userId:guid}")]
+    [Authorize(Policy = IdentityPolicies.Write)]
+    public async Task<IActionResult> Delete(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var deleted = await _identity.DeleteUserAsync(userId, _tenant.UserId, cancellationToken);
+            return deleted ? NoContent() : NotFound();
         }
         catch (InvalidOperationException ex)
         {

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Input, Space, Table, Tag, message } from 'antd';
+import { Button, Card, Input, Popconfirm, Space, Table, Tag, Tooltip, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { fetchUser, fetchUsers } from '@/shared/api/identity-admin.api';
+import { deleteUser, fetchUser, fetchUsers } from '@/shared/api/identity-admin.api';
 import type { UserDetail, UserListItem } from '@/shared/api/identity-admin.types';
 import { USER_STATUS_LABELS } from '@/shared/api/identity-admin.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
+import { useAuthStore } from '@/shared/auth/auth.store';
 import { useHasPermission } from '@/shared/auth/usePermission';
 import { UserFormDrawer } from '@/modules/system/UserFormDrawer';
 
 export function UserListPage() {
   const canWrite = useHasPermission('system.write');
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<UserListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -53,38 +55,106 @@ export function UserListPage() {
     }
   };
 
+  const handleDelete = async (row: UserListItem) => {
+    try {
+      await deleteUser(row.id);
+      message.success(`Đã xóa tài khoản ${row.username}`);
+      await load();
+    } catch (error) {
+      message.error(apiErrorMessage(error, 'Không xóa được tài khoản'));
+    }
+  };
+
   const columns: ColumnsType<UserListItem> = [
-    { title: 'Tên đăng nhập', dataIndex: 'username', width: 140 },
-    { title: 'Email', dataIndex: 'email' },
-    { title: 'Nhân viên', dataIndex: 'employeeName', render: (v?: string) => v ?? '—' },
+    {
+      title: 'Tên đăng nhập',
+      dataIndex: 'username',
+      width: 120,
+      ellipsis: true,
+    },
+    {
+      title: 'Họ và tên',
+      dataIndex: 'employeeName',
+      width: 220,
+      ellipsis: true,
+      render: (v?: string) => v ?? '—',
+    },
+    {
+      title: 'Số điện thoại',
+      dataIndex: 'employeePhone',
+      width: 130,
+      render: (v?: string) => v ?? '—',
+    },
     {
       title: 'Vai trò',
       dataIndex: 'roleCodes',
+      width: 110,
       render: (codes: string[]) =>
         codes.length ? codes.map((c) => <Tag key={c}>{c}</Tag>) : '—',
     },
     {
+      title: 'Đăng nhập cuối',
+      dataIndex: 'lastLoginAt',
+      width: 148,
+      render: (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—'),
+    },
+    {
       title: 'Trạng thái',
       dataIndex: 'status',
-      width: 110,
+      width: 108,
+      align: 'center',
       render: (v: number) => (
         <Tag color={v === 1 ? 'green' : 'default'}>{USER_STATUS_LABELS[v] ?? v}</Tag>
       ),
     },
     {
-      title: 'Đăng nhập cuối',
-      dataIndex: 'lastLoginAt',
-      width: 150,
-      render: (v?: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—'),
-    },
-    {
-      title: '',
-      width: 80,
+      title: 'Tác vụ',
+      key: 'actions',
+      width: 88,
+      fixed: 'right',
+      align: 'center',
       render: (_, row) =>
         canWrite ? (
-          <Button type="link" icon={<EditOutlined />} onClick={() => void openEdit(row)}>
-            Sửa
-          </Button>
+          <Space size={4}>
+            <Tooltip title="Sửa">
+              <Button
+                type="text"
+                size="small"
+                icon={<EditOutlined />}
+                aria-label="Sửa"
+                onClick={() => void openEdit(row)}
+              />
+            </Tooltip>
+            <Popconfirm
+              title={`Xóa «${row.username}»?`}
+              description="Tài khoản sẽ bị vô hiệu hóa."
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+              disabled={row.id === currentUserId}
+              onConfirm={() => void handleDelete(row)}
+            >
+              <Tooltip
+                title={
+                  row.id === currentUserId
+                    ? 'Không thể xóa tài khoản đang đăng nhập'
+                    : 'Xóa'
+                }
+              >
+                <span>
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    disabled={row.id === currentUserId}
+                    icon={<DeleteOutlined />}
+                    aria-label="Xóa"
+                    style={row.id === currentUserId ? { opacity: 0.35 } : undefined}
+                  />
+                </span>
+              </Tooltip>
+            </Popconfirm>
+          </Space>
         ) : null,
     },
   ];
@@ -98,7 +168,7 @@ export function UserListPage() {
             <Input
               allowClear
               prefix={<SearchOutlined />}
-              placeholder="Tìm username, email, tên..."
+              placeholder="Tìm username, email, tên, SĐT..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onPressEnter={() => {
@@ -128,9 +198,11 @@ export function UserListPage() {
       >
         <Table
           rowKey="id"
+          size="middle"
           loading={loading}
           columns={columns}
           dataSource={items}
+          scroll={{ x: 920 }}
           pagination={{
             current: page,
             pageSize,
@@ -147,7 +219,10 @@ export function UserListPage() {
       <UserFormDrawer
         open={drawerOpen}
         editing={editing}
-        onClose={() => setDrawerOpen(false)}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditing(null);
+        }}
         onSaved={() => void load()}
       />
     </>

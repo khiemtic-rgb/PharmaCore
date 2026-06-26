@@ -128,6 +128,58 @@ internal sealed class IdentityAdminRepository
         return affected > 0;
     }
 
+    public async Task<bool> BranchHasActiveWarehousesAsync(Guid branchId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM warehouses
+                WHERE branch_id = @BranchId AND tenant_id = @TenantId AND deleted_at IS NULL
+            )
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<bool>(sql, new { BranchId = branchId, TenantId });
+    }
+
+    public async Task<bool> SoftDeleteBranchAsync(Guid branchId, CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        const string sql = """
+            UPDATE branches
+            SET deleted_at = NOW(), status = 0, is_head_office = FALSE
+            WHERE id = @BranchId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+
+        var affected = await conn.ExecuteAsync(sql, new { BranchId = branchId, TenantId }, tx);
+        if (affected == 0)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        await conn.ExecuteAsync(
+            "DELETE FROM employee_branches WHERE branch_id = @BranchId",
+            new { BranchId = branchId },
+            tx);
+
+        await tx.CommitAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task ClearHeadOfficeExceptAsync(Guid branchId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE branches
+            SET is_head_office = FALSE
+            WHERE tenant_id = @TenantId AND id <> @BranchId AND deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new { TenantId, BranchId = branchId });
+    }
+
     public async Task<(IReadOnlyList<UserAdminListItemDto> Items, int Total)> ListUsersAsync(
         string? search,
         int page,
@@ -140,7 +192,7 @@ internal sealed class IdentityAdminRepository
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            conditions.Add("(u.username ILIKE @Search OR u.email ILIKE @Search OR e.full_name ILIKE @Search)");
+            conditions.Add("(u.username ILIKE @Search OR u.email ILIKE @Search OR e.full_name ILIKE @Search OR e.phone ILIKE @Search)");
             args.Add("Search", $"%{search.Trim()}%");
         }
 
@@ -159,6 +211,7 @@ internal sealed class IdentityAdminRepository
                 u.email AS Email,
                 u.status AS Status,
                 e.full_name AS EmployeeName,
+                e.phone AS EmployeePhone,
                 u.last_login_at AS LastLoginAt,
                 u.created_at AS CreatedAt,
                 COALESCE(array_agg(DISTINCT r.role_code) FILTER (WHERE r.role_code IS NOT NULL), {PgEmptyArrayLiteral}) AS RoleCodes
@@ -167,7 +220,7 @@ internal sealed class IdentityAdminRepository
             LEFT JOIN user_roles ur ON ur.user_id = u.id
             LEFT JOIN roles r ON r.id = ur.role_id
             WHERE {where}
-            GROUP BY u.id, u.username, u.email, u.status, e.full_name, u.last_login_at, u.created_at
+            GROUP BY u.id, u.username, u.email, u.status, e.full_name, e.phone, u.last_login_at, u.created_at
             ORDER BY u.username
             LIMIT @PageSize OFFSET @Offset
             """;
@@ -191,16 +244,17 @@ internal sealed class IdentityAdminRepository
                 u.status AS Status,
                 u.employee_id AS EmployeeId,
                 e.full_name AS EmployeeName,
+                e.phone AS EmployeePhone,
                 u.last_login_at AS LastLoginAt,
                 u.created_at AS CreatedAt,
-                COALESCE(array_agg(DISTINCT r.id) FILTER (WHERE r.id IS NOT NULL), {PgEmptyArrayLiteral}) AS RoleIds,
-                COALESCE(array_agg(DISTINCT r.role_code) FILTER (WHERE r.role_code IS NOT NULL), {PgEmptyArrayLiteral}) AS RoleCodes
+                COALESCE(array_agg(DISTINCT r.id) FILTER (WHERE r.id IS NOT NULL), '{}') AS RoleIds,
+                COALESCE(array_agg(DISTINCT r.role_code) FILTER (WHERE r.role_code IS NOT NULL), '{}') AS RoleCodes
             FROM users u
             LEFT JOIN employees e ON e.id = u.employee_id
             LEFT JOIN user_roles ur ON ur.user_id = u.id
             LEFT JOIN roles r ON r.id = ur.role_id
             WHERE u.id = @UserId AND u.tenant_id = @TenantId AND u.deleted_at IS NULL
-            GROUP BY u.id, u.username, u.email, u.status, u.employee_id, e.full_name, u.last_login_at, u.created_at
+            GROUP BY u.id, u.username, u.email, u.status, u.employee_id, e.full_name, e.phone, u.last_login_at, u.created_at
             """;
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
@@ -275,6 +329,7 @@ internal sealed class IdentityAdminRepository
 
     public async Task<bool> UpdateUserAsync(
         Guid userId,
+        string username,
         string email,
         short status,
         Guid? employeeId,
@@ -287,7 +342,8 @@ internal sealed class IdentityAdminRepository
 
         const string sql = """
             UPDATE users
-            SET email = @Email,
+            SET username = @Username,
+                email = @Email,
                 status = @Status,
                 employee_id = @EmployeeId,
                 password_hash = COALESCE(@PasswordHash, password_hash)
@@ -298,6 +354,7 @@ internal sealed class IdentityAdminRepository
         {
             UserId = userId,
             TenantId,
+            Username = username,
             Email = email,
             Status = status,
             EmployeeId = employeeId,
@@ -313,6 +370,91 @@ internal sealed class IdentityAdminRepository
         await ReplaceUserRolesAsync(conn, tx, userId, roleIds, cancellationToken);
         await tx.CommitAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<bool> SoftDeleteUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        const string sql = """
+            UPDATE users
+            SET deleted_at = NOW(), status = 0
+            WHERE id = @UserId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+
+        var affected = await conn.ExecuteAsync(sql, new { UserId = userId, TenantId }, tx);
+        if (affected == 0)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        await conn.ExecuteAsync(
+            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = @UserId AND revoked_at IS NULL",
+            new { UserId = userId },
+            tx);
+
+        await tx.CommitAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> EmployeeHasActiveUserAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM users
+                WHERE employee_id = @EmployeeId AND tenant_id = @TenantId AND deleted_at IS NULL
+            )
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<bool>(sql, new { EmployeeId = employeeId, TenantId });
+    }
+
+    public async Task<bool> SoftDeleteEmployeeAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE employees
+            SET deleted_at = NOW(), status = 0
+            WHERE id = @EmployeeId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteAsync(sql, new { EmployeeId = employeeId, TenantId }) > 0;
+    }
+
+    public async Task UpdateEmployeeContactAsync(
+        Guid employeeId,
+        string fullName,
+        string? phone,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE employees
+            SET full_name = @FullName, phone = @Phone
+            WHERE id = @EmployeeId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new
+        {
+            EmployeeId = employeeId,
+            TenantId,
+            FullName = fullName.Trim(),
+            Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
+        });
+    }
+
+    public async Task<Guid?> GetUserEmployeeIdAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT employee_id FROM users
+            WHERE id = @UserId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<Guid?>(sql, new { UserId = userId, TenantId });
     }
 
     public async Task<IReadOnlyList<RoleAdminListItemDto>> ListRolesAsync(CancellationToken cancellationToken)
@@ -355,7 +497,7 @@ internal sealed class IdentityAdminRepository
                 r.role_name AS RoleName,
                 r.description AS Description,
                 r.status AS Status,
-                COALESCE(array_agg(DISTINCT p.permission_code) FILTER (WHERE p.permission_code IS NOT NULL), {PgEmptyArrayLiteral}) AS PermissionCodes
+                COALESCE(array_agg(DISTINCT p.permission_code) FILTER (WHERE p.permission_code IS NOT NULL), '{}') AS PermissionCodes
             FROM roles r
             LEFT JOIN role_permissions rp ON rp.role_id = r.id
             LEFT JOIN permissions p ON p.id = rp.permission_id
@@ -374,6 +516,76 @@ internal sealed class IdentityAdminRepository
                 row.Description,
                 row.Status,
                 row.PermissionCodes ?? Array.Empty<string>());
+    }
+
+    public async Task<bool> RoleCodeExistsAsync(string roleCode, Guid? excludeRoleId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM roles
+                WHERE tenant_id = @TenantId
+                  AND role_code = @RoleCode
+                  AND (@ExcludeRoleId IS NULL OR id <> @ExcludeRoleId)
+            )
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<bool>(sql, new { TenantId, RoleCode = roleCode, ExcludeRoleId = excludeRoleId });
+    }
+
+    public async Task<Guid> CreateRoleAsync(
+        string roleCode,
+        string roleName,
+        string? description,
+        short status,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO roles (tenant_id, role_code, role_name, description, status)
+            VALUES (@TenantId, @RoleCode, @RoleName, @Description, @Status)
+            RETURNING id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<Guid>(sql, new
+        {
+            TenantId,
+            RoleCode = roleCode,
+            RoleName = roleName,
+            Description = description,
+            Status = status,
+        });
+    }
+
+    public async Task<bool> UpdateRoleAsync(
+        Guid roleId,
+        string roleCode,
+        string roleName,
+        string? description,
+        short status,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE roles
+            SET role_code = @RoleCode,
+                role_name = @RoleName,
+                description = @Description,
+                status = @Status,
+                updated_at = NOW()
+            WHERE id = @RoleId AND tenant_id = @TenantId
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var affected = await conn.ExecuteAsync(sql, new
+        {
+            RoleId = roleId,
+            TenantId,
+            RoleCode = roleCode,
+            RoleName = roleName,
+            Description = description,
+            Status = status,
+        });
+        return affected > 0;
     }
 
     public async Task<bool> UpdateRolePermissionsAsync(
@@ -430,6 +642,7 @@ internal sealed class IdentityAdminRepository
                 e.id AS Id,
                 e.employee_code AS EmployeeCode,
                 e.full_name AS FullName,
+                e.phone AS Phone,
                 (u.id IS NOT NULL) AS HasUserAccount
             FROM employees e
             LEFT JOIN users u ON u.employee_id = e.id AND u.deleted_at IS NULL
@@ -440,6 +653,74 @@ internal sealed class IdentityAdminRepository
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         var rows = await conn.QueryAsync<EmployeeLookupDto>(sql, new { TenantId });
         return rows.ToList();
+    }
+
+    public async Task<string> GenerateEmployeeCodeAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT COALESCE(MAX(CAST(NULLIF(regexp_replace(employee_code, '\D', '', 'g'), '') AS INT)), 0) + 1
+            FROM employees
+            WHERE tenant_id = @TenantId AND employee_code ~ '^EMP[0-9]+$'
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var next = await conn.ExecuteScalarAsync<int>(sql, new { TenantId });
+        return $"EMP{next:D3}";
+    }
+
+    public async Task<bool> EmployeeCodeExistsAsync(string employeeCode, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM employees
+                WHERE tenant_id = @TenantId AND employee_code = @EmployeeCode AND deleted_at IS NULL
+            )
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<bool>(sql, new { TenantId, EmployeeCode = employeeCode });
+    }
+
+    public async Task<Guid> CreateEmployeeAsync(
+        string employeeCode,
+        string fullName,
+        string? phone,
+        string? email,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO employees (tenant_id, employee_code, full_name, phone, email)
+            VALUES (@TenantId, @EmployeeCode, @FullName, @Phone, @Email)
+            RETURNING id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<Guid>(sql, new
+        {
+            TenantId,
+            EmployeeCode = employeeCode,
+            FullName = fullName,
+            Phone = phone,
+            Email = email,
+        });
+    }
+
+    public async Task<EmployeeLookupDto?> GetEmployeeLookupAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                e.id AS Id,
+                e.employee_code AS EmployeeCode,
+                e.full_name AS FullName,
+                e.phone AS Phone,
+                (u.id IS NOT NULL) AS HasUserAccount
+            FROM employees e
+            LEFT JOIN users u ON u.employee_id = e.id AND u.deleted_at IS NULL
+            WHERE e.id = @EmployeeId AND e.tenant_id = @TenantId AND e.deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<EmployeeLookupDto>(sql, new { EmployeeId = employeeId, TenantId });
     }
 
     public async Task<bool> RoleIdsBelongToTenantAsync(IReadOnlyList<Guid> roleIds, CancellationToken cancellationToken)
@@ -489,6 +770,7 @@ internal sealed class IdentityAdminRepository
             row.Email,
             row.Status,
             row.EmployeeName,
+            row.EmployeePhone,
             row.RoleCodes ?? Array.Empty<string>(),
             row.LastLoginAt.HasValue ? ToOffset(row.LastLoginAt.Value) : null,
             ToOffset(row.CreatedAt));
@@ -501,6 +783,7 @@ internal sealed class IdentityAdminRepository
             row.Status,
             row.EmployeeId,
             row.EmployeeName,
+            row.EmployeePhone,
             row.RoleIds ?? Array.Empty<Guid>(),
             row.RoleCodes ?? Array.Empty<string>(),
             row.LastLoginAt.HasValue ? ToOffset(row.LastLoginAt.Value) : null,
@@ -528,6 +811,7 @@ internal sealed class IdentityAdminRepository
         public string Email { get; init; } = "";
         public short Status { get; init; }
         public string? EmployeeName { get; init; }
+        public string? EmployeePhone { get; init; }
         public string[]? RoleCodes { get; init; }
         public DateTime? LastLoginAt { get; init; }
         public DateTime CreatedAt { get; init; }
@@ -541,6 +825,7 @@ internal sealed class IdentityAdminRepository
         public short Status { get; init; }
         public Guid? EmployeeId { get; init; }
         public string? EmployeeName { get; init; }
+        public string? EmployeePhone { get; init; }
         public Guid[]? RoleIds { get; init; }
         public string[]? RoleCodes { get; init; }
         public DateTime? LastLoginAt { get; init; }

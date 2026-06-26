@@ -10,8 +10,8 @@ ALTER TABLE sales_order_items
 
 INSERT INTO permissions (permission_code, permission_name, module_name)
 VALUES
-    ('sales.discount', 'Chiết khấu bán hàng (tối đa 10%)', 'Sales'),
-    ('sales.discount.unlimited', 'Chiết khấu không giới hạn', 'Sales')
+    ('sales.discount', 'Chiết khấu bán hàng (tối đa 10%)', 'Bán hàng'),
+    ('sales.discount.unlimited', 'Chiết khấu không giới hạn', 'Bán hàng')
 ON CONFLICT (permission_code) DO NOTHING;
 
 INSERT INTO role_permissions (role_id, permission_id)

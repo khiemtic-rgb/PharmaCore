@@ -1,13 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Button, Drawer, Form, Input, Select, Space, message } from 'antd';
-import { CloseOutlined, SaveOutlined } from '@ant-design/icons';
-import {
-  createUser,
-  fetchEmployees,
-  fetchRoles,
-  updateUser,
-} from '@/shared/api/identity-admin.api';
-import type { UserDetail } from '@/shared/api/identity-admin.types';
+import { useCallback, useEffect, useState } from 'react';
+import { Button, Col, Drawer, Form, Input, Row, Select, Space, Tooltip, message } from 'antd';
+import { CloseOutlined, KeyOutlined, QuestionCircleOutlined, SaveOutlined } from '@ant-design/icons';
+import { createUser, fetchEmployees, fetchRoles, updateUser } from '@/shared/api/identity-admin.api';
+import type { EmployeeLookup, UserDetail } from '@/shared/api/identity-admin.types';
 import { USER_STATUS_OPTIONS } from '@/shared/api/identity-admin.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 
@@ -16,6 +11,8 @@ interface UserFormValues {
   email: string;
   password?: string;
   newPassword?: string;
+  employeeFullName?: string;
+  employeePhone?: string;
   status: number;
   roleIds: string[];
   employeeId?: string;
@@ -28,57 +25,168 @@ interface UserFormDrawerProps {
   onSaved: () => void;
 }
 
+const employeeLinkLabel = (
+  <Space size={4}>
+    NV có sẵn
+    <Tooltip title="Gắn tài khoản với hồ sơ EMP đã có (chưa có TK). Chọn sẽ điền họ tên và SĐT.">
+      <QuestionCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+    </Tooltip>
+  </Space>
+);
+
+function buildRoleOptions(
+  roles: { id: string; roleCode: string; roleName: string }[],
+  editing: UserDetail | null,
+) {
+  const options = roles.map((r) => ({ value: r.id, label: `${r.roleCode} — ${r.roleName}` }));
+  if (!editing) return options;
+
+  const known = new Set(options.map((o) => o.value));
+  for (let i = 0; i < editing.roleIds.length; i++) {
+    const id = editing.roleIds[i];
+    if (!known.has(id)) {
+      const code = editing.roleCodes[i];
+      options.push({ value: id, label: code ?? id });
+      known.add(id);
+    }
+  }
+  return options;
+}
+
+function seedRoleOptionsFromEditing(editing: UserDetail | null) {
+  if (!editing?.roleIds.length) return [];
+  return editing.roleIds.map((id, i) => ({
+    value: id,
+    label: editing.roleCodes[i] ?? id,
+  }));
+}
+
 export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDrawerProps) {
   const [form] = Form.useForm<UserFormValues>();
   const [saving, setSaving] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ value: string; label: string }[]>([]);
-  const [employeeOptions, setEmployeeOptions] = useState<{ value: string; label: string }[]>([]);
+  const [employees, setEmployees] = useState<EmployeeLookup[]>([]);
+  const [employeeOptions, setEmployeeOptions] = useState<
+    { value: string; label: string; disabled?: boolean }[]
+  >([]);
+
+  const loadLookups = useCallback(async () => {
+    const roles = await fetchRoles().catch(() => [] as Awaited<ReturnType<typeof fetchRoles>>);
+    const employeeRows = await fetchEmployees().catch(() => [] as EmployeeLookup[]);
+    const options = buildRoleOptions(roles, editing);
+    setRoleOptions(options);
+    setEmployees(employeeRows);
+    setEmployeeOptions(
+      employeeRows.map((e) => ({
+        value: e.id,
+        label: `${e.employeeCode} — ${e.fullName}${e.hasUserAccount && e.id !== editing?.employeeId ? ' (đã có TK)' : ''}`,
+        disabled: e.hasUserAccount && e.id !== editing?.employeeId,
+      })),
+    );
+    return options;
+  }, [editing]);
 
   useEffect(() => {
     if (!open) return;
-    void Promise.all([fetchRoles(), fetchEmployees()])
-      .then(([roles, employees]) => {
-        setRoleOptions(roles.map((r) => ({ value: r.id, label: `${r.roleCode} — ${r.roleName}` })));
-        setEmployeeOptions(
-          employees.map((e) => ({
-            value: e.id,
-            label: `${e.employeeCode} — ${e.fullName}${e.hasUserAccount && e.id !== editing?.employeeId ? ' (đã có TK)' : ''}`,
-            disabled: e.hasUserAccount && e.id !== editing?.employeeId,
-          })),
-        );
-      })
-      .catch(() => {
-        setRoleOptions([]);
-        setEmployeeOptions([]);
-      });
-  }, [open, editing?.employeeId]);
 
-  useEffect(() => {
-    if (!open) return;
+    setShowChangePassword(false);
+    form.resetFields();
+    setRoleOptions(seedRoleOptionsFromEditing(editing));
+
     if (editing) {
       form.setFieldsValue({
         username: editing.username,
         email: editing.email,
+        employeeFullName: editing.employeeName,
+        employeePhone: editing.employeePhone,
         status: editing.status,
         roleIds: editing.roleIds,
         employeeId: editing.employeeId,
+        newPassword: undefined,
+        password: undefined,
       });
-      return;
+    } else {
+      form.setFieldsValue({ status: 1, roleIds: [] });
     }
+
+    let cancelled = false;
+    void loadLookups()
+      .then((options) => {
+        if (cancelled) return;
+        if (editing?.roleIds.length) {
+          form.setFieldValue('roleIds', editing.roleIds);
+        } else if (!editing && options.length === 1) {
+          form.setFieldValue('roleIds', [options[0].value]);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRoleOptions(seedRoleOptionsFromEditing(editing));
+        setEmployees([]);
+        setEmployeeOptions([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, editing, form, loadLookups]);
+
+  const editFieldNames = showChangePassword
+    ? (['username', 'email', 'employeeFullName', 'employeePhone', 'status', 'roleIds', 'employeeId', 'newPassword'] as const)
+    : (['username', 'email', 'employeeFullName', 'employeePhone', 'status', 'roleIds', 'employeeId'] as const);
+
+  const createFieldNames = [
+    'username',
+    'email',
+    'password',
+    'employeeFullName',
+    'employeePhone',
+    'status',
+    'roleIds',
+    'employeeId',
+  ] as const;
+
+  const handleEmployeeSelect = (employeeId?: string) => {
+    if (!employeeId) return;
+    const employee = employees.find((e) => e.id === employeeId);
+    if (!employee) return;
+    form.setFieldsValue({
+      employeeFullName: employee.fullName,
+      employeePhone: employee.phone,
+    });
+  };
+
+  const handleClose = () => {
     form.resetFields();
-    form.setFieldsValue({ status: 1, roleIds: [] });
-  }, [open, editing, form]);
+    onClose();
+  };
 
   const handleSave = async () => {
-    const values = await form.validateFields();
+    let values: UserFormValues;
+    try {
+      values = await form.validateFields([...(editing ? editFieldNames : createFieldNames)]);
+    } catch (error) {
+      const first = (error as { errorFields?: { errors: string[] }[] })?.errorFields?.[0]?.errors?.[0];
+      if (first) message.warning(first);
+      return;
+    }
+
+    const profile = {
+      employeeId: values.employeeId || undefined,
+      employeeFullName: values.employeeFullName?.trim() || undefined,
+      employeePhone: values.employeePhone?.trim() || undefined,
+    };
+
     setSaving(true);
     try {
       if (editing) {
         await updateUser(editing.id, {
+          username: values.username!.trim(),
           email: values.email.trim(),
           status: values.status,
           roleIds: values.roleIds,
-          employeeId: values.employeeId,
+          ...profile,
           newPassword: values.newPassword?.trim() || undefined,
         });
         message.success('Đã cập nhật tài khoản');
@@ -89,12 +197,12 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
           password: values.password!,
           status: values.status,
           roleIds: values.roleIds,
-          employeeId: values.employeeId,
+          ...profile,
         });
         message.success('Đã tạo tài khoản');
       }
       onSaved();
-      onClose();
+      handleClose();
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không lưu được tài khoản'));
     } finally {
@@ -106,11 +214,11 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
     <Drawer
       title={editing ? 'Sửa tài khoản' : 'Thêm tài khoản'}
       open={open}
-      onClose={onClose}
-      width={440}
+      onClose={handleClose}
+      width={480}
       extra={
         <Space>
-          <Button icon={<CloseOutlined />} onClick={onClose}>
+          <Button icon={<CloseOutlined />} onClick={handleClose}>
             Hủy
           </Button>
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void handleSave()}>
@@ -119,30 +227,64 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
         </Space>
       }
     >
-      <Form form={form} layout="vertical">
-        {!editing ? (
-          <Form.Item
-            name="username"
-            label="Tên đăng nhập"
-            rules={[{ required: true, message: 'Nhập tên đăng nhập' }]}
-          >
-            <Input autoComplete="off" />
-          </Form.Item>
-        ) : (
-          <Form.Item label="Tên đăng nhập">
-            <Input value={editing.username} disabled />
-          </Form.Item>
-        )}
-        <Form.Item
-          name="email"
-          label="Email"
-          rules={[
-            { required: true, message: 'Nhập email' },
-            { type: 'email', message: 'Email không hợp lệ' },
-          ]}
-        >
-          <Input />
-        </Form.Item>
+      <Form form={form} layout="vertical" size="middle">
+        <Row gutter={12}>
+          <Col span={12}>
+            <Form.Item
+              name="username"
+              label="Tên đăng nhập"
+              rules={[{ required: true, message: 'Nhập tên đăng nhập' }]}
+              style={{ marginBottom: 12 }}
+            >
+              <Input autoComplete="off" placeholder="username" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="employeeId" label={employeeLinkLabel} style={{ marginBottom: 12 }}>
+              <Select
+                allowClear
+                options={employeeOptions}
+                placeholder="Tuỳ chọn"
+                onChange={(value) => handleEmployeeSelect(value)}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={12}>
+          <Col span={14}>
+            <Form.Item name="employeeFullName" label="Họ và tên" style={{ marginBottom: 12 }}>
+              <Input placeholder="Nguyễn Văn A" />
+            </Form.Item>
+          </Col>
+          <Col span={10}>
+            <Form.Item name="employeePhone" label="SĐT" style={{ marginBottom: 12 }}>
+              <Input placeholder="090..." />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={12}>
+          <Col span={14}>
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[
+                { required: true, message: 'Nhập email' },
+                { type: 'email', message: 'Email không hợp lệ' },
+              ]}
+              style={{ marginBottom: 12 }}
+            >
+              <Input placeholder="email@..." />
+            </Form.Item>
+          </Col>
+          <Col span={10}>
+            <Form.Item name="status" label="Trạng thái" style={{ marginBottom: 12 }}>
+              <Select options={USER_STATUS_OPTIONS} />
+            </Form.Item>
+          </Col>
+        </Row>
+
         {!editing ? (
           <Form.Item
             name="password"
@@ -151,31 +293,62 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
               { required: true, message: 'Nhập mật khẩu' },
               { min: 8, message: 'Tối thiểu 8 ký tự' },
             ]}
+            style={{ marginBottom: 12 }}
           >
-            <Input.Password autoComplete="new-password" />
+            <Input.Password autoComplete="new-password" placeholder="Tối thiểu 8 ký tự" />
           </Form.Item>
-        ) : (
+        ) : showChangePassword ? (
           <Form.Item
             name="newPassword"
             label="Mật khẩu mới"
-            extra="Để trống nếu không đổi"
-            rules={[{ min: 8, message: 'Tối thiểu 8 ký tự' }]}
+            rules={[
+              { required: true, message: 'Nhập mật khẩu mới' },
+              { min: 8, message: 'Tối thiểu 8 ký tự' },
+            ]}
+            style={{ marginBottom: 12 }}
           >
-            <Input.Password autoComplete="new-password" />
+            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+              <Input.Password autoComplete="new-password" placeholder="Nhập mật khẩu mới" />
+              <Button
+                type="link"
+                size="small"
+                style={{ padding: 0, height: 'auto' }}
+                onClick={() => {
+                  setShowChangePassword(false);
+                  form.setFieldValue('newPassword', undefined);
+                }}
+              >
+                Hủy đổi mật khẩu
+              </Button>
+            </Space>
+          </Form.Item>
+        ) : (
+          <Form.Item label="Mật khẩu" style={{ marginBottom: 12 }}>
+            <Button
+              size="small"
+              icon={<KeyOutlined />}
+              onClick={() => {
+                setShowChangePassword(true);
+                form.setFieldValue('newPassword', undefined);
+              }}
+            >
+              Đổi mật khẩu
+            </Button>
           </Form.Item>
         )}
+
         <Form.Item
           name="roleIds"
           label="Vai trò"
           rules={[{ required: true, message: 'Chọn ít nhất một vai trò' }]}
+          style={{ marginBottom: 0 }}
         >
-          <Select mode="multiple" options={roleOptions} placeholder="Chọn vai trò" />
-        </Form.Item>
-        <Form.Item name="employeeId" label="Nhân viên liên kết">
-          <Select allowClear options={employeeOptions} placeholder="Tuỳ chọn" />
-        </Form.Item>
-        <Form.Item name="status" label="Trạng thái">
-          <Select options={USER_STATUS_OPTIONS} />
+          <Select
+            mode="multiple"
+            options={roleOptions}
+            placeholder="Chọn vai trò"
+            optionFilterProp="label"
+          />
         </Form.Item>
       </Form>
     </Drawer>

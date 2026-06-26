@@ -35,6 +35,7 @@ export type UserListItem = {
   email: string;
   status: number;
   employeeName?: string;
+  employeePhone?: string;
   roleCodes: string[];
   lastLoginAt?: string;
   createdAt: string;
@@ -47,6 +48,7 @@ export type UserDetail = {
   status: number;
   employeeId?: string;
   employeeName?: string;
+  employeePhone?: string;
   roleIds: string[];
   roleCodes: string[];
   lastLoginAt?: string;
@@ -60,13 +62,18 @@ export type CreateUserPayload = {
   status: number;
   roleIds: string[];
   employeeId?: string;
+  employeeFullName?: string;
+  employeePhone?: string;
 };
 
 export type UpdateUserPayload = {
+  username: string;
   email: string;
   status: number;
   roleIds: string[];
   employeeId?: string;
+  employeeFullName?: string;
+  employeePhone?: string;
   newPassword?: string;
 };
 
@@ -89,6 +96,20 @@ export type RoleDetail = {
   permissionCodes: string[];
 };
 
+export type CreateRolePayload = {
+  roleCode: string;
+  roleName: string;
+  description?: string;
+  status?: number;
+};
+
+export type UpdateRolePayload = {
+  roleCode: string;
+  roleName: string;
+  description?: string;
+  status: number;
+};
+
 export type PermissionLookup = {
   id: string;
   permissionCode: string;
@@ -100,6 +121,7 @@ export type EmployeeLookup = {
   id: string;
   employeeCode: string;
   fullName: string;
+  phone?: string;
   hasUserAccount: boolean;
 };
 

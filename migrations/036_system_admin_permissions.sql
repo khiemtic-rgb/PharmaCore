@@ -1,8 +1,8 @@
 -- Phase 12: Identity Admin permissions
 
 INSERT INTO permissions (permission_code, permission_name, module_name) VALUES
-('system.read', 'Xem hệ thống', 'System'),
-('system.write', 'Quản trị hệ thống', 'System')
+('system.read', 'Xem hệ thống', 'Hệ thống'),
+('system.write', 'Quản trị hệ thống', 'Hệ thống')
 ON CONFLICT (permission_code) DO NOTHING;
 
 INSERT INTO role_permissions (role_id, permission_id)

@@ -42,6 +42,7 @@ public sealed record UserAdminListItemDto(
     string Email,
     short Status,
     string? EmployeeName,
+    string? EmployeePhone,
     IReadOnlyList<string> RoleCodes,
     DateTimeOffset? LastLoginAt,
     DateTimeOffset CreatedAt);
@@ -53,6 +54,7 @@ public sealed record UserDetailDto(
     short Status,
     Guid? EmployeeId,
     string? EmployeeName,
+    string? EmployeePhone,
     IReadOnlyList<Guid> RoleIds,
     IReadOnlyList<string> RoleCodes,
     DateTimeOffset? LastLoginAt,
@@ -64,13 +66,18 @@ public sealed record CreateUserRequest(
     string Password,
     short Status,
     IReadOnlyList<Guid> RoleIds,
-    Guid? EmployeeId = null);
+    Guid? EmployeeId = null,
+    string? EmployeeFullName = null,
+    string? EmployeePhone = null);
 
 public sealed record UpdateUserRequest(
+    string Username,
     string Email,
     short Status,
     IReadOnlyList<Guid> RoleIds,
     Guid? EmployeeId = null,
+    string? EmployeeFullName = null,
+    string? EmployeePhone = null,
     string? NewPassword = null);
 
 public sealed record RoleAdminListItemDto(
@@ -92,6 +99,18 @@ public sealed record RoleDetailDto(
 
 public sealed record UpdateRolePermissionsRequest(IReadOnlyList<string> PermissionCodes);
 
+public sealed record CreateRoleRequest(
+    string RoleCode,
+    string RoleName,
+    string? Description = null,
+    short Status = 1);
+
+public sealed record UpdateRoleRequest(
+    string RoleCode,
+    string RoleName,
+    string? Description,
+    short Status);
+
 public sealed record PermissionLookupDto(
     Guid Id,
     string PermissionCode,
@@ -102,7 +121,16 @@ public sealed record EmployeeLookupDto(
     Guid Id,
     string EmployeeCode,
     string FullName,
+    string? Phone,
     bool HasUserAccount);
+
+public sealed record CreateEmployeeRequest(
+    string FullName,
+    string? Phone = null,
+    string? Email = null,
+    string? EmployeeCode = null);
+
+public sealed record NextEmployeeCodeDto(string EmployeeCode);
 
 public sealed record PagedUsersResult(
     IReadOnlyList<UserAdminListItemDto> Items,

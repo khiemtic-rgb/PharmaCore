@@ -31,6 +31,9 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             request with { BranchCode = code, BranchName = request.BranchName.Trim() },
             cancellationToken);
 
+        if (request.IsHeadOffice)
+            await _repository.ClearHeadOfficeExceptAsync(id, cancellationToken);
+
         return (await _repository.GetBranchAsync(id, cancellationToken))!;
     }
 
@@ -53,7 +56,25 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             request with { BranchCode = code, BranchName = request.BranchName.Trim() },
             cancellationToken);
 
+        if (updated && request.IsHeadOffice)
+            await _repository.ClearHeadOfficeExceptAsync(branchId, cancellationToken);
+
         return updated ? await _repository.GetBranchAsync(branchId, cancellationToken) : null;
+    }
+
+    public async Task<bool> DeleteBranchAsync(Guid branchId, CancellationToken cancellationToken = default)
+    {
+        var branch = await _repository.GetBranchAsync(branchId, cancellationToken);
+        if (branch is null)
+            return false;
+
+        if (branch.IsHeadOffice)
+            throw new InvalidOperationException("Không thể xóa chi nhánh trụ sở chính.");
+
+        if (await _repository.BranchHasActiveWarehousesAsync(branchId, cancellationToken))
+            throw new InvalidOperationException("Chi nhánh đang có kho — vô hiệu hóa hoặc chuyển kho trước khi xóa.");
+
+        return await _repository.SoftDeleteBranchAsync(branchId, cancellationToken);
     }
 
     public async Task<PagedUsersResult> ListUsersAsync(
@@ -89,13 +110,20 @@ internal sealed class IdentityAdminService : IIdentityAdminService
         if (!await _repository.RoleIdsBelongToTenantAsync(request.RoleIds, cancellationToken))
             throw new InvalidOperationException("Một hoặc nhiều vai trò không hợp lệ.");
 
+        var employeeId = await ResolveEmployeeIdAsync(
+            request.EmployeeId,
+            request.EmployeeFullName,
+            request.EmployeePhone,
+            existingEmployeeId: null,
+            cancellationToken);
+
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         var userId = await _repository.CreateUserAsync(
             username,
             email,
             passwordHash,
             request.Status,
-            request.EmployeeId,
+            employeeId,
             request.RoleIds,
             cancellationToken);
 
@@ -110,11 +138,18 @@ internal sealed class IdentityAdminService : IIdentityAdminService
         if (await _repository.GetUserAsync(userId, cancellationToken) is null)
             return null;
 
+        if (string.IsNullOrWhiteSpace(request.Username))
+            throw new InvalidOperationException("Tên đăng nhập không được để trống.");
+
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new InvalidOperationException("Email không được để trống.");
 
         if (request.RoleIds.Count == 0)
             throw new InvalidOperationException("Chọn ít nhất một vai trò.");
+
+        var username = request.Username.Trim();
+        if (await _repository.UsernameExistsAsync(username, userId, cancellationToken))
+            throw new InvalidOperationException("Tên đăng nhập đã tồn tại.");
 
         var email = request.Email.Trim().ToLowerInvariant();
         if (await _repository.EmailExistsAsync(email, userId, cancellationToken))
@@ -131,16 +166,47 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             passwordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         }
 
+        var currentEmployeeId = await _repository.GetUserEmployeeIdAsync(userId, cancellationToken);
+        var employeeId = await ResolveEmployeeIdAsync(
+            request.EmployeeId,
+            request.EmployeeFullName,
+            request.EmployeePhone,
+            currentEmployeeId,
+            cancellationToken);
+
         var updated = await _repository.UpdateUserAsync(
             userId,
+            username,
             email,
             request.Status,
-            request.EmployeeId,
+            employeeId,
             passwordHash,
             request.RoleIds,
             cancellationToken);
 
         return updated ? await _repository.GetUserAsync(userId, cancellationToken) : null;
+    }
+
+    public async Task<bool> DeleteUserAsync(
+        Guid userId,
+        Guid currentUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (userId == currentUserId)
+            throw new InvalidOperationException("Không thể xóa tài khoản đang đăng nhập.");
+
+        if (await _repository.GetUserAsync(userId, cancellationToken) is null)
+            return false;
+
+        return await _repository.SoftDeleteUserAsync(userId, cancellationToken);
+    }
+
+    public async Task<bool> DeleteEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default)
+    {
+        if (await _repository.EmployeeHasActiveUserAsync(employeeId, cancellationToken))
+            throw new InvalidOperationException("Nhân viên đang có tài khoản — xóa hoặc vô hiệu hóa tài khoản trước.");
+
+        return await _repository.SoftDeleteEmployeeAsync(employeeId, cancellationToken);
     }
 
     public Task<IReadOnlyList<RoleAdminListItemDto>> ListRolesAsync(CancellationToken cancellationToken = default) =>
@@ -167,11 +233,116 @@ internal sealed class IdentityAdminService : IIdentityAdminService
         return updated ? await _repository.GetRoleAsync(roleId, cancellationToken) : null;
     }
 
+    public async Task<RoleDetailDto> CreateRoleAsync(
+        CreateRoleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRoleFields(request.RoleCode, request.RoleName);
+
+        var code = request.RoleCode.Trim().ToUpperInvariant();
+        if (await _repository.RoleCodeExistsAsync(code, excludeRoleId: null, cancellationToken))
+            throw new InvalidOperationException($"Mã vai trò «{code}» đã tồn tại.");
+
+        var id = await _repository.CreateRoleAsync(
+            code,
+            request.RoleName.Trim(),
+            string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            request.Status,
+            cancellationToken);
+
+        return (await _repository.GetRoleAsync(id, cancellationToken))!;
+    }
+
+    public async Task<RoleDetailDto?> UpdateRoleAsync(
+        Guid roleId,
+        UpdateRoleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRoleFields(request.RoleCode, request.RoleName);
+
+        if (await _repository.GetRoleAsync(roleId, cancellationToken) is null)
+            return null;
+
+        var code = request.RoleCode.Trim().ToUpperInvariant();
+        if (await _repository.RoleCodeExistsAsync(code, roleId, cancellationToken))
+            throw new InvalidOperationException($"Mã vai trò «{code}» đã tồn tại.");
+
+        var updated = await _repository.UpdateRoleAsync(
+            roleId,
+            code,
+            request.RoleName.Trim(),
+            string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            request.Status,
+            cancellationToken);
+
+        return updated ? await _repository.GetRoleAsync(roleId, cancellationToken) : null;
+    }
+
     public Task<IReadOnlyList<PermissionLookupDto>> ListPermissionsAsync(CancellationToken cancellationToken = default) =>
         _repository.ListPermissionsAsync(cancellationToken);
 
     public Task<IReadOnlyList<EmployeeLookupDto>> ListEmployeesAsync(CancellationToken cancellationToken = default) =>
         _repository.ListEmployeesAsync(cancellationToken);
+
+    public Task<string> GetNextEmployeeCodeAsync(CancellationToken cancellationToken = default) =>
+        _repository.GenerateEmployeeCodeAsync(cancellationToken);
+
+    public async Task<EmployeeLookupDto> CreateEmployeeAsync(
+        CreateEmployeeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            throw new InvalidOperationException("Họ tên nhân viên không được để trống.");
+
+        var code = string.IsNullOrWhiteSpace(request.EmployeeCode)
+            ? await _repository.GenerateEmployeeCodeAsync(cancellationToken)
+            : request.EmployeeCode.Trim().ToUpperInvariant();
+
+        if (await _repository.EmployeeCodeExistsAsync(code, cancellationToken))
+            throw new InvalidOperationException($"Mã nhân viên «{code}» đã tồn tại.");
+
+        var id = await _repository.CreateEmployeeAsync(
+            code,
+            request.FullName.Trim(),
+            string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
+            string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
+            cancellationToken);
+
+        return (await _repository.GetEmployeeLookupAsync(id, cancellationToken))!;
+    }
+
+    private async Task<Guid?> ResolveEmployeeIdAsync(
+        Guid? employeeId,
+        string? employeeFullName,
+        string? employeePhone,
+        Guid? existingEmployeeId,
+        CancellationToken cancellationToken)
+    {
+        var fullName = employeeFullName?.Trim();
+        var phone = string.IsNullOrWhiteSpace(employeePhone) ? null : employeePhone.Trim();
+        var targetId = employeeId ?? existingEmployeeId;
+
+        if (!string.IsNullOrWhiteSpace(fullName))
+        {
+            if (targetId is not null)
+            {
+                await _repository.UpdateEmployeeContactAsync(targetId.Value, fullName, phone, cancellationToken);
+                return targetId;
+            }
+
+            var code = await _repository.GenerateEmployeeCodeAsync(cancellationToken);
+            return await _repository.CreateEmployeeAsync(code, fullName, phone, email: null, cancellationToken);
+        }
+
+        if (targetId is not null && phone is not null)
+        {
+            var lookup = await _repository.GetEmployeeLookupAsync(targetId.Value, cancellationToken);
+            if (lookup is not null)
+                await _repository.UpdateEmployeeContactAsync(targetId.Value, lookup.FullName, phone, cancellationToken);
+        }
+
+        return targetId;
+    }
 
     private static void ValidateBranch(string branchCode, string branchName)
     {
@@ -191,5 +362,13 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             throw new InvalidOperationException($"Mật khẩu tối thiểu {MinPasswordLength} ký tự.");
         if (roleIds.Count == 0)
             throw new InvalidOperationException("Chọn ít nhất một vai trò.");
+    }
+
+    private static void ValidateRoleFields(string roleCode, string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleCode))
+            throw new InvalidOperationException("Mã vai trò không được để trống.");
+        if (string.IsNullOrWhiteSpace(roleName))
+            throw new InvalidOperationException("Tên vai trò không được để trống.");
     }
 }

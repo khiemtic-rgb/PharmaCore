@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS ix_goods_receipts_archived
 
 -- Highest privilege: permanent purge (ADMIN only)
 INSERT INTO permissions (permission_code, permission_name, module_name)
-VALUES ('system.delete_permanent', 'Xóa vĩnh viễn', 'System')
+VALUES ('system.delete_permanent', 'Xóa vĩnh viễn', 'Hệ thống')
 ON CONFLICT (permission_code) DO NOTHING;
 
 INSERT INTO role_permissions (role_id, permission_id)
