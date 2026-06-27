@@ -7,18 +7,35 @@ internal sealed class InventoryService : IInventoryService
 {
     private readonly InventoryRepository _repository;
     private readonly ITenantContext _tenant;
+    private readonly IAuditLogService _audit;
+    private readonly IBranchAccessService _branchAccess;
 
-    public InventoryService(InventoryRepository repository, ITenantContext tenant)
+    public InventoryService(
+        InventoryRepository repository,
+        ITenantContext tenant,
+        IAuditLogService audit,
+        IBranchAccessService branchAccess)
     {
         _repository = repository;
         _tenant = tenant;
+        _audit = audit;
+        _branchAccess = branchAccess;
     }
 
-    public Task<IReadOnlyList<WarehouseDto>> GetWarehousesAsync(CancellationToken cancellationToken = default) =>
-        _repository.GetWarehousesAsync(cancellationToken);
+    public async Task<IReadOnlyList<WarehouseDto>> GetWarehousesAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetWarehousesAsync(cancellationToken);
+        var scope = await _branchAccess.GetScopeAsync(cancellationToken);
+        if (scope.Unrestricted)
+            return all;
+        return all.Where(w => scope.WarehouseIds.Contains(w.Id)).ToList();
+    }
 
-    public Task<WarehouseDto?> GetWarehouseAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _repository.GetWarehouseAsync(id, cancellationToken);
+    public async Task<WarehouseDto?> GetWarehouseAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await _branchAccess.EnsureWarehouseAccessAsync(id, cancellationToken);
+        return await _repository.GetWarehouseAsync(id, cancellationToken);
+    }
 
     public async Task<WarehouseDto> CreateWarehouseAsync(CreateWarehouseRequest request, CancellationToken cancellationToken = default)
     {
@@ -28,6 +45,7 @@ internal sealed class InventoryService : IInventoryService
             throw new InvalidOperationException("Tên kho không được để trống.");
         if (!await _repository.BranchExistsAsync(request.BranchId, cancellationToken))
             throw new InvalidOperationException("Chi nhánh không tồn tại.");
+        await _branchAccess.EnsureBranchAccessAsync(request.BranchId, cancellationToken);
 
         var id = await _repository.CreateWarehouseAsync(request, cancellationToken);
         return (await _repository.GetWarehouseAsync(id, cancellationToken))!;
@@ -35,6 +53,7 @@ internal sealed class InventoryService : IInventoryService
 
     public async Task<WarehouseDto?> UpdateWarehouseAsync(Guid id, UpdateWarehouseRequest request, CancellationToken cancellationToken = default)
     {
+        await _branchAccess.EnsureWarehouseAccessAsync(id, cancellationToken);
         if (string.IsNullOrWhiteSpace(request.WarehouseName))
             throw new InvalidOperationException("Tên kho không được để trống.");
 
@@ -44,6 +63,7 @@ internal sealed class InventoryService : IInventoryService
 
     public async Task<(bool Ok, string? Error)> DeleteWarehouseAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        await _branchAccess.EnsureWarehouseAccessAsync(id, cancellationToken);
         if (await _repository.CountBatchesInWarehouseAsync(id, cancellationToken) > 0)
             return (false, "Không xóa được: kho còn tồn hàng.");
 
@@ -51,10 +71,16 @@ internal sealed class InventoryService : IInventoryService
         return deleted ? (true, null) : (false, "Kho không tồn tại.");
     }
 
-    public Task<IReadOnlyList<BranchLookupDto>> GetBranchLookupsAsync(CancellationToken cancellationToken = default) =>
-        _repository.GetBranchLookupsAsync(cancellationToken);
+    public async Task<IReadOnlyList<BranchLookupDto>> GetBranchLookupsAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetBranchLookupsAsync(cancellationToken);
+        var scope = await _branchAccess.GetScopeAsync(cancellationToken);
+        if (scope.Unrestricted)
+            return all;
+        return all.Where(b => scope.BranchIds.Contains(b.Id)).ToList();
+    }
 
-    public Task<PagedStockBatchesResult> GetStockBatchesAsync(
+    public async Task<PagedStockBatchesResult> GetStockBatchesAsync(
         Guid? warehouseId,
         Guid? productId,
         string? search,
@@ -64,23 +90,13 @@ internal sealed class InventoryService : IInventoryService
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
-        return GetStockBatchesInternalAsync(warehouseId, productId, search, page, pageSize, cancellationToken);
-    }
-
-    private async Task<PagedStockBatchesResult> GetStockBatchesInternalAsync(
-        Guid? warehouseId,
-        Guid? productId,
-        string? search,
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken)
-    {
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
         var (items, total) = await _repository.GetStockBatchesAsync(
-            warehouseId, productId, search, page, pageSize, cancellationToken);
+            warehouseId, allowed, productId, search, page, pageSize, cancellationToken);
         return new PagedStockBatchesResult(items, total, page, pageSize);
     }
 
-    public Task<PagedStockProductsResult> GetStockProductsAsync(
+    public async Task<PagedStockProductsResult> GetStockProductsAsync(
         Guid? warehouseId,
         string? search,
         int page,
@@ -89,18 +105,9 @@ internal sealed class InventoryService : IInventoryService
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
-        return GetStockProductsInternalAsync(warehouseId, search, page, pageSize, cancellationToken);
-    }
-
-    private async Task<PagedStockProductsResult> GetStockProductsInternalAsync(
-        Guid? warehouseId,
-        string? search,
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken)
-    {
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
         var (items, total) = await _repository.GetStockProductsAsync(
-            warehouseId, search, page, pageSize, cancellationToken);
+            warehouseId, allowed, search, page, pageSize, cancellationToken);
         return new PagedStockProductsResult(items, total, page, pageSize);
     }
 
@@ -108,6 +115,7 @@ internal sealed class InventoryService : IInventoryService
         CreateOpeningBalanceRequest request,
         CancellationToken cancellationToken = default)
     {
+        await _branchAccess.EnsureWarehouseAccessAsync(request.WarehouseId, cancellationToken);
         if (request.Lines.Count == 0)
             throw new InvalidOperationException("Thêm ít nhất một dòng nhập tồn.");
 
@@ -129,25 +137,50 @@ internal sealed class InventoryService : IInventoryService
         var batchIds = await _repository.ProcessOpeningBalanceAsync(
             request.WarehouseId, request.Notes, request.Lines, cancellationToken);
 
+        await _audit.WriteAsync(
+            "opening_balance",
+            request.WarehouseId,
+            "create",
+            new { warehouseId = request.WarehouseId, lineCount = batchIds.Count },
+            cancellationToken);
+
         return new OpeningBalanceResultDto(request.WarehouseId, batchIds.Count, batchIds);
     }
 
-    public Task<IReadOnlyList<OpeningBalanceBatchListItemDto>> GetOpeningBalanceBatchesAsync(
+    public async Task<IReadOnlyList<OpeningBalanceBatchListItemDto>> GetOpeningBalanceBatchesAsync(
         Guid? warehouseId,
-        CancellationToken cancellationToken = default) =>
-        _repository.GetOpeningBalanceBatchesAsync(warehouseId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
+        return await _repository.GetOpeningBalanceBatchesAsync(warehouseId, allowed, cancellationToken);
+    }
 
     public Task VoidOpeningBalanceBatchAsync(Guid batchId, CancellationToken cancellationToken = default) =>
         _repository.VoidOpeningBalanceBatchAsync(batchId, cancellationToken);
 
-    public Task<IReadOnlyList<TransferListItemDto>> GetTransfersAsync(CancellationToken cancellationToken = default) =>
-        _repository.GetTransfersAsync(cancellationToken);
+    public async Task<IReadOnlyList<TransferListItemDto>> GetTransfersAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetTransfersAsync(cancellationToken);
+        var scope = await _branchAccess.GetScopeAsync(cancellationToken);
+        if (scope.Unrestricted)
+            return all;
+        var allowed = scope.WarehouseIds.ToHashSet();
+        return all.Where(t => allowed.Contains(t.FromWarehouseId) || allowed.Contains(t.ToWarehouseId)).ToList();
+    }
 
-    public Task<TransferDetailDto?> GetTransferAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _repository.GetTransferAsync(id, cancellationToken);
+    public async Task<TransferDetailDto?> GetTransferAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var item = await _repository.GetTransferAsync(id, cancellationToken);
+        if (item is null) return null;
+        await _branchAccess.EnsureWarehouseAccessAsync(item.FromWarehouseId, cancellationToken);
+        await _branchAccess.EnsureWarehouseAccessAsync(item.ToWarehouseId, cancellationToken);
+        return item;
+    }
 
     public async Task<TransferDetailDto> CreateTransferAsync(CreateTransferRequest request, CancellationToken cancellationToken = default)
     {
+        await _branchAccess.EnsureWarehouseAccessAsync(request.FromWarehouseId, cancellationToken);
+        await _branchAccess.EnsureWarehouseAccessAsync(request.ToWarehouseId, cancellationToken);
         if (request.FromWarehouseId == request.ToWarehouseId)
             throw new InvalidOperationException("Kho xuất và kho nhận phải khác nhau.");
         if (request.Items.Count == 0)
@@ -172,18 +205,34 @@ internal sealed class InventoryService : IInventoryService
 
     public async Task<TransferDetailDto?> CompleteTransferAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var existing = await _repository.GetTransferAsync(id, cancellationToken);
+        if (existing is null) return null;
+        await _branchAccess.EnsureWarehouseAccessAsync(existing.FromWarehouseId, cancellationToken);
         await _repository.CompleteTransferAsync(id, _tenant.UserId, cancellationToken);
         return await _repository.GetTransferAsync(id, cancellationToken);
     }
 
-    public Task<IReadOnlyList<AdjustmentListItemDto>> GetAdjustmentsAsync(CancellationToken cancellationToken = default) =>
-        _repository.GetAdjustmentsAsync(cancellationToken);
+    public async Task<IReadOnlyList<AdjustmentListItemDto>> GetAdjustmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetAdjustmentsAsync(cancellationToken);
+        var scope = await _branchAccess.GetScopeAsync(cancellationToken);
+        if (scope.Unrestricted)
+            return all;
+        var allowed = scope.WarehouseIds.ToHashSet();
+        return all.Where(a => allowed.Contains(a.WarehouseId)).ToList();
+    }
 
-    public Task<AdjustmentDetailDto?> GetAdjustmentAsync(Guid id, CancellationToken cancellationToken = default) =>
-        _repository.GetAdjustmentAsync(id, cancellationToken);
+    public async Task<AdjustmentDetailDto?> GetAdjustmentAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var item = await _repository.GetAdjustmentAsync(id, cancellationToken);
+        if (item is not null)
+            await _branchAccess.EnsureWarehouseAccessAsync(item.WarehouseId, cancellationToken);
+        return item;
+    }
 
     public async Task<AdjustmentDetailDto> CreateAdjustmentAsync(CreateAdjustmentRequest request, CancellationToken cancellationToken = default)
     {
+        await _branchAccess.EnsureWarehouseAccessAsync(request.WarehouseId, cancellationToken);
         if (request.Items.Count == 0)
             throw new InvalidOperationException("Thêm ít nhất một dòng kiểm kê.");
 
@@ -198,14 +247,28 @@ internal sealed class InventoryService : IInventoryService
 
     public async Task<AdjustmentDetailDto?> ApproveAdjustmentAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var before = await _repository.GetAdjustmentAsync(id, cancellationToken);
+        if (before is null) return null;
+        await _branchAccess.EnsureWarehouseAccessAsync(before.WarehouseId, cancellationToken);
         await _repository.ApproveAdjustmentAsync(id, _tenant.UserId, cancellationToken);
-        return await _repository.GetAdjustmentAsync(id, cancellationToken);
+        var detail = await _repository.GetAdjustmentAsync(id, cancellationToken);
+        if (detail is not null)
+        {
+            await _audit.WriteAsync(
+                "inventory_adjustment",
+                id,
+                "approve",
+                new { detail.AdjustmentNumber, detail.WarehouseId, itemCount = detail.Items.Count },
+                cancellationToken);
+        }
+        return detail;
     }
 
     public async Task<AdjustmentDetailDto> CreateCountingSessionAsync(
         CreateCountingSessionRequest request,
         CancellationToken cancellationToken = default)
     {
+        await _branchAccess.EnsureWarehouseAccessAsync(request.WarehouseId, cancellationToken);
         if (!await _repository.WarehouseExistsAsync(request.WarehouseId, cancellationToken))
             throw new InvalidOperationException("Kho không tồn tại.");
 
@@ -218,11 +281,22 @@ internal sealed class InventoryService : IInventoryService
         return (await _repository.GetAdjustmentAsync(adjustmentId, cancellationToken))!;
     }
 
+    public async Task<AdjustmentListItemDto?> GetActiveCountingSessionAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        await _branchAccess.EnsureWarehouseAccessAsync(warehouseId, cancellationToken);
+        return await _repository.GetActiveCountingSessionAsync(warehouseId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<AdjustmentCountEntryDto>> AddCountEntriesAsync(
         Guid adjustmentId,
         AddCountEntriesRequest request,
         CancellationToken cancellationToken = default)
     {
+        var adjustment = await _repository.GetAdjustmentAsync(adjustmentId, cancellationToken)
+            ?? throw new InvalidOperationException("Phiên kiểm kê không tồn tại.");
+        await _branchAccess.EnsureWarehouseAccessAsync(adjustment.WarehouseId, cancellationToken);
         if (request.Entries.Count == 0)
             throw new InvalidOperationException("Thêm ít nhất một dòng đếm.");
 
@@ -250,13 +324,23 @@ internal sealed class InventoryService : IInventoryService
         CancellationToken cancellationToken = default) =>
         _repository.GetCountEntriesAsync(adjustmentId, cancellationToken);
 
-    public Task<InventoryBarcodeResolveDto?> ResolveInventoryBarcodeAsync(
+    public async Task<InventoryBarcodeResolveDto?> ResolveInventoryBarcodeAsync(
         Guid warehouseId,
         string barcode,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(barcode))
-            return Task.FromResult<InventoryBarcodeResolveDto?>(null);
-        return _repository.ResolveInventoryBarcodeAsync(warehouseId, barcode.Trim(), cancellationToken);
+            return null;
+        await _branchAccess.EnsureWarehouseAccessAsync(warehouseId, cancellationToken);
+        return await _repository.ResolveInventoryBarcodeAsync(warehouseId, barcode.Trim(), cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<LowStockProductDto>> GetLowStockProductsAsync(
+        Guid? warehouseId,
+        decimal defaultThreshold,
+        CancellationToken cancellationToken = default)
+    {
+        var (scopedId, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
+        return await _repository.GetLowStockProductsAsync(scopedId, allowed, defaultThreshold, cancellationToken);
     }
 }

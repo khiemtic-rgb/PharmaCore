@@ -322,7 +322,7 @@ export function CustomerDraftOrderDrawer({
         </Typography.Text>
 
         <Button type="primary" icon={<PlusOutlined />} loading={saving} onClick={() => void onSaveDraft()}>
-          Lưu tạm
+          Lưu nháp
         </Button>
       </Space>
     </Drawer>

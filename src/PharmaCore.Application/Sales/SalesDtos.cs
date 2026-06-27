@@ -237,6 +237,18 @@ public sealed record CloseSalesShiftRequest(
     decimal ClosingCash,
     string? CloseNotes = null);
 
+public sealed record SalesOrderListFilter(
+    string? Search = null,
+    short? Status = null,
+    int Page = 1,
+    int PageSize = 50);
+
+public sealed record SalesOrderPagedListResult(
+    IReadOnlyList<SalesOrderListItemDto> Items,
+    int Total,
+    int Page,
+    int PageSize);
+
 public sealed record SalesOrderListItemDto(
     Guid Id,
     string OrderNumber,

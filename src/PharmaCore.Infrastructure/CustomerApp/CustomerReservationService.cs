@@ -1,3 +1,4 @@
+using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.CustomerApp;
 using PharmaCore.Infrastructure.Data;
 
@@ -7,11 +8,16 @@ internal sealed class CustomerReservationService : ICustomerReservationService
 {
     private readonly CustomerReservationRepository _repo;
     private readonly IDbConnectionFactory _db;
+    private readonly IBranchAccessService _branchAccess;
 
-    public CustomerReservationService(CustomerReservationRepository repo, IDbConnectionFactory db)
+    public CustomerReservationService(
+        CustomerReservationRepository repo,
+        IDbConnectionFactory db,
+        IBranchAccessService branchAccess)
     {
         _repo = repo;
         _db = db;
+        _branchAccess = branchAccess;
     }
 
     public async Task<CustomerReservationListResult> ListForCustomerAsync(
@@ -37,6 +43,9 @@ internal sealed class CustomerReservationService : ICustomerReservationService
         CancellationToken cancellationToken = default)
     {
         ValidateCreateRequest(request);
+
+        var warehouseId = await _repo.ResolveDefaultWarehouseIdAsync(tenantId, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy kho mặc định.");
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
@@ -65,6 +74,7 @@ internal sealed class CustomerReservationService : ICustomerReservationService
             request.FulfillmentType,
             request.FulfillmentType == CustomerReservationFulfillmentTypes.Delivery ? request.AddressId : null,
             request.Notes?.Trim(),
+            warehouseId,
             conn,
             tx,
             cancellationToken);
@@ -99,15 +109,21 @@ internal sealed class CustomerReservationService : ICustomerReservationService
         short[]? statuses,
         CancellationToken cancellationToken = default)
     {
-        var items = await _repo.ListForStaffAsync(tenantId, statuses, cancellationToken);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var items = await _repo.ListForStaffAsync(tenantId, statuses, allowed, cancellationToken);
         return new CustomerReservationStaffListResult(items);
     }
 
-    public Task<CustomerReservationDto?> GetForStaffAsync(
+    public async Task<CustomerReservationDto?> GetForStaffAsync(
         Guid tenantId,
         Guid reservationId,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetForStaffAsync(tenantId, reservationId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var header = await _repo.GetHeaderAsync(tenantId, reservationId, cancellationToken);
+        if (header is null) return null;
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
+        return await _repo.GetForStaffAsync(tenantId, reservationId, cancellationToken);
+    }
 
     public async Task<CustomerReservationDto> ConfirmAsync(
         Guid tenantId,
@@ -163,8 +179,7 @@ internal sealed class CustomerReservationService : ICustomerReservationService
         UpdateCustomerReservationStaffNotesRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (await _repo.GetForStaffAsync(tenantId, reservationId, cancellationToken) is null)
-            throw new InvalidOperationException("Không tìm thấy yêu cầu đặt trước.");
+        await EnsureStaffAccessAsync(tenantId, reservationId, cancellationToken);
         await _repo.UpdateStaffNotesAsync(tenantId, reservationId, request.StaffNotes?.Trim(), cancellationToken);
         return (await GetForStaffAsync(tenantId, reservationId, cancellationToken))!;
     }
@@ -177,6 +192,8 @@ internal sealed class CustomerReservationService : ICustomerReservationService
         string invalidMessage,
         CancellationToken cancellationToken)
     {
+        await EnsureStaffAccessAsync(tenantId, reservationId, cancellationToken);
+
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
@@ -202,8 +219,7 @@ internal sealed class CustomerReservationService : ICustomerReservationService
             || !IsPosLoadableStatus(header.Status))
             return null;
 
-        var warehouseId = await _repo.ResolveDefaultWarehouseIdAsync(tenantId, cancellationToken)
-            ?? throw new InvalidOperationException("Không tìm thấy kho bán mặc định.");
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
 
         var lineRows = await _repo.ListItemsAsync(reservationId, cancellationToken);
 
@@ -211,7 +227,7 @@ internal sealed class CustomerReservationService : ICustomerReservationService
             header.Id,
             header.ReservationNumber,
             header.CustomerId,
-            warehouseId,
+            header.WarehouseId,
             header.Notes,
             lineRows.Select(item => new CustomerReservationPosLineDto(
                 item.ProductId,
@@ -229,9 +245,20 @@ internal sealed class CustomerReservationService : ICustomerReservationService
         Guid salesOrderId,
         CancellationToken cancellationToken = default)
     {
+        await EnsureStaffAccessAsync(tenantId, reservationId, cancellationToken);
         if (!await _repo.LinkSalesOrderAsync(tenantId, reservationId, salesOrderId, cancellationToken))
             throw new InvalidOperationException(
                 "Không liên kết được đặt trước với đơn bán. Kiểm tra trạng thái và khách hàng trên hóa đơn.");
+    }
+
+    private async Task EnsureStaffAccessAsync(
+        Guid tenantId,
+        Guid reservationId,
+        CancellationToken cancellationToken)
+    {
+        var header = await _repo.GetHeaderAsync(tenantId, reservationId, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy yêu cầu đặt trước.");
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
     }
 
     private static bool IsPosLoadableStatus(short status) =>

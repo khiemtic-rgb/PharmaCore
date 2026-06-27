@@ -65,6 +65,9 @@ export function SalesOrderListPage() {
   const canRead = useHasPermission('sales.read');
   const canWrite = useHasPermission('sales.write');
   const [items, setItems] = useState<SalesOrderListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -82,16 +85,35 @@ export function SalesOrderListPage() {
   const [draftCustomerLoyalty, setDraftCustomerLoyalty] = useState<PosCustomerLoyalty | null>(null);
   const [draftCompleting, setDraftCompleting] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (
+    nextPage = page,
+    nextPageSize = pageSize,
+    nextSearch = search,
+    nextStatus = statusFilter,
+  ) => {
     setLoading(true);
     try {
-      setItems(await fetchSalesOrders());
+      const apiStatus = typeof nextStatus === 'number' ? nextStatus : undefined;
+      const result = await fetchSalesOrders({
+        search: nextSearch.trim() || undefined,
+        status: apiStatus,
+        page: nextPage,
+        pageSize: nextPageSize,
+      });
+      const rows =
+        nextStatus === PARTIAL_RETURN_STATUS
+          ? result.items.filter((row) => matchesSaleStatusFilter(row, nextStatus))
+          : result.items;
+      setItems(rows);
+      setTotal(nextStatus === PARTIAL_RETURN_STATUS ? rows.length : result.total);
+      setPage(nextPage);
+      setPageSize(nextPageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không tải được đơn bán'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, pageSize, search, statusFilter]);
 
   useEffect(() => {
     void load();
@@ -128,22 +150,13 @@ export function SalesOrderListPage() {
       .filter((opt): opt is { value: string; label: string } => opt !== null);
   }, [items, searchInput]);
 
-  const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items.filter((row) => {
-      if (!matchesSaleStatusFilter(row, statusFilter)) return false;
-      if (!q) return true;
-      return (
-        row.orderNumber.toLowerCase().includes(q) ||
-        row.warehouseName.toLowerCase().includes(q) ||
-        (row.customerName?.toLowerCase().includes(q) ?? false)
-      );
-    });
-  }, [items, search, statusFilter]);
+  const filteredItems = items;
 
   const applySearch = (value?: string) => {
+    const next = (value ?? searchInput).trim();
     setSearchInput(value ?? searchInput);
-    setSearch((value ?? searchInput).trim());
+    setSearch(next);
+    void load(1, pageSize, next, statusFilter);
   };
 
   const loadOrderReturns = useCallback(async (orderId: string) => {
@@ -492,7 +505,7 @@ export function SalesOrderListPage() {
         showIcon
         style={{ marginBottom: 16 }}
         message="Đơn gửi app khách (Gửi khách hàng tại POS) nằm tại tab Đơn hàng từ app"
-        description="Tab này chỉ liệt kê đơn bán nội bộ (tạm / hoàn tất). Đơn chờ khách xác nhận trên app xem tại Bán hàng → Đơn hàng từ app."
+        description="Tab này chỉ liệt kê đơn bán nội bộ (nháp / hoàn tất). Đơn chờ khách xác nhận trên app xem tại Bán hàng → Đơn hàng từ app."
         action={
           <Button size="small" onClick={() => navigate('/sales/customer-drafts')}>
             Mở Đơn hàng từ app
@@ -507,7 +520,10 @@ export function SalesOrderListPage() {
           onSelect={(value) => applySearch(String(value))}
           onChange={(value) => {
             setSearchInput(value);
-            if (!value) setSearch('');
+            if (!value) {
+              setSearch('');
+              void load(1, pageSize, '', statusFilter);
+            }
           }}
         >
           <Input
@@ -525,7 +541,10 @@ export function SalesOrderListPage() {
           placeholder="Trạng thái"
           style={{ width: 140 }}
           value={statusFilter}
-          onChange={setStatusFilter}
+          onChange={(value) => {
+            setStatusFilter(value);
+            void load(1, pageSize, search, value);
+          }}
           options={SALE_STATUS_FILTER_OPTIONS.map(({ value, label }) => ({ value, label }))}
         />
         <Button
@@ -533,6 +552,7 @@ export function SalesOrderListPage() {
             setSearch('');
             setSearchInput('');
             setStatusFilter(undefined);
+            void load(1, pageSize, '', undefined);
           }}
         >
           Xóa lọc
@@ -547,7 +567,16 @@ export function SalesOrderListPage() {
         loading={loading}
         dataSource={filteredItems}
         columns={columns}
-        pagination={{ pageSize: 20, showTotal: (total) => `${total} đơn` }}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (t) => `${t} đơn`,
+          onChange: (nextPage, nextPageSize) => {
+            void load(nextPage, nextPageSize, search, statusFilter);
+          },
+        }}
         onRow={(record) => ({
           onClick: () => void openDetail(record),
           style: { cursor: 'pointer' },
@@ -568,7 +597,7 @@ export function SalesOrderListPage() {
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}
-                message="Đơn tạm chưa trừ tồn kho"
+                message="Đơn nháp chưa trừ tồn kho"
                 description="Bấm Hoàn tất đơn để xuất hóa đơn, trừ tồn theo FEFO và cho phép trả hàng sau này."
               />
             )}

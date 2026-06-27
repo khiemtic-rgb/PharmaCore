@@ -68,7 +68,9 @@ public sealed record CreateUserRequest(
     IReadOnlyList<Guid> RoleIds,
     Guid? EmployeeId = null,
     string? EmployeeFullName = null,
-    string? EmployeePhone = null);
+    string? EmployeePhone = null,
+    IReadOnlyList<Guid>? BranchIds = null,
+    Guid? PrimaryBranchId = null);
 
 public sealed record UpdateUserRequest(
     string Username,
@@ -78,7 +80,9 @@ public sealed record UpdateUserRequest(
     Guid? EmployeeId = null,
     string? EmployeeFullName = null,
     string? EmployeePhone = null,
-    string? NewPassword = null);
+    string? NewPassword = null,
+    IReadOnlyList<Guid>? BranchIds = null,
+    Guid? PrimaryBranchId = null);
 
 public sealed record RoleAdminListItemDto(
     Guid Id,
@@ -122,13 +126,34 @@ public sealed record EmployeeLookupDto(
     string EmployeeCode,
     string FullName,
     string? Phone,
-    bool HasUserAccount);
+    bool HasUserAccount,
+    int BranchCount = 0);
+
+public sealed record EmployeeBranchAssignmentDto(
+    Guid BranchId,
+    string BranchCode,
+    string BranchName,
+    bool IsPrimary);
+
+public sealed record EmployeeDetailDto(
+    Guid Id,
+    string EmployeeCode,
+    string FullName,
+    string? Phone,
+    bool HasUserAccount,
+    IReadOnlyList<EmployeeBranchAssignmentDto> Branches);
 
 public sealed record CreateEmployeeRequest(
     string FullName,
     string? Phone = null,
     string? Email = null,
-    string? EmployeeCode = null);
+    string? EmployeeCode = null,
+    IReadOnlyList<Guid>? BranchIds = null,
+    Guid? PrimaryBranchId = null);
+
+public sealed record UpdateEmployeeBranchesRequest(
+    IReadOnlyList<Guid> BranchIds,
+    Guid? PrimaryBranchId = null);
 
 public sealed record NextEmployeeCodeDto(string EmployeeCode);
 

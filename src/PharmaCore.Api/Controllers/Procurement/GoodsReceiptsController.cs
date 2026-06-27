@@ -16,7 +16,7 @@ public sealed class GoodsReceiptsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = ProcurementPolicies.Read)]
-    public async Task<ActionResult<IReadOnlyList<GoodsReceiptListItemDto>>> List(
+    public async Task<ActionResult<ProcurementPagedListResult<GoodsReceiptListItemDto>>> List(
         [FromQuery] string? search,
         [FromQuery] Guid? supplierId,
         [FromQuery] Guid? warehouseId,
@@ -26,9 +26,11 @@ public sealed class GoodsReceiptsController : ControllerBase
         [FromQuery] Guid? purchaseOrderId,
         [FromQuery] Guid? productId,
         [FromQuery] bool includeArchived = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default) =>
         Ok(await _receipts.GetAllAsync(
-            new GoodsReceiptListFilter(search, supplierId, warehouseId, status, dateFrom, dateTo, purchaseOrderId, productId, includeArchived),
+            new GoodsReceiptListFilter(search, supplierId, warehouseId, status, dateFrom, dateTo, purchaseOrderId, productId, includeArchived, page, pageSize),
             cancellationToken));
 
     [HttpGet("{id:guid}")]

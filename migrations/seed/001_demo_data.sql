@@ -25,8 +25,7 @@ VALUES (
     'EMP001', 'Nguyễn Văn Admin', '0901000001', 'admin@demo.pharmacore.vn'
 );
 
-INSERT INTO employee_branches (employee_id, branch_id, is_primary)
-VALUES ('11111111-1111-1111-1111-111111111301', '11111111-1111-1111-1111-111111111201', TRUE);
+-- Admin tenant: khong gan employee_branches de ADMIN co quyen toan tenant (multi-branch 10x10).
 
 -- Admin user: password = Admin@123
 INSERT INTO users (id, tenant_id, employee_id, username, email, password_hash)

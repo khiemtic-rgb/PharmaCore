@@ -42,7 +42,8 @@ public interface ISalesService
         decimal orderTotalBeforeVoucher,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<SalesOrderListItemDto>> GetOrdersAsync(
+    Task<SalesOrderPagedListResult> GetOrdersAsync(
+        SalesOrderListFilter? filter = null,
         CancellationToken cancellationToken = default);
 
     Task<SalesOrderDetailDto?> GetOrderAsync(Guid id, CancellationToken cancellationToken = default);

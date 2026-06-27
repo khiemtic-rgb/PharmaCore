@@ -16,6 +16,8 @@ import type {
   ReceiptStoreSettings,
   SalesOrderDetail,
   SalesOrderListItem,
+  SalesOrderListFilters,
+  SalesOrderPagedListResult,
   SalesReturnDetail,
   SalesReturnListItem,
   SalesShiftDetail,
@@ -348,9 +350,25 @@ export async function previewPosAllocation(payload: {
   return normalizePosAllocationPreview(data);
 }
 
-export async function fetchSalesOrders(): Promise<SalesOrderListItem[]> {
-  const { data } = await http.get<Record<string, unknown>[]>('/sales/orders');
-  return data.map((row) => normalizeSalesOrderListItem(row));
+export async function fetchSalesOrders(
+  filters?: SalesOrderListFilters,
+): Promise<SalesOrderPagedListResult> {
+  const params: Record<string, string | number | undefined> = {};
+  if (filters?.search) params.search = filters.search;
+  if (filters?.status != null) params.status = filters.status;
+  if (filters?.page != null) params.page = filters.page;
+  if (filters?.pageSize != null) params.pageSize = filters.pageSize;
+
+  const { data } = await http.get<Record<string, unknown>>('/sales/orders', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return {
+    items: rawItems.map((row) => normalizeSalesOrderListItem(row)),
+    total: Number(data.total ?? data.Total ?? 0),
+    page: Number(data.page ?? data.Page ?? 1),
+    pageSize: Number(data.pageSize ?? data.PageSize ?? rawItems.length),
+  };
 }
 
 export async function fetchSalesOrder(id: string): Promise<SalesOrderDetail> {

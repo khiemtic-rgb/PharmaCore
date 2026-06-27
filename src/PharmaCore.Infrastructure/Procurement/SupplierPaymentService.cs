@@ -1,69 +1,47 @@
 using PharmaCore.Application.Abstractions;
-
 using PharmaCore.Application.Procurement;
-
-
 
 namespace PharmaCore.Infrastructure.Procurement;
 
-
-
 internal sealed class SupplierPaymentService : ISupplierPaymentService
-
 {
-
     private readonly ProcurementRepository _repository;
-
     private readonly ITenantContext _tenant;
-
     private readonly IAuditLogService _audit;
-
-
+    private readonly IBranchAccessService _branchAccess;
 
     public SupplierPaymentService(
-
         ProcurementRepository repository,
-
         ITenantContext tenant,
-
-        IAuditLogService audit)
-
+        IAuditLogService audit,
+        IBranchAccessService branchAccess)
     {
-
         _repository = repository;
-
         _tenant = tenant;
-
         _audit = audit;
-
+        _branchAccess = branchAccess;
     }
 
-
-
-    public Task<IReadOnlyList<SupplierPaymentListItemDto>> GetAllAsync(
-
+    public async Task<IReadOnlyList<SupplierPaymentListItemDto>> GetAllAsync(
         SupplierPaymentListFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        return await _repository.GetSupplierPaymentsAsync(filter ?? new SupplierPaymentListFilter(), allowed, cancellationToken);
+    }
 
-        CancellationToken cancellationToken = default) =>
-
-        _repository.GetSupplierPaymentsAsync(filter ?? new SupplierPaymentListFilter(), cancellationToken);
-
-
-
-    public Task<SupplierPaymentListItemDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
-
-        _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
-
+    public async Task<SupplierPaymentListItemDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var payment = await _repository.GetSupplierPaymentAsync(id, cancellationToken);
+        if (payment is null) return null;
+        await EnsurePaymentAccessAsync(payment.PurchaseOrderId, payment.GoodsReceiptId, cancellationToken);
+        return payment;
+    }
 
     public async Task<SupplierPaymentListItemDto> CreateAsync(
-
         CreateSupplierPaymentRequest request,
-
         CancellationToken cancellationToken = default)
-
     {
-
         await ValidatePaymentRequestAsync(
             request.SupplierId,
             request.PurchaseOrderId,
@@ -72,33 +50,20 @@ internal sealed class SupplierPaymentService : ISupplierPaymentService
             cancellationToken);
 
         var id = await _repository.CreateSupplierPaymentAsync(request, _tenant.UserId, cancellationToken);
-
         return (await _repository.GetSupplierPaymentAsync(id, cancellationToken))!;
-
     }
 
-
-
     public async Task<SupplierPaymentListItemDto?> UpdateAsync(
-
         Guid id,
-
         UpdateSupplierPaymentRequest request,
-
         CancellationToken cancellationToken = default)
-
     {
-
         var existing = await _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
         if (existing is null) return null;
-
         if (existing.Status != SupplierPaymentStatuses.Draft)
+            throw new InvalidOperationException("Chỉ sửa được phiếu thanh toán ở trạng thái chờ ghi sổ.");
 
-            throw new InvalidOperationException("Chỉ sửa được phiếu thanh toán ở trạng thái Nháp.");
-
-
-
+        await EnsurePaymentAccessAsync(existing.PurchaseOrderId, existing.GoodsReceiptId, cancellationToken);
         await ValidatePaymentRequestAsync(
             request.SupplierId,
             request.PurchaseOrderId,
@@ -107,76 +72,45 @@ internal sealed class SupplierPaymentService : ISupplierPaymentService
             cancellationToken);
 
         var updated = await _repository.UpdateSupplierPaymentAsync(id, request, cancellationToken);
-
         if (!updated)
-
             throw new InvalidOperationException("Không cập nhật được phiếu thanh toán.");
 
         return await _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
     }
-
-
 
     public async Task<SupplierPaymentListItemDto?> PostAsync(Guid id, CancellationToken cancellationToken = default)
-
     {
-
         var existing = await _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
         if (existing is null) return null;
-
         if (existing.Status != SupplierPaymentStatuses.Draft)
+            throw new InvalidOperationException("Chỉ ghi sổ được phiếu thanh toán ở trạng thái chờ ghi sổ.");
 
-            throw new InvalidOperationException("Chỉ ghi sổ được phiếu thanh toán ở trạng thái Nháp.");
-
-
+        await EnsurePaymentAccessAsync(existing.PurchaseOrderId, existing.GoodsReceiptId, cancellationToken);
 
         var posted = await _repository.PostSupplierPaymentAsync(id, _tenant.UserId, cancellationToken);
-
         if (!posted)
-
             throw new InvalidOperationException("Không ghi sổ được phiếu thanh toán.");
 
-
-
         await _audit.WriteAsync("supplier_payment", id, "post", new { paymentNumber = existing.PaymentNumber }, cancellationToken);
-
         return await _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
     }
-
-
 
     public async Task<SupplierPaymentListItemDto?> CancelAsync(Guid id, CancellationToken cancellationToken = default)
-
     {
-
         var existing = await _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
         if (existing is null) return null;
-
         if (existing.Status != SupplierPaymentStatuses.Draft)
+            throw new InvalidOperationException("Chỉ hủy được phiếu thanh toán ở trạng thái chờ ghi sổ.");
 
-            throw new InvalidOperationException("Chỉ hủy được phiếu thanh toán ở trạng thái Nháp.");
-
-
+        await EnsurePaymentAccessAsync(existing.PurchaseOrderId, existing.GoodsReceiptId, cancellationToken);
 
         var cancelled = await _repository.CancelSupplierPaymentAsync(id, _tenant.UserId, cancellationToken);
-
         if (!cancelled)
-
             throw new InvalidOperationException("Không hủy được phiếu thanh toán.");
 
-
-
         await _audit.WriteAsync("supplier_payment", id, "cancel", new { paymentNumber = existing.PaymentNumber }, cancellationToken);
-
         return await _repository.GetSupplierPaymentAsync(id, cancellationToken);
-
     }
-
-
 
     private async Task ValidatePaymentRequestAsync(
         Guid supplierId,
@@ -190,6 +124,8 @@ internal sealed class SupplierPaymentService : ISupplierPaymentService
 
         if (!await _repository.SupplierExistsAsync(supplierId, cancellationToken))
             throw new InvalidOperationException("NCC không tồn tại.");
+
+        await EnsurePaymentAccessAsync(purchaseOrderId, goodsReceiptId, cancellationToken);
 
         if (purchaseOrderId is Guid poId)
         {
@@ -217,5 +153,30 @@ internal sealed class SupplierPaymentService : ISupplierPaymentService
                 throw new InvalidOperationException("Phiếu nhập không khớp đơn đặt hàng.");
         }
     }
-}
 
+    private async Task EnsurePaymentAccessAsync(
+        Guid? purchaseOrderId,
+        Guid? goodsReceiptId,
+        CancellationToken cancellationToken)
+    {
+        if (goodsReceiptId is Guid grnId)
+        {
+            var grn = await _repository.GetGoodsReceiptAsync(grnId, cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException("Phiếu nhập không tồn tại.");
+            await _branchAccess.EnsureWarehouseAccessAsync(grn.WarehouseId, cancellationToken);
+            return;
+        }
+
+        if (purchaseOrderId is Guid poId)
+        {
+            var po = await _repository.GetPurchaseOrderAsync(poId, cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException("Đơn đặt hàng không tồn tại.");
+            await _branchAccess.EnsureWarehouseAccessAsync(po.WarehouseId, cancellationToken);
+            return;
+        }
+
+        var scope = await _branchAccess.GetScopeAsync(cancellationToken);
+        if (!scope.Unrestricted)
+            throw new UnauthorizedAccessException("Phiếu thanh toán phải liên kết PO hoặc GRN thuộc chi nhánh được phép.");
+    }
+}

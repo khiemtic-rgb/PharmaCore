@@ -6,6 +6,7 @@ import type {
   CreateRolePayload,
   CreateUserPayload,
   EmployeeLookup,
+  EmployeeDetail,
   PagedUsersResult,
   PermissionLookup,
   RoleDetail,
@@ -193,7 +194,30 @@ export async function fetchEmployees(): Promise<EmployeeLookup[]> {
     fullName: String(row.fullName ?? row.FullName ?? ''),
     phone: (row.phone ?? row.Phone) as string | undefined,
     hasUserAccount: Boolean(row.hasUserAccount ?? row.HasUserAccount),
+    branchCount: Number(row.branchCount ?? row.BranchCount ?? 0),
   }));
+}
+
+function normalizeEmployeeDetail(row: Record<string, unknown>): EmployeeDetail {
+  const branchesRaw = (row.branches ?? row.Branches ?? []) as Record<string, unknown>[];
+  return {
+    id: String(row.id ?? row.Id),
+    employeeCode: String(row.employeeCode ?? row.EmployeeCode ?? ''),
+    fullName: String(row.fullName ?? row.FullName ?? ''),
+    phone: (row.phone ?? row.Phone) as string | undefined,
+    hasUserAccount: Boolean(row.hasUserAccount ?? row.HasUserAccount),
+    branches: branchesRaw.map((b) => ({
+      branchId: String(b.branchId ?? b.BranchId),
+      branchCode: String(b.branchCode ?? b.BranchCode ?? ''),
+      branchName: String(b.branchName ?? b.BranchName ?? ''),
+      isPrimary: Boolean(b.isPrimary ?? b.IsPrimary),
+    })),
+  };
+}
+
+export async function fetchEmployee(employeeId: string): Promise<EmployeeDetail> {
+  const { data } = await http.get<Record<string, unknown>>(`/system/employees/${employeeId}`);
+  return normalizeEmployeeDetail(data);
 }
 
 export async function fetchNextEmployeeCode(): Promise<string> {
@@ -206,6 +230,8 @@ export async function createEmployee(payload: {
   phone?: string;
   email?: string;
   employeeCode?: string;
+  branchIds?: string[];
+  primaryBranchId?: string;
 }): Promise<EmployeeLookup> {
   const { data } = await http.post<Record<string, unknown>>('/system/employees', payload);
   return {

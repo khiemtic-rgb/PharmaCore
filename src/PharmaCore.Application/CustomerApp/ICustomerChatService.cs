@@ -48,4 +48,10 @@ public interface ICustomerChatService
         Guid tenantId,
         Guid customerId,
         CancellationToken cancellationToken = default);
+
+    Task SyncThreadWarehouseAsync(
+        Guid tenantId,
+        Guid customerId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default);
 }

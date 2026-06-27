@@ -23,6 +23,25 @@ internal sealed class ProcurementRepository
 
     private Guid TenantId => _tenant.TenantId;
 
+    private static void ApplyWarehouseScope(
+        List<string> conditions,
+        DynamicParameters parameters,
+        string column,
+        Guid? warehouseId,
+        Guid[]? allowedWarehouseIds)
+    {
+        if (warehouseId is Guid scopedId)
+        {
+            conditions.Add($"{column} = @WarehouseId");
+            parameters.Add("WarehouseId", scopedId);
+        }
+        else if (allowedWarehouseIds is { Length: > 0 })
+        {
+            conditions.Add($"{column} = ANY(@AllowedWarehouseIds)");
+            parameters.Add("AllowedWarehouseIds", allowedWarehouseIds);
+        }
+    }
+
     public async Task<IReadOnlyList<SupplierDto>> GetSuppliersAsync(bool activeOnly, CancellationToken cancellationToken)
     {
         var extra = activeOnly ? " AND status = 1 AND deleted_at IS NULL" : " AND deleted_at IS NULL";
@@ -176,17 +195,18 @@ internal sealed class ProcurementRepository
         foreach (var item in request.Items)
             subtotal += item.OrderedQty * item.UnitPrice;
 
-        var taxAmount = Math.Max(0, request.TaxAmount);
+        var treatment = await ResolveVatTreatmentAsync(conn, tx, request.VatTreatmentId, cancellationToken);
+        var (taxAmount, ratePercent) = ComputePoTax(subtotal, treatment);
         var totalAmount = subtotal + taxAmount;
 
         const string headerSql = """
             INSERT INTO purchase_orders (
                 tenant_id, po_number, supplier_id, warehouse_id, expected_date,
-                status, subtotal, tax_amount, total_amount, notes, created_by
+                status, subtotal, vat_treatment_id, tax_rate_percent, tax_amount, total_amount, notes, created_by
             )
             VALUES (
                 @TenantId, @PoNumber, @SupplierId, @WarehouseId, @ExpectedDate,
-                @Status, @Subtotal, @TaxAmount, @TotalAmount, @Notes, @CreatedBy
+                @Status, @Subtotal, @VatTreatmentId, @TaxRatePercent, @TaxAmount, @TotalAmount, @Notes, @CreatedBy
             )
             RETURNING id
             """;
@@ -199,6 +219,8 @@ internal sealed class ProcurementRepository
             request.ExpectedDate,
             Status = PurchaseOrderStatuses.Draft,
             Subtotal = subtotal,
+            VatTreatmentId = request.VatTreatmentId,
+            TaxRatePercent = ratePercent,
             TaxAmount = taxAmount,
             TotalAmount = totalAmount,
             request.Notes,
@@ -347,14 +369,17 @@ internal sealed class ProcurementRepository
             }
         }
 
+        var treatment = await ResolveVatTreatmentAsync(conn, tx, request.VatTreatmentId, cancellationToken);
+        var (taxAmount, ratePercent) = ComputePoTax(subtotal, treatment);
+
         const string updateHeaderSql = """
             UPDATE purchase_orders SET
                 expected_date = @ExpectedDate, notes = @Notes,
-                subtotal = @Subtotal, tax_amount = @TaxAmount,
+                subtotal = @Subtotal, vat_treatment_id = @VatTreatmentId,
+                tax_rate_percent = @TaxRatePercent, tax_amount = @TaxAmount,
                 total_amount = @TotalAmount, updated_at = NOW()
             WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL
             """;
-        var taxAmount = Math.Max(0, request.TaxAmount);
         await conn.ExecuteAsync(updateHeaderSql, new
         {
             Id = id,
@@ -362,6 +387,8 @@ internal sealed class ProcurementRepository
             request.ExpectedDate,
             request.Notes,
             Subtotal = subtotal,
+            VatTreatmentId = request.VatTreatmentId,
+            TaxRatePercent = ratePercent,
             TaxAmount = taxAmount,
             TotalAmount = subtotal + taxAmount,
         }, tx);
@@ -380,10 +407,15 @@ internal sealed class ProcurementRepository
         public decimal UnitPrice { get; init; }
     }
 
-    public async Task<IReadOnlyList<PurchaseOrderListItemDto>> GetPurchaseOrdersAsync(
+    public async Task<(IReadOnlyList<PurchaseOrderListItemDto> Items, int Total)> GetPurchaseOrdersAsync(
         PurchaseOrderListFilter filter,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+        var offset = (page - 1) * pageSize;
+
         var conditions = new List<string> { "p.tenant_id = @TenantId" };
         var parameters = new DynamicParameters();
         parameters.Add("TenantId", TenantId);
@@ -401,10 +433,14 @@ internal sealed class ProcurementRepository
             parameters.Add("SupplierId", supplierId);
         }
 
-        if (filter.WarehouseId is Guid warehouseId)
+        if (filter.WarehouseId is Guid filterWarehouseId)
         {
-            conditions.Add("p.warehouse_id = @WarehouseId");
-            parameters.Add("WarehouseId", warehouseId);
+            conditions.Add("p.warehouse_id = @FilterWarehouseId");
+            parameters.Add("FilterWarehouseId", filterWarehouseId);
+        }
+        else
+        {
+            ApplyWarehouseScope(conditions, parameters, "p.warehouse_id", null, allowedWarehouseIds);
         }
 
         if (filter.Status is short status)
@@ -453,6 +489,13 @@ internal sealed class ProcurementRepository
             conditions.Add("p.deleted_at IS NULL");
 
         var where = string.Join(" AND ", conditions);
+        var countSql = $"""
+            SELECT COUNT(*)::int
+            FROM purchase_orders p
+            INNER JOIN suppliers s ON s.id = p.supplier_id
+            INNER JOIN warehouses w ON w.id = p.warehouse_id
+            WHERE {where}
+            """;
         var sql = $"""
             SELECT
                 p.id AS Id, p.po_number AS PoNumber, p.supplier_id AS SupplierId,
@@ -466,17 +509,29 @@ internal sealed class ProcurementRepository
             INNER JOIN warehouses w ON w.id = p.warehouse_id
             WHERE {where}
             ORDER BY p.order_date DESC
+            LIMIT @PageSize OFFSET @Offset
             """;
+        parameters.Add("PageSize", pageSize);
+        parameters.Add("Offset", offset);
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return (await conn.QueryAsync<PurchaseOrderListItemDto>(sql, parameters)).ToList();
+        var total = await conn.ExecuteScalarAsync<int>(countSql, parameters);
+        var items = (await conn.QueryAsync<PurchaseOrderListItemDto>(sql, parameters)).ToList();
+        return (items, total);
     }
 
     public async Task<LastPurchasePriceHintDto> GetLastPurchasePriceHintAsync(
         Guid supplierId,
         Guid productId,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        const string sql = """
+        var grnWarehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND gr.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var poWarehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND po.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
             SELECT price AS UnitPrice, price_date AS PriceDate, source AS Source, document_number AS DocumentNumber
             FROM (
                 SELECT gri.unit_cost AS price, gr.receipt_date AS price_date, 'grn' AS source, gr.grn_number AS document_number
@@ -484,6 +539,7 @@ internal sealed class ProcurementRepository
                 INNER JOIN goods_receipts gr ON gr.id = gri.goods_receipt_id
                 WHERE gr.tenant_id = @TenantId AND gr.supplier_id = @SupplierId AND gri.product_id = @ProductId
                   AND gr.status = @GrnCompleted AND gr.deleted_at IS NULL
+                  {grnWarehouseFilter}
 
                 UNION ALL
 
@@ -492,6 +548,7 @@ internal sealed class ProcurementRepository
                 INNER JOIN purchase_orders po ON po.id = poi.purchase_order_id
                 WHERE po.tenant_id = @TenantId AND po.supplier_id = @SupplierId AND poi.product_id = @ProductId
                   AND po.status <> @PoCancelled AND po.deleted_at IS NULL
+                  {poWarehouseFilter}
             ) recent
             ORDER BY price_date DESC
             LIMIT 1
@@ -504,6 +561,7 @@ internal sealed class ProcurementRepository
             ProductId = productId,
             GrnCompleted = GoodsReceiptStatuses.Completed,
             PoCancelled = PurchaseOrderStatuses.Cancelled,
+            AllowedWarehouseIds = allowedWarehouseIds,
         });
         return row ?? new LastPurchasePriceHintDto(null, null, null, null);
     }
@@ -520,11 +578,18 @@ internal sealed class ProcurementRepository
                 s.supplier_name AS SupplierName, p.warehouse_id AS WarehouseId,
                 w.warehouse_name AS WarehouseName, p.status AS Status,
                 p.order_date AS OrderDate, p.expected_date AS ExpectedDate,
-                p.subtotal AS Subtotal, p.tax_amount AS TaxAmount, p.total_amount AS TotalAmount,
+                p.subtotal AS Subtotal, p.tax_rate_percent AS TaxRatePercent,
+                p.tax_amount AS TaxAmount,
+                p.vat_treatment_id AS VatTreatmentId,
+                vt.treatment_code AS VatTreatmentCode,
+                vt.treatment_name AS VatTreatmentName,
+                vt.is_not_subject AS VatIsNotSubject,
+                p.total_amount AS TotalAmount,
                 p.notes AS Notes, p.deleted_at AS DeletedAt
             FROM purchase_orders p
             INNER JOIN suppliers s ON s.id = p.supplier_id
             INNER JOIN warehouses w ON w.id = p.warehouse_id
+            INNER JOIN procurement_vat_treatments vt ON vt.id = p.vat_treatment_id
             WHERE p.id = @Id AND p.tenant_id = @TenantId{deletedFilter}
             """;
         const string itemsSql = """
@@ -547,7 +612,9 @@ internal sealed class ProcurementRepository
         return new PurchaseOrderDetailDto(
             header.Id, header.PoNumber, header.SupplierId, header.SupplierName,
             header.WarehouseId, header.WarehouseName, header.Status, header.OrderDate,
-            header.ExpectedDate, header.Subtotal, header.TaxAmount, header.TotalAmount,
+            header.ExpectedDate, header.Subtotal, header.TaxAmount, header.TaxRatePercent,
+            header.VatTreatmentId, header.VatTreatmentCode, header.VatTreatmentName, header.VatIsNotSubject,
+            header.TotalAmount,
             header.Notes, items, header.DeletedAt);
     }
 
@@ -637,6 +704,11 @@ internal sealed class ProcurementRepository
                 throw new InvalidOperationException("PO phải ở trạng thái Đã duyệt hoặc Nhận một phần.");
             if (po.SupplierId != request.SupplierId || po.WarehouseId != request.WarehouseId)
                 throw new InvalidOperationException("NCC và kho nhận phải khớp với PO.");
+
+            var existingDraft = await GetDraftGoodsReceiptForPoAsync(conn, tx, poId, TenantId);
+            if (existingDraft is not null)
+                throw new InvalidOperationException(
+                    $"PO đã có phiếu chờ nhập kho {existingDraft.GrnNumber}. Hoàn tất nhập kho hoặc hủy phiếu đó trước khi tạo phiếu mới.");
         }
 
         var grnNumber = await NextNumberAsync(conn, tx, "GRN", "goods_receipts", cancellationToken);
@@ -806,7 +878,7 @@ internal sealed class ProcurementRepository
             CancelledBy = cancelledBy,
         });
         if (rows == 0)
-            throw new InvalidOperationException("Không hủy được phiếu nhập (chỉ hủy phiếu Nháp).");
+            throw new InvalidOperationException("Không hủy được phiếu nhập (chỉ hủy phiếu chờ nhập kho).");
     }
 
     public async Task<bool> SoftDeleteGoodsReceiptAsync(
@@ -903,10 +975,15 @@ internal sealed class ProcurementRepository
             new { Id = poId, TenantId, Status = status }, tx);
     }
 
-    public async Task<IReadOnlyList<GoodsReceiptListItemDto>> GetGoodsReceiptsAsync(
+    public async Task<(IReadOnlyList<GoodsReceiptListItemDto> Items, int Total)> GetGoodsReceiptsAsync(
         GoodsReceiptListFilter filter,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+        var offset = (page - 1) * pageSize;
+
         var conditions = new List<string> { "g.tenant_id = @TenantId" };
         var parameters = new DynamicParameters();
         parameters.Add("TenantId", TenantId);
@@ -924,10 +1001,14 @@ internal sealed class ProcurementRepository
             parameters.Add("SupplierId", supplierId);
         }
 
-        if (filter.WarehouseId is Guid warehouseId)
+        if (filter.WarehouseId is Guid filterWarehouseId)
         {
-            conditions.Add("g.warehouse_id = @WarehouseId");
-            parameters.Add("WarehouseId", warehouseId);
+            conditions.Add("g.warehouse_id = @FilterWarehouseId");
+            parameters.Add("FilterWarehouseId", filterWarehouseId);
+        }
+        else
+        {
+            ApplyWarehouseScope(conditions, parameters, "g.warehouse_id", null, allowedWarehouseIds);
         }
 
         if (filter.Status is short status)
@@ -969,6 +1050,14 @@ internal sealed class ProcurementRepository
             conditions.Add("g.deleted_at IS NULL");
 
         var where = string.Join(" AND ", conditions);
+        var countSql = $"""
+            SELECT COUNT(*)::int
+            FROM goods_receipts g
+            INNER JOIN suppliers s ON s.id = g.supplier_id
+            INNER JOIN warehouses w ON w.id = g.warehouse_id
+            LEFT JOIN purchase_orders p ON p.id = g.purchase_order_id
+            WHERE {where}
+            """;
         var sql = $"""
             SELECT
                 g.id AS Id, g.grn_number AS GrnNumber, g.supplier_id AS SupplierId,
@@ -983,9 +1072,14 @@ internal sealed class ProcurementRepository
             LEFT JOIN purchase_orders p ON p.id = g.purchase_order_id
             WHERE {where}
             ORDER BY g.receipt_date DESC
+            LIMIT @PageSize OFFSET @Offset
             """;
+        parameters.Add("PageSize", pageSize);
+        parameters.Add("Offset", offset);
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return (await conn.QueryAsync<GoodsReceiptListItemDto>(sql, parameters)).ToList();
+        var total = await conn.ExecuteScalarAsync<int>(countSql, parameters);
+        var items = (await conn.QueryAsync<GoodsReceiptListItemDto>(sql, parameters)).ToList();
+        return (items, total);
     }
 
     public async Task<GoodsReceiptDetailDto?> GetGoodsReceiptAsync(
@@ -1032,6 +1126,7 @@ internal sealed class ProcurementRepository
 
     public async Task<IReadOnlyList<SupplierPaymentListItemDto>> GetSupplierPaymentsAsync(
         SupplierPaymentListFilter filter,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
         var conditions = new List<string> { "sp.tenant_id = @TenantId", "sp.deleted_at IS NULL" };
@@ -1067,6 +1162,17 @@ internal sealed class ProcurementRepository
         {
             conditions.Add("sp.payment_date < @DateTo");
             parameters.Add("DateTo", dateTo.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        }
+
+        if (allowedWarehouseIds is { Length: > 0 })
+        {
+            conditions.Add("""
+                (
+                    (gr.id IS NOT NULL AND gr.warehouse_id = ANY(@AllowedWarehouseIds))
+                    OR (po.id IS NOT NULL AND po.warehouse_id = ANY(@AllowedWarehouseIds))
+                )
+                """);
+            parameters.Add("AllowedWarehouseIds", allowedWarehouseIds);
         }
 
         var where = string.Join(" AND ", conditions);
@@ -1219,9 +1325,14 @@ internal sealed class ProcurementRepository
         return rows > 0;
     }
 
-    public async Task<IReadOnlyList<GrnPayableSourceRow>> GetGrnPayableSourceRowsAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<GrnPayableSourceRow>> GetGrnPayableSourceRowsAsync(
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
     {
-        const string sql = """
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND gr.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
             WITH grn_totals AS (
                 SELECT
                     gr.id AS GrnId,
@@ -1239,6 +1350,7 @@ internal sealed class ProcurementRepository
                   AND gr.status = @GrnCompleted
                   AND gr.deleted_at IS NULL
                   AND s.deleted_at IS NULL
+                  {warehouseFilter}
                 GROUP BY gr.id, gr.supplier_id, s.supplier_code, s.supplier_name, s.payment_terms, gr.grn_number, gr.receipt_date
             ),
             grn_paid AS (
@@ -1270,19 +1382,26 @@ internal sealed class ProcurementRepository
             TenantId,
             GrnCompleted = GoodsReceiptStatuses.Completed,
             PaymentPosted = SupplierPaymentStatuses.Posted,
+            AllowedWarehouseIds = allowedWarehouseIds,
         })).ToList();
     }
 
     public async Task<IReadOnlyDictionary<Guid, decimal>> GetUnlinkedSupplierPaymentTotalsAsync(
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        const string sql = """
-            SELECT supplier_id AS SupplierId, COALESCE(SUM(amount), 0) AS TotalPaid
-            FROM supplier_payments
-            WHERE tenant_id = @TenantId
-              AND status = @PaymentPosted
-              AND goods_receipt_id IS NULL
-            GROUP BY supplier_id
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND po.id IS NOT NULL AND po.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
+            SELECT sp.supplier_id AS SupplierId, COALESCE(SUM(sp.amount), 0) AS TotalPaid
+            FROM supplier_payments sp
+            LEFT JOIN purchase_orders po ON po.id = sp.purchase_order_id AND po.tenant_id = sp.tenant_id
+            WHERE sp.tenant_id = @TenantId
+              AND sp.status = @PaymentPosted
+              AND sp.goods_receipt_id IS NULL
+              {warehouseFilter}
+            GROUP BY sp.supplier_id
             """;
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
@@ -1290,8 +1409,161 @@ internal sealed class ProcurementRepository
         {
             TenantId,
             PaymentPosted = SupplierPaymentStatuses.Posted,
+            AllowedWarehouseIds = allowedWarehouseIds,
         });
         return rows.ToDictionary(x => x.SupplierId, x => x.TotalPaid);
+    }
+
+    public async Task<IReadOnlyList<ProcurementVatTreatmentDto>> GetVatTreatmentsAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await EnsureDefaultVatTreatmentsAsync(conn, cancellationToken);
+
+        var filter = activeOnly ? " AND is_active = true" : "";
+        var sql = $"""
+            SELECT
+                {VatTreatmentSelectColumns}
+            FROM procurement_vat_treatments
+            WHERE tenant_id = @TenantId{filter}
+            ORDER BY sort_order, treatment_name
+            """;
+        return (await conn.QueryAsync<ProcurementVatTreatmentDto>(sql, new { TenantId })).ToList();
+    }
+
+    private async Task EnsureDefaultVatTreatmentsAsync(
+        System.Data.Common.DbConnection conn,
+        CancellationToken cancellationToken)
+    {
+        const string countSql = """
+            SELECT COUNT(*)::int FROM procurement_vat_treatments WHERE tenant_id = @TenantId
+            """;
+        var count = await conn.QuerySingleAsync<int>(countSql, new { TenantId });
+        if (count > 0)
+            return;
+
+        const string seedSql = """
+            INSERT INTO procurement_vat_treatments (
+                tenant_id, treatment_code, treatment_name, rate_percent, is_not_subject, sort_order
+            )
+            VALUES
+                (@TenantId, 'kct', 'Không chịu thuế GTGT (KCT)', 0, true, 0),
+                (@TenantId, 'vat_0', 'Thuế suất 0%', 0, false, 1),
+                (@TenantId, 'vat_5', 'Thuế suất 5%', 5, false, 2),
+                (@TenantId, 'vat_8', 'Thuế suất 8%', 8, false, 3),
+                (@TenantId, 'vat_10', 'Thuế suất 10%', 10, false, 4)
+            ON CONFLICT (tenant_id, treatment_code) DO NOTHING
+            """;
+        await conn.ExecuteAsync(seedSql, new { TenantId });
+    }
+
+    public async Task<ProcurementVatTreatmentDto?> GetVatTreatmentAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var sql = $"""
+            SELECT
+                {VatTreatmentSelectColumns}
+            FROM procurement_vat_treatments
+            WHERE id = @Id AND tenant_id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<ProcurementVatTreatmentDto>(sql, new { Id = id, TenantId });
+    }
+
+    public async Task<bool> DeleteVatTreatmentAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var item = await GetVatTreatmentAsync(id, cancellationToken);
+        if (item is null)
+            return false;
+
+        if (!item.CanDelete)
+            return false;
+
+        const string sql = """
+            DELETE FROM procurement_vat_treatments
+            WHERE id = @Id AND tenant_id = @TenantId
+            """;
+        return await conn.ExecuteAsync(sql, new { Id = id, TenantId }) > 0;
+    }
+
+    private const string VatTreatmentSelectColumns = """
+        id AS Id, treatment_code AS TreatmentCode, treatment_name AS TreatmentName,
+        rate_percent AS RatePercent, is_not_subject AS IsNotSubject,
+        sort_order AS SortOrder, is_active AS IsActive,
+        (
+            treatment_code NOT IN ('kct', 'vat_0', 'vat_5', 'vat_8', 'vat_10')
+            AND NOT EXISTS (
+                SELECT 1 FROM purchase_orders po
+                WHERE po.vat_treatment_id = procurement_vat_treatments.id
+                  AND po.tenant_id = @TenantId
+            )
+        ) AS CanDelete
+        """;
+
+    public async Task<bool> VatTreatmentCodeExistsAsync(string treatmentCode, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT 1 FROM procurement_vat_treatments
+            WHERE tenant_id = @TenantId AND treatment_code = @TreatmentCode
+            LIMIT 1
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<int?>(sql, new { TenantId, TreatmentCode = treatmentCode }) is not null;
+    }
+
+    public async Task<Guid> CreateVatTreatmentAsync(
+        CreateProcurementVatTreatmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateVatTreatmentInput(request.TreatmentCode, request.RatePercent, request.IsNotSubject);
+        const string sql = """
+            INSERT INTO procurement_vat_treatments (
+                tenant_id, treatment_code, treatment_name, rate_percent, is_not_subject, sort_order
+            )
+            VALUES (@TenantId, @TreatmentCode, @TreatmentName, @RatePercent, @IsNotSubject, @SortOrder)
+            RETURNING id
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleAsync<Guid>(sql, new
+        {
+            TenantId,
+            request.TreatmentCode,
+            request.TreatmentName,
+            request.RatePercent,
+            request.IsNotSubject,
+            request.SortOrder,
+        });
+    }
+
+    public async Task<bool> UpdateVatTreatmentAsync(
+        Guid id,
+        UpdateProcurementVatTreatmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        ValidateVatTreatmentInput(null, request.RatePercent, request.IsNotSubject);
+        const string sql = """
+            UPDATE procurement_vat_treatments SET
+                treatment_name = @TreatmentName,
+                rate_percent = @RatePercent,
+                is_not_subject = @IsNotSubject,
+                sort_order = @SortOrder,
+                is_active = @IsActive,
+                updated_at = NOW()
+            WHERE id = @Id AND tenant_id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.ExecuteAsync(sql, new
+        {
+            Id = id,
+            TenantId,
+            request.TreatmentName,
+            request.RatePercent,
+            request.IsNotSubject,
+            request.SortOrder,
+            request.IsActive,
+        });
+        return rows > 0;
     }
 
     public async Task<bool> WarehouseExistsAsync(Guid warehouseId, CancellationToken cancellationToken) =>
@@ -1299,6 +1571,74 @@ internal sealed class ProcurementRepository
 
     public async Task<bool> ProductExistsAsync(Guid productId, CancellationToken cancellationToken) =>
         await _inventory.ProductExistsAsync(productId, cancellationToken);
+
+    private sealed class VatTreatmentCalcRow
+    {
+        public Guid Id { get; init; }
+        public decimal RatePercent { get; init; }
+        public bool IsNotSubject { get; init; }
+        public bool IsActive { get; init; }
+    }
+
+    private async Task<VatTreatmentCalcRow> ResolveVatTreatmentAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid treatmentId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, rate_percent AS RatePercent, is_not_subject AS IsNotSubject, is_active AS IsActive
+            FROM procurement_vat_treatments
+            WHERE id = @Id AND tenant_id = @TenantId
+            """;
+        var row = await conn.QuerySingleOrDefaultAsync<VatTreatmentCalcRow>(
+            sql,
+            new { Id = treatmentId, TenantId },
+            tx);
+        if (row is null)
+            throw new InvalidOperationException("Loại thuế GTGT không tồn tại.");
+        if (!row.IsActive)
+            throw new InvalidOperationException("Loại thuế GTGT đã ngừng dùng.");
+        return row;
+    }
+
+    private static (decimal TaxAmount, short RatePercent) ComputePoTax(decimal subtotal, VatTreatmentCalcRow treatment)
+    {
+        if (treatment.IsNotSubject || treatment.RatePercent <= 0)
+            return (0, 0);
+
+        var rate = (short)treatment.RatePercent;
+        return (ProcurementVatTax.ComputeTaxAmount(subtotal, treatment.RatePercent), rate);
+    }
+
+    private static async Task<GrnDraftRow?> GetDraftGoodsReceiptForPoAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid purchaseOrderId,
+        Guid tenantId)
+    {
+        const string sql = """
+            SELECT id AS Id, grn_number AS GrnNumber
+            FROM goods_receipts
+            WHERE tenant_id = @TenantId AND purchase_order_id = @PurchaseOrderId
+              AND status = @Draft AND deleted_at IS NULL
+            LIMIT 1
+            """;
+        return await conn.QuerySingleOrDefaultAsync<GrnDraftRow>(
+            sql,
+            new { TenantId = tenantId, PurchaseOrderId = purchaseOrderId, Draft = GoodsReceiptStatuses.Draft },
+            tx);
+    }
+
+    private static void ValidateVatTreatmentInput(string? treatmentCode, decimal ratePercent, bool isNotSubject)
+    {
+        if (treatmentCode is not null && string.IsNullOrWhiteSpace(treatmentCode))
+            throw new InvalidOperationException("Mã loại thuế không hợp lệ.");
+        if (ratePercent < 0 || ratePercent > 100)
+            throw new InvalidOperationException("Thuế suất phải từ 0 đến 100%.");
+        if (isNotSubject && ratePercent != 0)
+            throw new InvalidOperationException("Không chịu thuế (KCT) phải có thuế suất 0%.");
+    }
 
     private sealed class PoCheckRow
     {
@@ -1326,9 +1666,20 @@ internal sealed class ProcurementRepository
         public DateOnly? ExpectedDate { get; init; }
         public decimal Subtotal { get; init; }
         public decimal TaxAmount { get; init; }
+        public short TaxRatePercent { get; init; }
+        public Guid VatTreatmentId { get; init; }
+        public string VatTreatmentCode { get; init; } = "";
+        public string VatTreatmentName { get; init; } = "";
+        public bool VatIsNotSubject { get; init; }
         public decimal TotalAmount { get; init; }
         public string? Notes { get; init; }
         public DateTime? DeletedAt { get; init; }
+    }
+
+    private sealed class GrnDraftRow
+    {
+        public Guid Id { get; init; }
+        public string GrnNumber { get; init; } = "";
     }
 
     private sealed class GrnHeaderRow

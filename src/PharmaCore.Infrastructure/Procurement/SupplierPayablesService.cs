@@ -1,3 +1,4 @@
+using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.Procurement;
 
 namespace PharmaCore.Infrastructure.Procurement;
@@ -5,14 +6,20 @@ namespace PharmaCore.Infrastructure.Procurement;
 internal sealed class SupplierPayablesService : ISupplierPayablesService
 {
     private readonly ProcurementRepository _repository;
+    private readonly IBranchAccessService _branchAccess;
 
-    public SupplierPayablesService(ProcurementRepository repository) => _repository = repository;
+    public SupplierPayablesService(ProcurementRepository repository, IBranchAccessService branchAccess)
+    {
+        _repository = repository;
+        _branchAccess = branchAccess;
+    }
 
     public async Task<IReadOnlyList<SupplierPayablesRowDto>> GetSummaryAsync(
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.GetGrnPayableSourceRowsAsync(cancellationToken);
-        var credits = await _repository.GetUnlinkedSupplierPaymentTotalsAsync(cancellationToken);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var rows = await _repository.GetGrnPayableSourceRowsAsync(allowed, cancellationToken);
+        var credits = await _repository.GetUnlinkedSupplierPaymentTotalsAsync(allowed, cancellationToken);
         return BuildSupplierGroups(rows, credits)
             .Select(BuildSummaryRow)
             .Where(x => x.TotalPayable > 0.009m || x.UnappliedCredit > 0.009m)
@@ -25,8 +32,9 @@ internal sealed class SupplierPayablesService : ISupplierPayablesService
         Guid supplierId,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.GetGrnPayableSourceRowsAsync(cancellationToken);
-        var credits = await _repository.GetUnlinkedSupplierPaymentTotalsAsync(cancellationToken);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var rows = await _repository.GetGrnPayableSourceRowsAsync(allowed, cancellationToken);
+        var credits = await _repository.GetUnlinkedSupplierPaymentTotalsAsync(allowed, cancellationToken);
         var group = BuildSupplierGroups(rows, credits)
             .FirstOrDefault(x => x.SupplierId == supplierId);
         if (group is null)

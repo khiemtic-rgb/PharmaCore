@@ -48,6 +48,10 @@ public interface IInventoryService
         CreateCountingSessionRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<AdjustmentListItemDto?> GetActiveCountingSessionAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<AdjustmentCountEntryDto>> AddCountEntriesAsync(
         Guid adjustmentId,
         AddCountEntriesRequest request,
@@ -66,5 +70,10 @@ public interface IInventoryService
     Task<InventoryBarcodeResolveDto?> ResolveInventoryBarcodeAsync(
         Guid warehouseId,
         string barcode,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<LowStockProductDto>> GetLowStockProductsAsync(
+        Guid? warehouseId,
+        decimal defaultThreshold,
         CancellationToken cancellationToken = default);
 }

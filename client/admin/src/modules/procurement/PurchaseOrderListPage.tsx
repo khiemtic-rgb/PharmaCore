@@ -5,10 +5,7 @@ import {
   Descriptions,
   Drawer,
   Form,
-  Input,
-  InputNumber,
   Popconfirm,
-  Select,
   Space,
   Spin,
   Table,
@@ -18,7 +15,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { isAxiosError } from 'axios';
-import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EyeOutlined, EditOutlined, CheckOutlined, CloseCircleOutlined, LockOutlined, EyeInvisibleOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { fetchProducts } from '@/shared/api/catalog.api';
 import type { ProductListItem } from '@/shared/api/catalog.types';
 import { fetchWarehouses } from '@/shared/api/inventory.api';
@@ -32,10 +29,12 @@ import {
   fetchPurchaseOrder,
   fetchPurchaseOrders,
   fetchSuppliers,
+  fetchVatTreatments,
   purgePurchaseOrder,
 } from '@/shared/api/procurement.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import type {
+  ProcurementVatTreatment,
   PurchaseOrderDetail,
   PurchaseOrderListFilters,
   PurchaseOrderListItem,
@@ -43,15 +42,18 @@ import type {
 } from '@/shared/api/procurement.types';
 import { PO_STATUS_LABELS, PO_STATUS_TAG, canEditPurchaseOrder } from '@/shared/api/procurement.types';
 import { PurchaseOrderEditDrawer } from '@/modules/procurement/PurchaseOrderEditDrawer';
-import { PharmaDatePicker } from '@/shared/ui/PharmaDatePicker';
-import { ProductUnitSelect } from '@/modules/procurement/ProductUnitSelect';
-import { PoUnitPriceField } from '@/modules/procurement/PoUnitPriceField';
+import { PoReadonlyTaxSummaryFooter, PROCUREMENT_MONEY_COL_WIDTH } from '@/modules/procurement/GrnPoTaxSummary';
+import { PurchaseOrderFormHeader } from '@/modules/procurement/PurchaseOrderFormHeader';
+import { PurchaseOrderLinesEditor } from '@/modules/procurement/PurchaseOrderLinesEditor';
+import { defaultVatTreatmentId } from '@/modules/procurement/po-vat';
 import { PurchaseOrderFilterBar } from '@/modules/procurement/PurchaseOrderFilterBar';
-import { filterPurchaseOrdersClient } from '@/modules/procurement/procurement-list-filters';
-import { filterPurchaseOrdersByProduct } from '@/modules/procurement/procurement-product-filter';
 import { downloadCsv } from '@/shared/utils/download-csv';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { formatDisplayMoney } from '@/shared/utils/money';
+import {
+  procurementQuantityColumn,
+  procurementRemainingQtyColumn,
+} from '@/modules/procurement/procurement-quantity-cell';
 import { useProcurementWrite, useSystemDeletePermanent } from '@/shared/auth/usePermission';
 import { useSearchParams } from 'react-router-dom';
 
@@ -75,9 +77,13 @@ export function PurchaseOrderListPage() {
   }, [searchParams]);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<PurchaseOrderListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<ProductListItem[]>([]);
+  const [vatTreatments, setVatTreatments] = useState<ProcurementVatTreatment[]>([]);
   const [filters, setFilters] = useState<PurchaseOrderListFilters>(emptyFilters);
   const [searchInput, setSearchInput] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -92,44 +98,44 @@ export function PurchaseOrderListPage() {
   const supplierId = Form.useWatch('supplierId', form);
 
   const loadMasterData = useCallback(async () => {
-    const [sup, wh, prod] = await Promise.all([
+    const [sup, wh, prod, vat] = await Promise.all([
       fetchSuppliers(true),
       fetchWarehouses(),
       fetchProducts({ page: 1, pageSize: 200 }),
+      fetchVatTreatments(),
     ]);
     setSuppliers(sup);
     setWarehouses(wh);
     setProducts(prod.items);
+    setVatTreatments(vat);
   }, []);
 
-  const loadOrders = useCallback(async (nextFilters: PurchaseOrderListFilters, search: string) => {
+  const loadOrders = useCallback(async (
+    nextFilters: PurchaseOrderListFilters,
+    search: string,
+    nextPage = 1,
+    nextPageSize = pageSize,
+  ) => {
     setFilters(nextFilters);
     setSearchInput(search);
+    setPage(nextPage);
+    setPageSize(nextPageSize);
     setLoading(true);
     try {
-      let orders: PurchaseOrderListItem[];
-
-      if (nextFilters.productId) {
-        const byProduct = await fetchPurchaseOrders({ productId: nextFilters.productId });
-        const all = await fetchPurchaseOrders();
-        orders =
-          byProduct.length >= all.length
-            ? await filterPurchaseOrdersByProduct(all, nextFilters.productId, poDetailCacheRef.current)
-            : byProduct;
-      } else {
-        orders = await fetchPurchaseOrders({
-          ...nextFilters,
-          search: search.trim() || undefined,
-        });
-      }
-
-      setItems(filterPurchaseOrdersClient(orders, nextFilters, search));
+      const result = await fetchPurchaseOrders({
+        ...nextFilters,
+        search: search.trim() || undefined,
+        page: nextPage,
+        pageSize: nextPageSize,
+      });
+      setItems(result.items);
+      setTotal(result.total);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không tải được đơn đặt hàng'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     void loadMasterData().catch(() => {
@@ -144,7 +150,10 @@ export function PurchaseOrderListPage() {
 
   const openCreate = () => {
     form.resetFields();
-    form.setFieldsValue({ items: [{ orderedQty: 1, unitPrice: 0 }] });
+    form.setFieldsValue({
+      items: [{ orderedQty: 1, unitPrice: 0 }],
+      vatTreatmentId: defaultVatTreatmentId(vatTreatments),
+    });
     setDrawerOpen(true);
   };
 
@@ -178,7 +187,7 @@ export function PurchaseOrderListPage() {
         warehouseId: values.warehouseId,
         expectedDate: values.expectedDate || undefined,
         notes: values.notes,
-        taxAmount: Number(values.taxAmount ?? 0),
+        vatTreatmentId: values.vatTreatmentId,
         items: (values.items as PoLineForm[]).map((i) => ({
           productId: i.productId,
           productUnitId: i.productUnitId,
@@ -189,7 +198,7 @@ export function PurchaseOrderListPage() {
       const approved = await approvePurchaseOrder(created.id);
       message.success(`Đã tạo ${approved.poNumber}`);
       setDrawerOpen(false);
-      void loadOrders(filters, searchInput);
+      void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       if (isAxiosError(error)) {
         message.error(apiErrorMessage(error, 'Không tạo được đơn đặt hàng'));
@@ -204,7 +213,7 @@ export function PurchaseOrderListPage() {
       const updated = await approvePurchaseOrder(id);
       message.success(`Đã duyệt ${updated.poNumber}`);
       if (detail?.id === id) setDetail(updated);
-      void loadOrders(filters, searchInput);
+      void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không duyệt được đơn'));
     }
@@ -215,7 +224,7 @@ export function PurchaseOrderListPage() {
       await cancelPurchaseOrder(id);
       message.success('Đã hủy đơn đặt hàng');
       if (detail?.id === id) setDetail(await fetchPurchaseOrder(id));
-      void loadOrders(filters, searchInput);
+      void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không hủy được đơn'));
     }
@@ -226,7 +235,7 @@ export function PurchaseOrderListPage() {
       const updated = await closePurchaseOrder(id);
       message.success(`Đã đóng ${updated.poNumber}`);
       if (detail?.id === id) setDetail(updated);
-      void loadOrders(filters, searchInput);
+      void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không đóng được đơn'));
     }
@@ -238,7 +247,7 @@ export function PurchaseOrderListPage() {
       message.success('Đã ẩn đơn đặt hàng (có thể xem trong bản ghi đã ẩn)');
       setDetailOpen(false);
       setDetail(null);
-      void loadOrders(filters, searchInput);
+      void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không ẩn được đơn'));
     }
@@ -250,7 +259,7 @@ export function PurchaseOrderListPage() {
       message.success('Đã xóa vĩnh viễn đơn đặt hàng');
       setDetailOpen(false);
       setDetail(null);
-      void loadOrders(filters, searchInput);
+      void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không xóa vĩnh viễn được đơn'));
     }
@@ -330,24 +339,21 @@ export function PurchaseOrderListPage() {
   ];
 
   const poLineColumns: ColumnsType<PurchaseOrderDetail['items'][number]> = [
-    { title: 'Mã SP', dataIndex: 'productCode', width: 100 },
-    { title: 'Tên SP', dataIndex: 'productName' },
-    { title: 'ĐVT', dataIndex: 'unitName', width: 70 },
-    { title: 'Đặt', dataIndex: 'orderedQty', width: 70, align: 'right' },
-    { title: 'Đã nhận', dataIndex: 'receivedQty', width: 80, align: 'right' },
-    {
-      title: 'Chưa nhận',
-      width: 85,
-      align: 'right',
-      render: (_, row) => (row.orderedQty - row.receivedQty).toLocaleString('vi-VN'),
-    },
+    { title: 'Mã SP', dataIndex: 'productCode', width: 90 },
+    { title: 'Tên SP', dataIndex: 'productName', width: 280, ellipsis: true },
+    { title: 'ĐVT', dataIndex: 'unitName', width: 64 },
+    procurementQuantityColumn('Đặt', 'orderedQty', 68),
+    procurementQuantityColumn('Đã nhận', 'receivedQty', 76),
+    procurementRemainingQtyColumn(),
     {
       title: 'Đơn giá',
       dataIndex: 'unitPrice',
-      width: 90,
+      width: PROCUREMENT_MONEY_COL_WIDTH,
       align: 'right',
       render: (v: number) => (
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDisplayMoney(v)}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', display: 'block', textAlign: 'right' }}>
+          {formatDisplayMoney(v)}
+        </span>
       ),
     },
   ];
@@ -381,7 +387,16 @@ export function PurchaseOrderListPage() {
         loading={loading}
         columns={columns}
         dataSource={items}
-        pagination={{ pageSize: 20, showTotal: (total) => `${total} đơn` }}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (t) => `${t} đơn`,
+          onChange: (nextPage, nextPageSize) => {
+            void loadOrders(filters, searchInput, nextPage, nextPageSize);
+          },
+        }}
         scroll={{ x: 1000 }}
         onRow={(record) => ({
           onClick: () => void openDetail(record.id),
@@ -399,6 +414,7 @@ export function PurchaseOrderListPage() {
                 rowKey="id"
                 size="small"
                 pagination={false}
+                className="grn-lines-table"
                 dataSource={po.items}
                 columns={poLineColumns}
               />
@@ -409,138 +425,37 @@ export function PurchaseOrderListPage() {
 
       <Drawer
         title="Tạo đơn đặt hàng"
-        width={960}
+        width={980}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        styles={{ body: { paddingTop: 12, display: 'flex', flexDirection: 'column' } }}
         extra={
-          <Button type="primary" onClick={() => void handleCreate()} loading={saving}>
+          <Button type="primary" icon={<SaveOutlined />} onClick={() => void handleCreate()} loading={saving}>
             Tạo đơn
           </Button>
         }
       >
-        <Form form={form} layout="vertical">
-          <Form.Item name="supplierId" label="Nhà cung cấp" rules={[{ required: true }]}>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              options={suppliers.map((s) => ({ value: s.id, label: `${s.supplierCode} — ${s.supplierName}` }))}
-            />
-          </Form.Item>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <Form.Item
-              name="warehouseId"
-              label="Kho nhận"
-              rules={[{ required: true }]}
-              style={{ flex: '1 1 280px', marginBottom: 16, minWidth: 200 }}
-            >
-              <Select options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))} />
-            </Form.Item>
-            <Form.Item
-              name="expectedDate"
-              label="Ngày dự kiến nhận"
-              style={{ flex: '0 0 200px', marginBottom: 16 }}
-            >
-              <PharmaDatePicker placeholder="dd/mm/yyyy" />
-            </Form.Item>
-          </div>
-          <Form.Item name="notes" label="Ghi chú">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.Item name="taxAmount" label="Thuế / VAT" initialValue={0}>
-            <InputNumber min={0} style={{ width: 200 }} formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
-          </Form.Item>
-          <Form.List name="items">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map((field) => (
-                  <Form.Item key={field.key} noStyle shouldUpdate>
-                    {() => {
-                      const productId = form.getFieldValue(['items', field.name, 'productId']) as
-                        | string
-                        | undefined;
-                      return (
-                        <div
-                          key={field.key}
-                          style={{
-                            display: 'flex',
-                            gap: 8,
-                            alignItems: 'flex-start',
-                            marginBottom: 12,
-                            paddingBottom: 8,
-                            borderBottom: '1px solid #f0f0f0',
-                          }}
-                        >
-                          <Form.Item
-                            {...field}
-                            name={[field.name, 'productId']}
-                            label="Sản phẩm"
-                            rules={[{ required: true, message: 'Chọn SP' }]}
-                            style={{ flex: '1 1 280px', marginBottom: 0, minWidth: 220 }}
-                          >
-                            <Select
-                              placeholder="Sản phẩm"
-                              showSearch
-                              optionFilterProp="label"
-                              options={products.map((p) => ({
-                                value: p.id,
-                                label: `${p.productCode} — ${p.productName}`,
-                              }))}
-                            />
-                          </Form.Item>
-                          <Form.Item
-                            {...field}
-                            name={[field.name, 'productUnitId']}
-                            label="ĐVT"
-                            rules={[{ required: true, message: 'Chọn ĐVT' }]}
-                            style={{ flex: '0 0 120px', marginBottom: 0 }}
-                          >
-                            <ProductUnitSelect productId={productId} width={120} />
-                          </Form.Item>
-                          <Form.Item
-                            {...field}
-                            name={[field.name, 'orderedQty']}
-                            label="SL đặt"
-                            rules={[{ required: true }]}
-                            style={{ flex: '0 0 88px', marginBottom: 0 }}
-                          >
-                            <InputNumber min={0.01} placeholder="SL" style={{ width: '100%' }} />
-                          </Form.Item>
-                          <Form.Item
-                            {...field}
-                            name={[field.name, 'unitPrice']}
-                            label="Đơn giá mua"
-                            rules={[{ required: true }]}
-                            style={{ flex: '0 0 140px', marginBottom: 0 }}
-                          >
-                            <PoUnitPriceField
-                              supplierId={supplierId}
-                              productId={productId}
-                              form={form}
-                              fieldName={field.name}
-                            />
-                          </Form.Item>
-                          <Form.Item label=" " colon={false} style={{ flex: '0 0 auto', marginBottom: 0 }}>
-                            <Button type="link" danger onClick={() => remove(field.name)}>
-                              Xóa
-                            </Button>
-                          </Form.Item>
-                        </div>
-                      );
-                    }}
-                  </Form.Item>
-                ))}
-                <Button type="dashed" onClick={() => add({ orderedQty: 1, unitPrice: 0 })} block>
-                  Thêm dòng
-                </Button>
-              </>
-            )}
-          </Form.List>
+        <Form form={form} layout="vertical" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <PurchaseOrderFormHeader
+            form={form}
+            mode="create"
+            vatTreatments={vatTreatments}
+            suppliers={suppliers}
+            warehouses={warehouses}
+          />
+          <PurchaseOrderLinesEditor
+            form={form}
+            supplierId={supplierId}
+            products={products}
+            mode="create"
+            scrollY={420}
+          />
         </Form>
       </Drawer>
 
       <Drawer
         title={detail ? `Xem ${detail.poNumber}` : 'Xem đơn đặt hàng'}
-        width={720}
+        width={880}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         extra={
@@ -548,26 +463,32 @@ export function PurchaseOrderListPage() {
           canWrite && (
             <Space>
               {canEditPurchaseOrder(detail.status) && !detail.deletedAt && (
-                <Button onClick={() => setEditPoOpen(true)}>Sửa đơn</Button>
+                <Button icon={<EditOutlined />} onClick={() => setEditPoOpen(true)}>
+                  Sửa đơn
+                </Button>
               )}
               {detail.status === 1 && (
-                <Button type="primary" onClick={() => handleApprove(detail.id)}>
+                <Button type="primary" icon={<CheckOutlined />} onClick={() => handleApprove(detail.id)}>
                   Duyệt
                 </Button>
               )}
               {(detail.status === 1 || detail.status === 2) && (
                 <Popconfirm title="Huỷ đơn đặt hàng này?" onConfirm={() => void handleCancel(detail.id)}>
-                  <Button danger>Huỷ đơn</Button>
+                  <Button danger icon={<CloseCircleOutlined />}>
+                    Huỷ đơn
+                  </Button>
                 </Popconfirm>
               )}
               {detail.status === 4 && (
-                <Button type="primary" onClick={() => handleClose(detail.id)}>
+                <Button type="primary" icon={<LockOutlined />} onClick={() => handleClose(detail.id)}>
                   Đóng đơn
                 </Button>
               )}
               {canArchivePo(detail.status, detail.deletedAt) && (
                 <Popconfirm title="Ẩn đơn đã huỷ khỏi danh sách?" onConfirm={() => void handleArchive(detail.id)}>
-                  <Button danger>Ẩn đơn</Button>
+                  <Button danger icon={<EyeInvisibleOutlined />}>
+                    Ẩn đơn
+                  </Button>
                 </Popconfirm>
               )}
               {detail.deletedAt && canPurge && (
@@ -575,14 +496,16 @@ export function PurchaseOrderListPage() {
                   title="Xóa vĩnh viễn? Không thể hoàn tác."
                   onConfirm={() => void handlePurge(detail.id)}
                 >
-                  <Button danger type="primary">
+                  <Button danger type="primary" icon={<DeleteOutlined />}>
                     Xóa vĩnh viễn
                   </Button>
                 </Popconfirm>
               )}
               {showLockedDeletePo(detail.status, detail.deletedAt) && (
                 <Tooltip title="Chỉ ẩn được đơn đã huỷ">
-                  <Button disabled>Ẩn đơn</Button>
+                  <Button disabled icon={<EyeInvisibleOutlined />}>
+                    Ẩn đơn
+                  </Button>
                 </Tooltip>
               )}
             </Space>
@@ -597,17 +520,29 @@ export function PurchaseOrderListPage() {
               <Descriptions.Item label="Trạng thái">
                 <Tag color={PO_STATUS_TAG[detail.status] ?? 'default'}>{PO_STATUS_LABELS[detail.status]}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Tạm tính">{formatDisplayMoney(detail.subtotal)}</Descriptions.Item>
-              <Descriptions.Item label="Thuế">{formatDisplayMoney(detail.taxAmount)}</Descriptions.Item>
-              <Descriptions.Item label="Tổng">{formatDisplayMoney(detail.totalAmount)}</Descriptions.Item>
             </Descriptions>
-            <Table
-              rowKey="id"
-              size="small"
-              pagination={false}
-              dataSource={detail.items}
-              columns={poLineColumns}
-            />
+            <div className="grn-lines-detail-panel">
+              <p className="grn-lines-detail-panel__title">Chi tiết hàng đặt</p>
+              <Table
+                rowKey="id"
+                size="small"
+                pagination={false}
+                className="grn-lines-table"
+                scroll={{ x: 760 }}
+                dataSource={detail.items}
+                columns={poLineColumns}
+                summary={() => (
+                  <PoReadonlyTaxSummaryFooter
+                    subtotal={detail.subtotal}
+                    taxAmount={detail.taxAmount}
+                    totalAmount={detail.totalAmount}
+                    poNumber={detail.poNumber}
+                    vatTreatmentName={detail.vatTreatmentName}
+                    leadingColSpan={5}
+                  />
+                )}
+              />
+            </div>
           </>
         )}
       </Drawer>
@@ -619,7 +554,7 @@ export function PurchaseOrderListPage() {
         onSaved={(po) => {
           setDetail(po);
           setPoDetailCache((cache) => ({ ...cache, [po.id]: po }));
-          void loadOrders(filters, searchInput);
+          void loadOrders(filters, searchInput, page, pageSize);
         }}
       />
     </Card>

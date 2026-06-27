@@ -11,17 +11,31 @@ internal sealed class CustomerDraftOrderRepository
 
     public CustomerDraftOrderRepository(IDbConnectionFactory db) => _db = db;
 
-    public async Task<Guid?> ResolveDefaultWarehouseIdAsync(Guid tenantId, CancellationToken cancellationToken)
+    public async Task<Guid?> ResolveDefaultWarehouseIdAsync(
+        Guid tenantId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
     {
-        const string sql = """
+        var scopeFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
             SELECT id FROM warehouses
             WHERE tenant_id = @TenantId AND deleted_at IS NULL AND status = 1
+              {scopeFilter}
             ORDER BY is_default DESC, warehouse_name
             LIMIT 1
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new { TenantId = tenantId });
+        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new
+        {
+            TenantId = tenantId,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        });
     }
+
+    public Task<Guid?> ResolveDefaultWarehouseIdAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        ResolveDefaultWarehouseIdAsync(tenantId, null, cancellationToken);
 
     public async Task<Guid?> ResolveChatThreadIdAsync(
         Guid tenantId,
@@ -140,6 +154,7 @@ internal sealed class CustomerDraftOrderRepository
         Guid tenantId,
         Guid draftOrderId,
         UpsertCustomerDraftOrderRequest request,
+        Guid warehouseId,
         decimal subtotal,
         decimal discountAmount,
         decimal totalAmount,
@@ -150,6 +165,7 @@ internal sealed class CustomerDraftOrderRepository
         await conn.ExecuteAsync("""
             UPDATE customer_draft_orders SET
                 chat_thread_id = COALESCE(@ChatThreadId, chat_thread_id),
+                warehouse_id = @WarehouseId,
                 price_type = @PriceType,
                 subtotal = @Subtotal,
                 discount_amount = @DiscountAmount,
@@ -162,6 +178,7 @@ internal sealed class CustomerDraftOrderRepository
         {
             Id = draftOrderId,
             TenantId = tenantId,
+            WarehouseId = warehouseId,
             request.ChatThreadId,
             request.PriceType,
             Subtotal = subtotal,
@@ -391,6 +408,7 @@ internal sealed class CustomerDraftOrderRepository
         Guid? customerId,
         short[]? statuses,
         bool excludeHiddenByCustomer = false,
+        Guid[]? allowedWarehouseIds = null,
         CancellationToken cancellationToken = default)
     {
         if (customerId is Guid cid)
@@ -400,6 +418,9 @@ internal sealed class CustomerDraftOrderRepository
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         var statusFilter = statuses is { Length: > 0 } ? statuses : null;
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? " AND d.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
         var sql = """
             SELECT
                 d.id AS Id,
@@ -418,6 +439,7 @@ internal sealed class CustomerDraftOrderRepository
             WHERE d.tenant_id = @TenantId
               AND (@CustomerId IS NULL OR d.customer_id = @CustomerId)
             """ + (statusFilter != null ? " AND d.status = ANY(@Statuses)" : "") +
+            warehouseFilter +
             (excludeHiddenByCustomer ? " AND d.hidden_by_customer_at IS NULL" : "") +
             " ORDER BY d.created_at DESC";
         var rows = await conn.QueryAsync<DraftOrderListRow>(sql, new
@@ -425,6 +447,7 @@ internal sealed class CustomerDraftOrderRepository
             TenantId = tenantId,
             CustomerId = customerId,
             Statuses = statusFilter,
+            AllowedWarehouseIds = allowedWarehouseIds,
         });
         return rows.ToList();
     }

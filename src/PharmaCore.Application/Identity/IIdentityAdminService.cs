@@ -28,4 +28,9 @@ public interface IIdentityAdminService
     Task<IReadOnlyList<EmployeeLookupDto>> ListEmployeesAsync(CancellationToken cancellationToken = default);
     Task<string> GetNextEmployeeCodeAsync(CancellationToken cancellationToken = default);
     Task<EmployeeLookupDto> CreateEmployeeAsync(CreateEmployeeRequest request, CancellationToken cancellationToken = default);
+    Task<EmployeeDetailDto?> GetEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default);
+    Task<EmployeeDetailDto?> UpdateEmployeeBranchesAsync(
+        Guid employeeId,
+        UpdateEmployeeBranchesRequest request,
+        CancellationToken cancellationToken = default);
 }

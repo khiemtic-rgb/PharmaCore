@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -16,8 +16,18 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { isAxiosError } from 'axios';
-import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EyeOutlined, EditOutlined, CheckOutlined, CloseCircleOutlined, SaveOutlined } from '@ant-design/icons';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SupplierPaymentFilterBar } from '@/modules/procurement/SupplierPaymentFilterBar';
+import {
+  parseSupplierPaymentPrefill,
+  type SupplierPaymentPrefill,
+} from '@/modules/procurement/supplier-payment-nav';
+import { SupplierPaymentAmountHint } from '@/modules/procurement/SupplierPaymentAmountHint';
+import {
+  loadSupplierPaymentAmountHints,
+  type SupplierPaymentAmountHints,
+} from '@/modules/procurement/supplier-payment-amount-hints';
 import {
   cancelSupplierPayment,
   createSupplierPayment,
@@ -40,18 +50,13 @@ import type {
 import {
   PAYMENT_METHOD_LABELS,
   SUPPLIER_PAYMENT_STATUS_LABELS,
+  SUPPLIER_PAYMENT_STATUS_TAG,
 } from '@/shared/api/procurement.types';
 import { useProcurementWrite } from '@/shared/auth/usePermission';
 import { PharmaDatePicker } from '@/shared/ui/PharmaDatePicker';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { downloadCsv } from '@/shared/utils/download-csv';
 import { formatDisplayMoney, moneyInputNumberProps, moneyInputNumberStyle } from '@/shared/utils/money';
-
-const PAYMENT_STATUS_TAG: Record<number, string> = {
-  1: 'default',
-  2: 'success',
-  3: 'error',
-};
 
 const emptyFilters: SupplierPaymentListFilters = {};
 
@@ -66,6 +71,9 @@ function toFormPaymentDate(value?: string): string {
 
 export function SupplierPaymentListPage() {
   const canWrite = useProcurementWrite();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefillHandled = useRef(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<SupplierPaymentListItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -80,17 +88,43 @@ export function SupplierPaymentListPage() {
   const [detail, setDetail] = useState<SupplierPaymentListItem | null>(null);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const [referenceReady, setReferenceReady] = useState(false);
+  const [amountHints, setAmountHints] = useState<SupplierPaymentAmountHints | null>(null);
+  const [amountHintsLoading, setAmountHintsLoading] = useState(false);
   const supplierId = Form.useWatch('supplierId', form);
+  const goodsReceiptId = Form.useWatch('goodsReceiptId', form);
+  const purchaseOrderId = Form.useWatch('purchaseOrderId', form);
+
+  const openCreate = useCallback((prefill?: SupplierPaymentPrefill) => {
+    setEditingId(null);
+    setEditingRow(null);
+    if (prefill) {
+      form.setFieldsValue({
+        supplierId: prefill.supplierId,
+        purchaseOrderId: prefill.purchaseOrderId,
+        goodsReceiptId: prefill.goodsReceiptId,
+        amount: prefill.amount,
+        paymentMethod: 2,
+        paymentDate: todayIsoDate(),
+        notes: undefined,
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ paymentMethod: 2, paymentDate: todayIsoDate() });
+    }
+    setDrawerOpen(true);
+  }, [form]);
 
   const loadReferenceData = useCallback(async () => {
     const [sup, pos, grns] = await Promise.all([
       fetchSuppliers(true),
-      fetchPurchaseOrders(),
-      fetchGoodsReceipts({ status: 2 }),
+      fetchPurchaseOrders({ page: 1, pageSize: 500 }),
+      fetchGoodsReceipts({ status: 2, page: 1, pageSize: 500 }),
     ]);
     setSuppliers(sup);
-    setPurchaseOrders(pos);
-    setGoodsReceipts(grns);
+    setPurchaseOrders(pos.items);
+    setGoodsReceipts(grns.items);
+    setReferenceReady(true);
   }, []);
 
   const loadPayments = useCallback(async (nextFilters: SupplierPaymentListFilters, search: string) => {
@@ -116,22 +150,69 @@ export function SupplierPaymentListPage() {
   }, [loadReferenceData, loadPayments]);
 
   useEffect(() => {
-    if (!drawerOpen) return;
-    if (editingRow) {
-      form.setFieldsValue({
-        supplierId: editingRow.supplierId,
-        purchaseOrderId: editingRow.purchaseOrderId,
-        goodsReceiptId: editingRow.goodsReceiptId,
-        amount: editingRow.amount,
-        paymentMethod: editingRow.paymentMethod,
-        paymentDate: toFormPaymentDate(editingRow.paymentDate),
-        notes: editingRow.notes,
-      });
-    } else {
-      form.resetFields();
-      form.setFieldsValue({ paymentMethod: 2, paymentDate: todayIsoDate() });
-    }
+    if (!drawerOpen || !editingRow) return;
+    form.setFieldsValue({
+      supplierId: editingRow.supplierId,
+      purchaseOrderId: editingRow.purchaseOrderId,
+      goodsReceiptId: editingRow.goodsReceiptId,
+      amount: editingRow.amount,
+      paymentMethod: editingRow.paymentMethod,
+      paymentDate: toFormPaymentDate(editingRow.paymentDate),
+      notes: editingRow.notes,
+    });
   }, [drawerOpen, editingRow, form]);
+
+  useEffect(() => {
+    if (prefillHandled.current || !referenceReady) return;
+    const prefill = parseSupplierPaymentPrefill(searchParams);
+    if (!prefill) return;
+
+    prefillHandled.current = true;
+    if (!canWrite) {
+      message.warning('Bạn không có quyền ghi nhận thanh toán');
+      navigate('/procurement/supplier-payments', { replace: true });
+      return;
+    }
+
+    const linkedGrn = prefill.goodsReceiptId
+      ? goodsReceipts.find((grn) => grn.id === prefill.goodsReceiptId)
+      : undefined;
+    openCreate({
+      ...prefill,
+      purchaseOrderId: prefill.purchaseOrderId ?? linkedGrn?.purchaseOrderId,
+    });
+    navigate('/procurement/supplier-payments', { replace: true });
+  }, [searchParams, referenceReady, goodsReceipts, canWrite, navigate, openCreate]);
+
+  useEffect(() => {
+    if (!drawerOpen) {
+      setAmountHints(null);
+      return;
+    }
+    if (!supplierId && !goodsReceiptId && !purchaseOrderId) {
+      setAmountHints(null);
+      return;
+    }
+
+    let cancelled = false;
+    setAmountHintsLoading(true);
+    void loadSupplierPaymentAmountHints({
+      supplierId,
+      goodsReceiptId,
+      purchaseOrderId,
+      purchaseOrders,
+    })
+      .then((hints) => {
+        if (!cancelled) setAmountHints(hints);
+      })
+      .finally(() => {
+        if (!cancelled) setAmountHintsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [drawerOpen, supplierId, goodsReceiptId, purchaseOrderId, purchaseOrders]);
 
   const resetFilters = () => {
     void loadPayments(emptyFilters, '');
@@ -183,12 +264,6 @@ export function SupplierPaymentListPage() {
     return options.slice(0, 20);
   }, [items, suppliers, searchInput]);
 
-  const openCreate = () => {
-    setEditingId(null);
-    setEditingRow(null);
-    setDrawerOpen(true);
-  };
-
   const openEdit = async (row: SupplierPaymentListItem) => {
     setEditingId(row.id);
     setEditingRow(row);
@@ -235,7 +310,7 @@ export function SupplierPaymentListPage() {
         message.success('Đã cập nhật phiếu thanh toán');
       } else {
         await createSupplierPayment(payload);
-        message.success('Đã tạo phiếu thanh toán (Nháp)');
+        message.success('Đã tạo phiếu thanh toán');
       }
       setDrawerOpen(false);
       setEditingId(null);
@@ -311,7 +386,7 @@ export function SupplierPaymentListPage() {
       dataIndex: 'status',
       width: 110,
       render: (s: number) => (
-        <Tag color={PAYMENT_STATUS_TAG[s] ?? 'default'}>{SUPPLIER_PAYMENT_STATUS_LABELS[s] ?? s}</Tag>
+        <Tag color={SUPPLIER_PAYMENT_STATUS_TAG[s] ?? 'default'}>{SUPPLIER_PAYMENT_STATUS_LABELS[s] ?? s}</Tag>
       ),
     },
     {
@@ -346,7 +421,7 @@ export function SupplierPaymentListPage() {
       title="Thanh toán NCC"
       extra={
         canWrite ? (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openCreate()}>
             Ghi nhận TT
           </Button>
         ) : undefined
@@ -385,7 +460,7 @@ export function SupplierPaymentListPage() {
         destroyOnClose
         onClose={closeFormDrawer}
         extra={
-          <Button type="primary" onClick={() => void handleSave()} loading={saving}>
+          <Button type="primary" icon={<SaveOutlined />} onClick={() => void handleSave()} loading={saving}>
             Lưu
           </Button>
         }
@@ -428,8 +503,20 @@ export function SupplierPaymentListPage() {
                 value: grn.id,
                 label: `${grn.grnNumber} — ${grn.supplierName}`,
               }))}
+              onChange={(grnId) => {
+                if (!grnId) return;
+                const grn = filteredGrns.find((g) => g.id === grnId);
+                if (grn?.purchaseOrderId) {
+                  form.setFieldValue('purchaseOrderId', grn.purchaseOrderId);
+                }
+              }}
             />
           </Form.Item>
+          <SupplierPaymentAmountHint
+            hints={amountHints}
+            loading={amountHintsLoading}
+            onFillAmount={(amount) => form.setFieldValue('amount', amount)}
+          />
           <Form.Item
             name="paymentDate"
             label="Ngày thanh toán"
@@ -471,12 +558,16 @@ export function SupplierPaymentListPage() {
           canWrite &&
           detail.status === 1 && (
             <Space>
-              <Button type="primary" onClick={() => void handlePost(detail.id)} loading={saving}>
+              <Button type="primary" icon={<CheckOutlined />} onClick={() => void handlePost(detail.id)} loading={saving}>
                 Ghi sổ
               </Button>
-              <Button onClick={() => void openEdit(detail)}>Sửa</Button>
-              <Popconfirm title="Hủy phiếu thanh toán nháp?" onConfirm={() => void handleCancel(detail.id)}>
-                <Button danger>Hủy</Button>
+              <Button icon={<EditOutlined />} onClick={() => void openEdit(detail)}>
+                Sửa
+              </Button>
+              <Popconfirm title="Hủy phiếu chờ ghi sổ?" onConfirm={() => void handleCancel(detail.id)}>
+                <Button danger icon={<CloseCircleOutlined />}>
+                  Hủy
+                </Button>
               </Popconfirm>
             </Space>
           )
@@ -490,7 +581,7 @@ export function SupplierPaymentListPage() {
               {PAYMENT_METHOD_LABELS[detail.paymentMethod] ?? detail.paymentMethod}
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
-              <Tag color={PAYMENT_STATUS_TAG[detail.status] ?? 'default'}>
+              <Tag color={SUPPLIER_PAYMENT_STATUS_TAG[detail.status] ?? 'default'}>
                 {SUPPLIER_PAYMENT_STATUS_LABELS[detail.status] ?? detail.status}
               </Tag>
             </Descriptions.Item>

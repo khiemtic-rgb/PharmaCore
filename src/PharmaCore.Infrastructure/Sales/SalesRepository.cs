@@ -482,9 +482,45 @@ internal sealed class SalesRepository
         public decimal ConversionFactor { get; init; }
     }
 
-    public async Task<IReadOnlyList<SalesOrderListItemDto>> GetSalesOrdersAsync(CancellationToken cancellationToken)
+    public async Task<(IReadOnlyList<SalesOrderListItemDto> Items, int Total)> GetSalesOrdersAsync(
+        SalesOrderListFilter filter,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
     {
-        const string sql = """
+        var page = Math.Max(1, filter.Page);
+        var pageSize = Math.Clamp(filter.PageSize, 1, 100);
+        var offset = (page - 1) * pageSize;
+
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND o.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var statusFilter = filter.Status is short status
+            ? "AND o.status = @Status"
+            : string.Empty;
+        var searchFilter = string.IsNullOrWhiteSpace(filter.Search)
+            ? string.Empty
+            : """
+              AND (
+                  o.order_number ILIKE @SearchPattern
+                  OR w.warehouse_name ILIKE @SearchPattern
+                  OR COALESCE(c.full_name, '') ILIKE @SearchPattern
+              )
+              """;
+
+        var where = $"""
+            o.tenant_id = @TenantId
+              {warehouseFilter}
+              {statusFilter}
+              {searchFilter}
+            """;
+        var countSql = $"""
+            SELECT COUNT(*)::int
+            FROM sales_orders o
+            INNER JOIN warehouses w ON w.id = o.warehouse_id
+            LEFT JOIN customers c ON c.id = o.customer_id
+            WHERE {where}
+            """;
+        var sql = $"""
             SELECT
                 o.id AS Id, o.order_number AS OrderNumber, o.warehouse_id AS WarehouseId,
                 w.warehouse_name AS WarehouseName, o.customer_id AS CustomerId,
@@ -503,16 +539,24 @@ internal sealed class SalesRepository
             INNER JOIN warehouses w ON w.id = o.warehouse_id
             LEFT JOIN customers c ON c.id = o.customer_id
             LEFT JOIN sales_shifts sh ON sh.id = o.sales_shift_id
-            WHERE o.tenant_id = @TenantId
+            WHERE {where}
             ORDER BY o.order_date DESC
-            LIMIT 200
+            LIMIT @PageSize OFFSET @Offset
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return (await conn.QueryAsync<SalesOrderListItemDto>(sql, new
+        var args = new
         {
             TenantId,
+            AllowedWarehouseIds = allowedWarehouseIds,
             ReturnCompleted = SalesReturnStatuses.Completed,
-        })).ToList();
+            Status = filter.Status,
+            SearchPattern = string.IsNullOrWhiteSpace(filter.Search) ? null : $"%{filter.Search.Trim()}%",
+            PageSize = pageSize,
+            Offset = offset,
+        };
+        var total = await conn.ExecuteScalarAsync<int>(countSql, args);
+        var items = (await conn.QueryAsync<SalesOrderListItemDto>(sql, args)).ToList();
+        return (items, total);
     }
 
     public async Task<SalesOrderDetailDto?> GetSalesOrderAsync(

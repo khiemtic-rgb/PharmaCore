@@ -179,6 +179,7 @@ internal sealed class InventoryRepository
 
     public async Task<(IReadOnlyList<StockBatchListItemDto> Items, int Total)> GetStockBatchesAsync(
         Guid? warehouseId,
+        Guid[]? allowedWarehouseIds,
         Guid? productId,
         string? search,
         int page,
@@ -188,6 +189,7 @@ internal sealed class InventoryRepository
         var offset = (page - 1) * pageSize;
         var extra = new List<string> { "b.quantity_available > 0" };
         if (warehouseId is not null) extra.Add("b.warehouse_id = @WarehouseId");
+        else if (allowedWarehouseIds is { Length: > 0 }) extra.Add("b.warehouse_id = ANY(@AllowedWarehouseIds)");
         if (productId is not null) extra.Add("b.product_id = @ProductId");
         if (!string.IsNullOrWhiteSpace(search))
             extra.Add("(p.product_name ILIKE @SearchPattern OR p.product_code ILIKE @SearchPattern OR b.batch_number ILIKE @SearchPattern)");
@@ -213,6 +215,9 @@ internal sealed class InventoryRepository
                 b.product_id AS ProductId,
                 p.product_code AS ProductCode,
                 p.product_name AS ProductName,
+                (SELECT u.unit_name FROM product_units u
+                 WHERE u.product_id = p.id AND u.is_sale_unit = TRUE AND u.status = 1
+                 ORDER BY u.is_base_unit DESC, u.unit_name LIMIT 1) AS SaleUnitName,
                 b.batch_number AS BatchNumber,
                 b.expiry_date AS ExpiryDate,
                 b.unit_cost AS UnitCost,
@@ -232,6 +237,7 @@ internal sealed class InventoryRepository
         {
             TenantId,
             WarehouseId = warehouseId,
+            AllowedWarehouseIds = allowedWarehouseIds,
             ProductId = productId,
             SearchPattern = searchPattern,
             PageSize = pageSize,
@@ -246,6 +252,7 @@ internal sealed class InventoryRepository
 
     public async Task<(IReadOnlyList<StockProductSummaryDto> Items, int Total)> GetStockProductsAsync(
         Guid? warehouseId,
+        Guid[]? allowedWarehouseIds,
         string? search,
         int page,
         int pageSize,
@@ -254,6 +261,7 @@ internal sealed class InventoryRepository
         var offset = (page - 1) * pageSize;
         var extra = new List<string> { "b.quantity_available > 0" };
         if (warehouseId is not null) extra.Add("b.warehouse_id = @WarehouseId");
+        else if (allowedWarehouseIds is { Length: > 0 }) extra.Add("b.warehouse_id = ANY(@AllowedWarehouseIds)");
         if (!string.IsNullOrWhiteSpace(search))
             extra.Add("(p.product_name ILIKE @SearchPattern OR p.product_code ILIKE @SearchPattern OR b.batch_number ILIKE @SearchPattern)");
 
@@ -277,6 +285,9 @@ internal sealed class InventoryRepository
                 p.id AS ProductId,
                 p.product_code AS ProductCode,
                 p.product_name AS ProductName,
+                (SELECT u.unit_name FROM product_units u
+                 WHERE u.product_id = p.id AND u.is_sale_unit = TRUE AND u.status = 1
+                 ORDER BY u.is_base_unit DESC, u.unit_name LIMIT 1) AS SaleUnitName,
                 SUM(b.quantity_available) AS TotalQuantity,
                 COUNT(DISTINCT b.warehouse_id)::int AS WarehouseCount,
                 COUNT(*)::int AS BatchCount
@@ -294,6 +305,7 @@ internal sealed class InventoryRepository
         {
             TenantId,
             WarehouseId = warehouseId,
+            AllowedWarehouseIds = allowedWarehouseIds,
             SearchPattern = searchPattern,
             PageSize = pageSize,
             Offset = offset,
@@ -555,9 +567,14 @@ internal sealed class InventoryRepository
 
     public async Task<IReadOnlyList<OpeningBalanceBatchListItemDto>> GetOpeningBalanceBatchesAsync(
         Guid? warehouseId,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var extra = warehouseId is not null ? " AND b.warehouse_id = @WarehouseId" : "";
+        var extra = warehouseId is not null
+            ? " AND b.warehouse_id = @WarehouseId"
+            : allowedWarehouseIds is { Length: > 0 }
+                ? " AND b.warehouse_id = ANY(@AllowedWarehouseIds)"
+                : "";
 
         var sql = $"""
             SELECT
@@ -567,6 +584,9 @@ internal sealed class InventoryRepository
                 b.product_id AS ProductId,
                 p.product_code AS ProductCode,
                 p.product_name AS ProductName,
+                (SELECT u.unit_name FROM product_units u
+                 WHERE u.product_id = p.id AND u.is_sale_unit = TRUE AND u.status = 1
+                 ORDER BY u.is_base_unit DESC, u.unit_name LIMIT 1) AS SaleUnitName,
                 b.batch_number AS BatchNumber,
                 b.expiry_date AS ExpiryDate,
                 b.unit_cost AS UnitCost,
@@ -634,6 +654,7 @@ internal sealed class InventoryRepository
         {
             TenantId,
             WarehouseId = warehouseId,
+            AllowedWarehouseIds = allowedWarehouseIds,
             OpeningRef = StockReferenceTypes.OpeningBalance,
             VoidRef = StockReferenceTypes.OpeningBalanceVoid,
             TransferCancelled = TransferStatuses.Cancelled,
@@ -1016,14 +1037,31 @@ internal sealed class InventoryRepository
 
     public async Task<bool> HasActiveCountingSessionAsync(Guid warehouseId, CancellationToken cancellationToken)
     {
+        return await GetActiveCountingSessionAsync(warehouseId, cancellationToken) is not null;
+    }
+
+    public async Task<AdjustmentListItemDto?> GetActiveCountingSessionAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken)
+    {
         const string sql = """
-            SELECT EXISTS(
-                SELECT 1 FROM inventory_adjustments
-                WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId AND status = @Counting
-            )
+            SELECT
+                a.id AS Id,
+                a.adjustment_number AS AdjustmentNumber,
+                a.warehouse_id AS WarehouseId,
+                w.warehouse_name AS WarehouseName,
+                a.status AS Status,
+                a.adjustment_date AS AdjustmentDate,
+                (SELECT COUNT(*)::int FROM inventory_adjustment_count_entries e WHERE e.adjustment_id = a.id) AS ItemCount
+            FROM inventory_adjustments a
+            INNER JOIN warehouses w ON w.id = a.warehouse_id
+            WHERE a.tenant_id = @TenantId
+              AND a.warehouse_id = @WarehouseId
+              AND a.status = @Counting
+            LIMIT 1
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return await conn.QuerySingleAsync<bool>(sql, new
+        return await conn.QuerySingleOrDefaultAsync<AdjustmentListItemDto>(sql, new
         {
             TenantId,
             WarehouseId = warehouseId,
@@ -1630,6 +1668,83 @@ internal sealed class InventoryRepository
             throw new InvalidOperationException("Không đủ tồn lô để ghi giảm theo FEFO.");
 
         return result;
+    }
+
+    public async Task<IReadOnlyList<LowStockProductDto>> GetLowStockProductsAsync(
+        Guid? warehouseId,
+        Guid[]? allowedWarehouseIds,
+        decimal defaultThreshold,
+        CancellationToken cancellationToken)
+    {
+        var threshold = defaultThreshold < 0 ? LowStockThresholdSql.SystemFallback : defaultThreshold;
+        var warehouseFilter = warehouseId.HasValue
+            ? "AND w.id = @WarehouseId"
+            : allowedWarehouseIds is { Length: > 0 }
+                ? "AND w.id = ANY(@AllowedWarehouseIds)"
+                : string.Empty;
+        var effective = LowStockThresholdSql.EffectiveMinStockExpr;
+        var sql = $"""
+            SELECT
+                p.id AS ProductId,
+                p.product_code AS ProductCode,
+                p.product_name AS ProductName,
+                (SELECT u.unit_name FROM product_units u
+                 WHERE u.product_id = p.id AND u.is_sale_unit = TRUE AND u.status = 1
+                 ORDER BY u.is_base_unit DESC, u.unit_name LIMIT 1) AS SaleUnitName,
+                w.id AS WarehouseId,
+                w.warehouse_name AS WarehouseName,
+                br.id AS BranchId,
+                br.branch_name AS BranchName,
+                COALESCE(SUM(b.quantity_available), 0) AS TotalQuantity,
+                {effective} AS MinStockQty,
+                COUNT(b.id)::int AS BatchCount
+            FROM products p
+            INNER JOIN warehouses w
+              ON w.tenant_id = p.tenant_id AND w.deleted_at IS NULL AND w.status = 1
+            LEFT JOIN branches br
+              ON br.id = w.branch_id AND br.tenant_id = p.tenant_id AND br.deleted_at IS NULL
+            LEFT JOIN product_categories c
+              ON c.id = p.category_id AND c.tenant_id = p.tenant_id AND c.deleted_at IS NULL
+            LEFT JOIN inventory_batches b
+              ON b.product_id = p.id AND b.warehouse_id = w.id AND b.tenant_id = p.tenant_id
+            WHERE p.tenant_id = @TenantId AND p.deleted_at IS NULL AND p.status = 1
+              {warehouseFilter}
+            GROUP BY
+                p.id, p.product_code, p.product_name, p.min_stock_qty,
+                w.id, w.warehouse_name, w.min_stock_qty,
+                br.id, br.branch_name,
+                c.min_stock_qty
+            HAVING COALESCE(SUM(b.quantity_available), 0) <= {effective}
+            ORDER BY TotalQuantity ASC, w.warehouse_name, p.product_name
+            LIMIT 500
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<LowStockProductDto>(sql, new
+        {
+            TenantId,
+            WarehouseId = warehouseId,
+            AllowedWarehouseIds = allowedWarehouseIds,
+            FallbackThreshold = threshold,
+        })).ToList();
+    }
+
+    public async Task<bool> UpdateWarehouseMinStockAsync(
+        Guid warehouseId,
+        decimal? minStockQty,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE warehouses
+            SET min_stock_qty = @MinStockQty, updated_at = NOW()
+            WHERE id = @WarehouseId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteAsync(sql, new
+        {
+            WarehouseId = warehouseId,
+            TenantId,
+            MinStockQty = minStockQty,
+        }) > 0;
     }
 
     public async Task<IReadOnlyList<AdjustmentListItemDto>> GetAdjustmentsAsync(CancellationToken cancellationToken)

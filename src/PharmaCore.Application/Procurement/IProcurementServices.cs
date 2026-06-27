@@ -11,7 +11,7 @@ public interface ISupplierService
 
 public interface IPurchaseOrderService
 {
-    Task<IReadOnlyList<PurchaseOrderListItemDto>> GetAllAsync(
+    Task<ProcurementPagedListResult<PurchaseOrderListItemDto>> GetAllAsync(
         PurchaseOrderListFilter? filter = null,
         CancellationToken cancellationToken = default);
     Task<PurchaseOrderDetailDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
@@ -30,7 +30,7 @@ public interface IPurchaseOrderService
 
 public interface IGoodsReceiptService
 {
-    Task<IReadOnlyList<GoodsReceiptListItemDto>> GetAllAsync(
+    Task<ProcurementPagedListResult<GoodsReceiptListItemDto>> GetAllAsync(
         GoodsReceiptListFilter? filter = null,
         CancellationToken cancellationToken = default);
     Task<GoodsReceiptDetailDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
@@ -57,4 +57,20 @@ public interface ISupplierPayablesService
 {
     Task<IReadOnlyList<SupplierPayablesRowDto>> GetSummaryAsync(CancellationToken cancellationToken = default);
     Task<SupplierPayablesDetailDto?> GetDetailAsync(Guid supplierId, CancellationToken cancellationToken = default);
+}
+
+public interface IProcurementVatTreatmentService
+{
+    Task<IReadOnlyList<ProcurementVatTreatmentDto>> GetAllAsync(
+        bool activeOnly = true,
+        CancellationToken cancellationToken = default);
+    Task<ProcurementVatTreatmentDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ProcurementVatTreatmentDto> CreateAsync(
+        CreateProcurementVatTreatmentRequest request,
+        CancellationToken cancellationToken = default);
+    Task<ProcurementVatTreatmentDto?> UpdateAsync(
+        Guid id,
+        UpdateProcurementVatTreatmentRequest request,
+        CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

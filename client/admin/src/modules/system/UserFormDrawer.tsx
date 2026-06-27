@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Col, Drawer, Form, Input, Row, Select, Space, Tooltip, message } from 'antd';
 import { CloseOutlined, KeyOutlined, QuestionCircleOutlined, SaveOutlined } from '@ant-design/icons';
-import { createUser, fetchEmployees, fetchRoles, updateUser } from '@/shared/api/identity-admin.api';
-import type { EmployeeLookup, UserDetail } from '@/shared/api/identity-admin.types';
+import { createUser, fetchBranches, fetchEmployee, fetchEmployees, fetchRoles, updateUser } from '@/shared/api/identity-admin.api';
+import type { BranchListItem, EmployeeLookup, UserDetail } from '@/shared/api/identity-admin.types';
 import { USER_STATUS_OPTIONS } from '@/shared/api/identity-admin.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 
@@ -16,6 +16,8 @@ interface UserFormValues {
   status: number;
   roleIds: string[];
   employeeId?: string;
+  branchIds?: string[];
+  primaryBranchId?: string;
 }
 
 interface UserFormDrawerProps {
@@ -67,16 +69,21 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{ value: string; label: string }[]>([]);
   const [employees, setEmployees] = useState<EmployeeLookup[]>([]);
+  const [branches, setBranches] = useState<BranchListItem[]>([]);
   const [employeeOptions, setEmployeeOptions] = useState<
     { value: string; label: string; disabled?: boolean }[]
   >([]);
 
   const loadLookups = useCallback(async () => {
-    const roles = await fetchRoles().catch(() => [] as Awaited<ReturnType<typeof fetchRoles>>);
-    const employeeRows = await fetchEmployees().catch(() => [] as EmployeeLookup[]);
+    const [roles, employeeRows, branchRows] = await Promise.all([
+      fetchRoles().catch(() => [] as Awaited<ReturnType<typeof fetchRoles>>),
+      fetchEmployees().catch(() => [] as EmployeeLookup[]),
+      fetchBranches().catch(() => [] as BranchListItem[]),
+    ]);
     const options = buildRoleOptions(roles, editing);
     setRoleOptions(options);
     setEmployees(employeeRows);
+    setBranches(branchRows.filter((b) => b.status === 1));
     setEmployeeOptions(
       employeeRows.map((e) => ({
         value: e.id,
@@ -86,6 +93,24 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
     );
     return options;
   }, [editing]);
+
+  const applyEmployeeBranches = useCallback(
+    async (employeeId?: string) => {
+      if (!employeeId) {
+        form.setFieldsValue({ branchIds: [], primaryBranchId: undefined });
+        return;
+      }
+      try {
+        const detail = await fetchEmployee(employeeId);
+        const branchIds = detail.branches.map((b) => b.branchId);
+        const primary = detail.branches.find((b) => b.isPrimary)?.branchId ?? branchIds[0];
+        form.setFieldsValue({ branchIds, primaryBranchId: primary });
+      } catch {
+        form.setFieldsValue({ branchIds: [], primaryBranchId: undefined });
+      }
+    },
+    [form],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -105,19 +130,24 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
         employeeId: editing.employeeId,
         newPassword: undefined,
         password: undefined,
+        branchIds: [],
+        primaryBranchId: undefined,
       });
     } else {
-      form.setFieldsValue({ status: 1, roleIds: [] });
+      form.setFieldsValue({ status: 1, roleIds: [], branchIds: [], primaryBranchId: undefined });
     }
 
     let cancelled = false;
     void loadLookups()
-      .then((options) => {
+      .then(async (options) => {
         if (cancelled) return;
         if (editing?.roleIds.length) {
           form.setFieldValue('roleIds', editing.roleIds);
         } else if (!editing && options.length === 1) {
           form.setFieldValue('roleIds', [options[0].value]);
+        }
+        if (editing?.employeeId) {
+          await applyEmployeeBranches(editing.employeeId);
         }
       })
       .catch(() => {
@@ -130,11 +160,18 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
     return () => {
       cancelled = true;
     };
-  }, [open, editing, form, loadLookups]);
+  }, [open, editing, form, loadLookups, applyEmployeeBranches]);
+
+  const branchIds = Form.useWatch('branchIds', form) ?? [];
+  const branchOptions = branches.map((b) => ({
+    value: b.id,
+    label: `${b.branchCode} — ${b.branchName}`,
+  }));
+  const primaryBranchOptions = branchOptions.filter((o) => branchIds.includes(o.value));
 
   const editFieldNames = showChangePassword
-    ? (['username', 'email', 'employeeFullName', 'employeePhone', 'status', 'roleIds', 'employeeId', 'newPassword'] as const)
-    : (['username', 'email', 'employeeFullName', 'employeePhone', 'status', 'roleIds', 'employeeId'] as const);
+    ? (['username', 'email', 'employeeFullName', 'employeePhone', 'status', 'roleIds', 'employeeId', 'branchIds', 'primaryBranchId', 'newPassword'] as const)
+    : (['username', 'email', 'employeeFullName', 'employeePhone', 'status', 'roleIds', 'employeeId', 'branchIds', 'primaryBranchId'] as const);
 
   const createFieldNames = [
     'username',
@@ -145,16 +182,33 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
     'status',
     'roleIds',
     'employeeId',
+    'branchIds',
+    'primaryBranchId',
   ] as const;
 
   const handleEmployeeSelect = (employeeId?: string) => {
-    if (!employeeId) return;
+    if (!employeeId) {
+      void applyEmployeeBranches(undefined);
+      return;
+    }
     const employee = employees.find((e) => e.id === employeeId);
     if (!employee) return;
     form.setFieldsValue({
       employeeFullName: employee.fullName,
       employeePhone: employee.phone,
     });
+    void applyEmployeeBranches(employeeId);
+  };
+
+  const handleBranchIdsChange = (nextIds: string[]) => {
+    const primary = form.getFieldValue('primaryBranchId') as string | undefined;
+    const patch: Partial<UserFormValues> = { branchIds: nextIds };
+    if (nextIds.length === 1) {
+      patch.primaryBranchId = nextIds[0];
+    } else if (primary && !nextIds.includes(primary)) {
+      patch.primaryBranchId = nextIds[0];
+    }
+    form.setFieldsValue(patch);
   };
 
   const handleClose = () => {
@@ -177,6 +231,13 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
       employeeFullName: values.employeeFullName?.trim() || undefined,
       employeePhone: values.employeePhone?.trim() || undefined,
     };
+    const branchPayload = {
+      branchIds: values.branchIds ?? [],
+      primaryBranchId:
+        values.primaryBranchId && (values.branchIds ?? []).includes(values.primaryBranchId)
+          ? values.primaryBranchId
+          : (values.branchIds ?? [])[0],
+    };
 
     setSaving(true);
     try {
@@ -187,6 +248,7 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
           status: values.status,
           roleIds: values.roleIds,
           ...profile,
+          ...branchPayload,
           newPassword: values.newPassword?.trim() || undefined,
         });
         message.success('Đã cập nhật tài khoản');
@@ -198,6 +260,7 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
           status: values.status,
           roleIds: values.roleIds,
           ...profile,
+          ...branchPayload,
         });
         message.success('Đã tạo tài khoản');
       }
@@ -341,13 +404,49 @@ export function UserFormDrawer({ open, editing, onClose, onSaved }: UserFormDraw
           name="roleIds"
           label="Vai trò"
           rules={[{ required: true, message: 'Chọn ít nhất một vai trò' }]}
-          style={{ marginBottom: 0 }}
+          style={{ marginBottom: 12 }}
         >
           <Select
             mode="multiple"
             options={roleOptions}
             placeholder="Chọn vai trò"
             optionFilterProp="label"
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="branchIds"
+          label={
+            <Space size={4}>
+              Chi nhánh được phép
+              <Tooltip title="Nhân viên chỉ thấy kho/POS/báo cáo thuộc các chi nhánh này. Để trống = không giới hạn (admin) hoặc không truy cập (nhân viên thường).">
+                <QuestionCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+              </Tooltip>
+            </Space>
+          }
+          style={{ marginBottom: 12 }}
+        >
+          <Select
+            mode="multiple"
+            allowClear
+            options={branchOptions}
+            placeholder="Chọn chi nhánh"
+            optionFilterProp="label"
+            onChange={(value) => handleBranchIdsChange(value as string[])}
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="primaryBranchId"
+          label="Chi nhánh chính"
+          tooltip="Kho mặc định khi mở POS (nếu có nhiều chi nhánh)."
+          style={{ marginBottom: 0 }}
+        >
+          <Select
+            allowClear
+            disabled={primaryBranchOptions.length === 0}
+            options={primaryBranchOptions}
+            placeholder={primaryBranchOptions.length ? 'Chọn chi nhánh chính' : 'Chọn chi nhánh trước'}
           />
         </Form.Item>
       </Form>

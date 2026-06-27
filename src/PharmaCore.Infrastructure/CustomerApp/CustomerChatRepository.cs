@@ -18,6 +18,7 @@ internal sealed class CustomerChatRepository
         const string sql = """
             SELECT
                 id AS Id,
+                warehouse_id AS WarehouseId,
                 customer_unread_count AS CustomerUnreadCount,
                 staff_unread_count AS StaffUnreadCount,
                 last_message_at AS LastMessageAt,
@@ -29,19 +30,62 @@ internal sealed class CustomerChatRepository
         return await conn.QuerySingleOrDefaultAsync<ChatThreadRow>(sql, new { TenantId = tenantId, CustomerId = customerId });
     }
 
+    public async Task<Guid?> ResolveDefaultWarehouseIdAsync(
+        Guid tenantId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var scopeFilter = allowedWarehouseIds is { Length: > 0 }
+            ? " AND id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
+            SELECT id FROM warehouses
+            WHERE tenant_id = @TenantId AND deleted_at IS NULL AND status = 1
+            {scopeFilter}
+            ORDER BY is_default DESC, warehouse_name
+            LIMIT 1
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new
+        {
+            TenantId = tenantId,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        });
+    }
+
+    public Task<Guid?> ResolveDefaultWarehouseIdAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        ResolveDefaultWarehouseIdAsync(tenantId, null, cancellationToken);
+
     public async Task<Guid> EnsureThreadAsync(
         Guid tenantId,
         Guid customerId,
+        Guid warehouseId,
         CancellationToken cancellationToken)
     {
         const string sql = """
-            INSERT INTO customer_chat_threads (tenant_id, customer_id)
-            VALUES (@TenantId, @CustomerId)
-            ON CONFLICT (tenant_id, customer_id) DO UPDATE SET updated_at = NOW()
+            INSERT INTO customer_chat_threads (tenant_id, customer_id, warehouse_id)
+            VALUES (@TenantId, @CustomerId, @WarehouseId)
+            ON CONFLICT (tenant_id, customer_id) DO UPDATE SET
+                warehouse_id = EXCLUDED.warehouse_id,
+                updated_at = NOW()
             RETURNING id
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return await conn.ExecuteScalarAsync<Guid>(sql, new { TenantId = tenantId, CustomerId = customerId });
+        return await conn.ExecuteScalarAsync<Guid>(sql, new
+        {
+            TenantId = tenantId,
+            CustomerId = customerId,
+            WarehouseId = warehouseId,
+        });
+    }
+
+    public async Task SyncThreadWarehouseAsync(
+        Guid tenantId,
+        Guid customerId,
+        Guid warehouseId,
+        CancellationToken cancellationToken)
+    {
+        await EnsureThreadAsync(tenantId, customerId, warehouseId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<ChatMessageRow>> ListMessagesAsync(
@@ -170,9 +214,13 @@ internal sealed class CustomerChatRepository
 
     public async Task<IReadOnlyList<AdminChatThreadRow>> ListThreadsAsync(
         Guid tenantId,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        const string sql = """
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? " AND t.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
             SELECT
                 t.id AS ThreadId,
                 c.id AS CustomerId,
@@ -185,10 +233,15 @@ internal sealed class CustomerChatRepository
             FROM customer_chat_threads t
             INNER JOIN customers c ON c.id = t.customer_id AND c.deleted_at IS NULL
             WHERE t.tenant_id = @TenantId
+            {warehouseFilter}
             ORDER BY t.staff_unread_count DESC, t.last_message_at DESC NULLS LAST, t.created_at DESC
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return (await conn.QueryAsync<AdminChatThreadRow>(sql, new { TenantId = tenantId })).ToList();
+        return (await conn.QueryAsync<AdminChatThreadRow>(sql, new
+        {
+            TenantId = tenantId,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        })).ToList();
     }
 
     public async Task<string?> GetCustomerNameAsync(
@@ -207,6 +260,7 @@ internal sealed class CustomerChatRepository
 
 internal sealed record ChatThreadRow(
     Guid Id,
+    Guid WarehouseId,
     int CustomerUnreadCount,
     int StaffUnreadCount,
     DateTime? LastMessageAt,

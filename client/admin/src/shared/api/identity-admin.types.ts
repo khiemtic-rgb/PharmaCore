@@ -64,6 +64,8 @@ export type CreateUserPayload = {
   employeeId?: string;
   employeeFullName?: string;
   employeePhone?: string;
+  branchIds?: string[];
+  primaryBranchId?: string;
 };
 
 export type UpdateUserPayload = {
@@ -75,6 +77,8 @@ export type UpdateUserPayload = {
   employeeFullName?: string;
   employeePhone?: string;
   newPassword?: string;
+  branchIds?: string[];
+  primaryBranchId?: string;
 };
 
 export type RoleListItem = {
@@ -123,6 +127,23 @@ export type EmployeeLookup = {
   fullName: string;
   phone?: string;
   hasUserAccount: boolean;
+  branchCount?: number;
+};
+
+export type EmployeeBranchAssignment = {
+  branchId: string;
+  branchCode: string;
+  branchName: string;
+  isPrimary: boolean;
+};
+
+export type EmployeeDetail = {
+  id: string;
+  employeeCode: string;
+  fullName: string;
+  phone?: string;
+  hasUserAccount: boolean;
+  branches: EmployeeBranchAssignment[];
 };
 
 export type PagedUsersResult = {

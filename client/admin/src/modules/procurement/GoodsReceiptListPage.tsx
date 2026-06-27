@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Button,
   Card,
   Descriptions,
@@ -20,7 +21,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { FormListFieldData } from 'antd/es/form/FormList';
 import { isAxiosError } from 'axios';
-import { PlusOutlined, EyeOutlined } from '@ant-design/icons';
+import { PlusOutlined, EyeOutlined, DeleteOutlined, SaveOutlined, FolderOpenOutlined, CheckOutlined, CloseCircleOutlined, EyeInvisibleOutlined, PrinterOutlined } from '@ant-design/icons';
 import { fetchProducts } from '@/shared/api/catalog.api';
 import type { ProductListItem } from '@/shared/api/catalog.types';
 import { fetchWarehouses } from '@/shared/api/inventory.api';
@@ -46,17 +47,20 @@ import type {
   PurchaseOrderListItem,
   Supplier,
 } from '@/shared/api/procurement.types';
-import { GRN_STATUS_LABELS, canEditPurchaseOrder } from '@/shared/api/procurement.types';
+import { GRN_STATUS_LABELS, GRN_STATUS_TAG } from '@/shared/api/procurement.types';
 import { PurchaseOrderEditDrawer } from '@/modules/procurement/PurchaseOrderEditDrawer';
+import { GoodsReceiptFormHeader } from '@/modules/procurement/GoodsReceiptFormHeader';
+import { GrnPoLinesEditor } from '@/modules/procurement/GrnPoLinesEditor';
+import { GrnReadonlyTaxSummaryFooter, PROCUREMENT_MONEY_COL_WIDTH } from '@/modules/procurement/GrnPoTaxSummary';
+import { printGoodsReceipt } from '@/shared/print/grn-print';
 import { ProductUnitSelect } from '@/modules/procurement/ProductUnitSelect';
 import { PoUnitPriceField } from '@/modules/procurement/PoUnitPriceField';
-import { PharmaDatePicker, PharmaExpiryPicker } from '@/shared/ui/PharmaDatePicker';
+import { PharmaExpiryPicker } from '@/shared/ui/PharmaDatePicker';
 import { GoodsReceiptFilterBar } from '@/modules/procurement/GoodsReceiptFilterBar';
-import { filterGoodsReceiptsClient } from '@/modules/procurement/procurement-list-filters';
-import { filterGoodsReceiptsByProduct } from '@/modules/procurement/procurement-product-filter';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { downloadCsv } from '@/shared/utils/download-csv';
-import { formatDisplayMoney, moneyInputNumberPropsAllowZero, moneyInputNumberStyle } from '@/shared/utils/money';
+import { formatDisplayMoney, quantityInputNumberProps } from '@/shared/utils/money';
+import { procurementQuantityColumn } from '@/modules/procurement/procurement-quantity-cell';
 import { useProcurementWrite, useSystemDeletePermanent } from '@/shared/auth/usePermission';
 
 const emptyFilters: GoodsReceiptListFilters = {};
@@ -122,6 +126,9 @@ export function GoodsReceiptListPage() {
   const canPurge = useSystemDeletePermanent();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<GoodsReceiptListItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<ProductListItem[]>([]);
@@ -130,6 +137,7 @@ export function GoodsReceiptListPage() {
   const [filters, setFilters] = useState<GoodsReceiptListFilters>(emptyFilters);
   const [searchInput, setSearchInput] = useState('');
   const [linkedPo, setLinkedPo] = useState<PurchaseOrderDetail | null>(null);
+  const [poDraftGrn, setPoDraftGrn] = useState<GoodsReceiptListItem | null>(null);
   const [poLoading, setPoLoading] = useState(false);
   const [grnDetailCache, setGrnDetailCache] = useState<Record<string, GoodsReceiptDetail>>({});
   const grnDetailCacheRef = useRef(grnDetailCache);
@@ -137,6 +145,7 @@ export function GoodsReceiptListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<GoodsReceiptDetail | null>(null);
+  const [detailLinkedPo, setDetailLinkedPo] = useState<PurchaseOrderDetail | null>(null);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [poEditOpen, setPoEditOpen] = useState(false);
@@ -148,44 +157,42 @@ export function GoodsReceiptListPage() {
       fetchSuppliers(true),
       fetchWarehouses(),
       fetchProducts({ page: 1, pageSize: 200 }),
-      fetchPurchaseOrders(),
-      fetchPurchaseOrders({ pendingReceiptOnly: true }),
+      fetchPurchaseOrders({ page: 1, pageSize: 500 }),
+      fetchPurchaseOrders({ pendingReceiptOnly: true, page: 1, pageSize: 500 }),
     ]);
     setSuppliers(sup);
     setWarehouses(wh);
     setProducts(prod.items);
-    setAllPurchaseOrders(pos);
-    setApprovedPos(pendingPos);
+    setAllPurchaseOrders(pos.items);
+    setApprovedPos(pendingPos.items);
   }, []);
 
-  const loadReceipts = useCallback(async (nextFilters: GoodsReceiptListFilters, search: string) => {
+  const loadReceipts = useCallback(async (
+    nextFilters: GoodsReceiptListFilters,
+    search: string,
+    nextPage = 1,
+    nextPageSize = pageSize,
+  ) => {
     setFilters(nextFilters);
     setSearchInput(search);
+    setPage(nextPage);
+    setPageSize(nextPageSize);
     setLoading(true);
     try {
-      let receipts: GoodsReceiptListItem[];
-
-      if (nextFilters.productId) {
-        const byProduct = await fetchGoodsReceipts({ productId: nextFilters.productId });
-        const all = await fetchGoodsReceipts();
-        receipts =
-          byProduct.length >= all.length
-            ? await filterGoodsReceiptsByProduct(all, nextFilters.productId, grnDetailCacheRef.current)
-            : byProduct;
-      } else {
-        receipts = await fetchGoodsReceipts({
-          ...nextFilters,
-          search: search.trim() || undefined,
-        });
-      }
-
-      setItems(filterGoodsReceiptsClient(receipts, nextFilters, search));
+      const result = await fetchGoodsReceipts({
+        ...nextFilters,
+        search: search.trim() || undefined,
+        page: nextPage,
+        pageSize: nextPageSize,
+      });
+      setItems(result.items);
+      setTotal(result.total);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không tải được phiếu nhập hàng'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     void loadMasterData().catch(() => {
@@ -221,6 +228,7 @@ export function GoodsReceiptListPage() {
   useEffect(() => {
     if (!purchaseOrderId) {
       setLinkedPo(null);
+      setPoDraftGrn(null);
       setPoLoading(false);
       return;
     }
@@ -228,10 +236,19 @@ export function GoodsReceiptListPage() {
     let cancelled = false;
     setPoLoading(true);
     setLinkedPo(null);
+    setPoDraftGrn(null);
     form.setFieldsValue({ items: [] });
 
-    fetchPurchaseOrder(purchaseOrderId)
-      .then((po) => {
+    fetchGoodsReceipts({ purchaseOrderId, status: 1, page: 1, pageSize: 20 })
+      .then(async (result) => {
+        if (cancelled) return;
+        const draft = result.items[0];
+        if (draft) {
+          setPoDraftGrn(draft);
+          return;
+        }
+
+        const po = await fetchPurchaseOrder(purchaseOrderId);
         if (cancelled) return;
         setLinkedPo(po);
         const lines = buildGrnLinesFromPo(po);
@@ -247,6 +264,7 @@ export function GoodsReceiptListPage() {
       .catch(() => {
         if (!cancelled) {
           setLinkedPo(null);
+          setPoDraftGrn(null);
           message.error('Không tải được chi tiết PO.');
         }
       })
@@ -282,8 +300,14 @@ export function GoodsReceiptListPage() {
     form.resetFields();
     form.setFieldsValue({ receiptDate: todayDateString(), items: [emptyGrnLine()] });
     setLinkedPo(null);
+    setPoDraftGrn(null);
     setPoLoading(false);
     setDrawerOpen(true);
+  };
+
+  const openExistingDraftGrn = async (id: string) => {
+    setDrawerOpen(false);
+    await openDetail(id);
   };
 
   const loadGrnExpand = async (id: string) => {
@@ -298,8 +322,17 @@ export function GoodsReceiptListPage() {
 
   const openDetail = async (id: string) => {
     try {
-      setDetail(await fetchGoodsReceipt(id));
+      setDetailLinkedPo(null);
+      const grn = await fetchGoodsReceipt(id);
+      setDetail(grn);
       setDetailOpen(true);
+      if (grn.purchaseOrderId) {
+        try {
+          setDetailLinkedPo(await fetchPurchaseOrder(grn.purchaseOrderId));
+        } catch (error) {
+          message.error(apiErrorMessage(error, 'Không tải được PO liên kết'));
+        }
+      }
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không tải được chi tiết phiếu nhập'));
     }
@@ -332,7 +365,7 @@ export function GoodsReceiptListPage() {
       });
       message.success(`Đã tạo ${created.grnNumber}`);
       setDrawerOpen(false);
-      void loadReceipts(filters, searchInput);
+      void loadReceipts(filters, searchInput, page, pageSize);
       void loadMasterData();
     } catch (error) {
       if (isAxiosError(error)) {
@@ -348,7 +381,7 @@ export function GoodsReceiptListPage() {
       const updated = await completeGoodsReceipt(id);
       message.success(`Đã hoàn tất ${updated.grnNumber} — tồn kho đã cập nhật`);
       if (detail?.id === id) setDetail(updated);
-      void loadReceipts(filters, searchInput);
+      void loadReceipts(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không hoàn tất được phiếu nhập'));
     }
@@ -359,7 +392,7 @@ export function GoodsReceiptListPage() {
       const updated = await cancelGoodsReceipt(id);
       message.success(`Đã hủy ${updated.grnNumber}`);
       setDetail(updated);
-      void loadReceipts(filters, searchInput);
+      void loadReceipts(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không hủy được phiếu nhập'));
     }
@@ -371,7 +404,7 @@ export function GoodsReceiptListPage() {
       message.success('Đã ẩn phiếu nhập (có thể xem trong bản ghi đã ẩn)');
       setDetailOpen(false);
       setDetail(null);
-      void loadReceipts(filters, searchInput);
+      void loadReceipts(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không ẩn được phiếu nhập'));
     }
@@ -383,7 +416,7 @@ export function GoodsReceiptListPage() {
       message.success('Đã xóa vĩnh viễn phiếu nhập');
       setDetailOpen(false);
       setDetail(null);
-      void loadReceipts(filters, searchInput);
+      void loadReceipts(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không xóa vĩnh viễn được phiếu'));
     }
@@ -409,7 +442,7 @@ export function GoodsReceiptListPage() {
       width: 110,
       render: (s: number, row) => (
         <Space size={4}>
-          <Tag>{GRN_STATUS_LABELS[s] ?? s}</Tag>
+          <Tag color={GRN_STATUS_TAG[s] ?? 'default'}>{GRN_STATUS_LABELS[s] ?? s}</Tag>
           {row.deletedAt ? <Tag color="default">Đã ẩn</Tag> : null}
         </Space>
       ),
@@ -434,165 +467,23 @@ export function GoodsReceiptListPage() {
   ];
 
   const grnLineColumns: ColumnsType<GoodsReceiptDetail['items'][number]> = [
-    { title: 'Mã SP', dataIndex: 'productCode', width: 100 },
-    { title: 'Tên SP', dataIndex: 'productName' },
-    { title: 'Lô', dataIndex: 'batchNumber', width: 90 },
-    { title: 'HSD', dataIndex: 'expiryDate', width: 100, render: (v: string) => formatDisplayDate(v) },
-    { title: 'SL', dataIndex: 'quantity', width: 70, align: 'right' },
+    { title: 'Mã SP', dataIndex: 'productCode', width: 90 },
+    { title: 'Tên SP', dataIndex: 'productName', width: 280, ellipsis: true },
+    { title: 'Lô', dataIndex: 'batchNumber', width: 84 },
+    { title: 'HSD', dataIndex: 'expiryDate', width: 96, render: (v: string) => formatDisplayDate(v) },
+    procurementQuantityColumn('SL', 'quantity', 68),
     {
       title: 'Giá vốn',
       dataIndex: 'unitCost',
-      width: 90,
+      width: PROCUREMENT_MONEY_COL_WIDTH,
       align: 'right',
       render: (v: number) => (
-        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDisplayMoney(v)}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', display: 'block', textAlign: 'right' }}>
+          {formatDisplayMoney(v)}
+        </span>
       ),
     },
   ];
-
-  const renderPoLineTable = (fields: FormListFieldData[], remove: (index: number) => void) => {
-    const lineColumns: ColumnsType<FormListFieldData> = [
-      {
-        title: 'Sản phẩm',
-        width: 200,
-        render: (_, field) => {
-          const line = form.getFieldValue(['items', field.name]) as GrnLineForm | undefined;
-          return (
-            <div>
-              <Typography.Text strong>{line?.productCode}</Typography.Text>
-              <br />
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {line?.productName}
-              </Typography.Text>
-              <Form.Item {...field} name={[field.name, 'purchaseOrderItemId']} hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item {...field} name={[field.name, 'productId']} hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item {...field} name={[field.name, 'productUnitId']} hidden>
-                <Input />
-              </Form.Item>
-            </div>
-          );
-        },
-      },
-      {
-        title: 'ĐVT',
-        width: 70,
-        render: (_, field) => form.getFieldValue(['items', field.name, 'unitName']) ?? '—',
-      },
-      {
-        title: 'Chưa nhận',
-        width: 75,
-        align: 'right',
-        render: (_, field) => {
-          const line = form.getFieldValue(['items', field.name]) as GrnLineForm;
-          const remain = (line?.orderedQty ?? 0) - (line?.receivedQty ?? 0);
-          return remain.toLocaleString('vi-VN');
-        },
-      },
-      {
-        title: 'SL nhập',
-        width: 95,
-        render: (_, field) => {
-          const line = form.getFieldValue(['items', field.name]) as GrnLineForm | undefined;
-          const remain = (line?.orderedQty ?? 0) - (line?.receivedQty ?? 0);
-          return (
-            <Form.Item
-              {...field}
-              name={[field.name, 'quantity']}
-              rules={[
-                { required: true, message: 'Nhập SL' },
-                {
-                  validator: (_, value) =>
-                    value == null || value <= remain
-                      ? Promise.resolve()
-                      : Promise.reject(new Error(`Tối đa ${remain.toLocaleString('vi-VN')}`)),
-                },
-              ]}
-              style={{ marginBottom: 0 }}
-            >
-              <InputNumber min={0.01} max={remain > 0 ? remain : undefined} style={{ width: '100%' }} />
-            </Form.Item>
-          );
-        },
-      },
-      {
-        title: 'Số lô',
-        width: 110,
-        render: (_, field) => (
-          <Form.Item
-            {...field}
-            name={[field.name, 'batchNumber']}
-            rules={[{ required: true, message: 'Nhập lô' }]}
-            style={{ marginBottom: 0 }}
-          >
-            <Input placeholder="Lô" />
-          </Form.Item>
-        ),
-      },
-      {
-        title: 'HSD (T/N)',
-        width: 130,
-        render: (_, field) => (
-          <Form.Item
-            {...field}
-            name={[field.name, 'expiryDate']}
-            rules={[{ required: true, message: 'HSD' }]}
-            style={{ marginBottom: 0 }}
-          >
-            <PharmaExpiryPicker style={{ width: 130 }} inTable />
-          </Form.Item>
-        ),
-      },
-      {
-        title: 'Giá vốn',
-        width: 120,
-        align: 'right',
-        render: (_, field) => {
-          const productId = form.getFieldValue(['items', field.name, 'productId']) as string | undefined;
-          return (
-            <Form.Item
-              {...field}
-              name={[field.name, 'unitCost']}
-              rules={[{ required: true }]}
-              style={{ marginBottom: 0 }}
-            >
-              <PoUnitPriceField
-                supplierId={supplierId}
-                productId={productId}
-                form={form}
-                fieldName={field.name}
-                valueFieldName="unitCost"
-              />
-            </Form.Item>
-          );
-        },
-      },
-      {
-        title: '',
-        width: 72,
-        render: (_, field) => (
-          <Button type="link" danger size="small" onClick={() => remove(field.name)}>
-            Xóa
-          </Button>
-        ),
-      },
-    ];
-
-    return (
-      <Table
-        className="grn-lines-table"
-        rowKey="key"
-        size="small"
-        pagination={fields.length > 15 ? { pageSize: 15 } : false}
-        scroll={{ x: 900 }}
-        dataSource={fields}
-        columns={lineColumns}
-      />
-    );
-  };
 
   const renderManualLines = (
     fields: FormListFieldData[],
@@ -669,7 +560,7 @@ export function GoodsReceiptListPage() {
                   rules={[{ required: true }]}
                   style={{ flex: '0 0 80px', marginBottom: 0 }}
                 >
-                  <InputNumber min={0.01} placeholder="SL" style={{ width: '100%' }} />
+                  <InputNumber {...quantityInputNumberProps} min={0.001} placeholder="SL" style={{ width: '100%' }} />
                 </Form.Item>
                 <Form.Item
                   {...field}
@@ -687,9 +578,13 @@ export function GoodsReceiptListPage() {
                   />
                 </Form.Item>
                 <Form.Item label=" " colon={false} style={{ flex: '0 0 auto', marginBottom: 0 }}>
-                  <Button type="link" danger onClick={() => remove(field.name)}>
-                    Xóa
-                  </Button>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    aria-label="Xóa dòng"
+                    onClick={() => remove(field.name)}
+                  />
                 </Form.Item>
               </div>
             );
@@ -698,6 +593,7 @@ export function GoodsReceiptListPage() {
       ))}
       <Button
         type="dashed"
+        icon={<PlusOutlined />}
         onClick={() => add(emptyGrnLine())}
         block
       >
@@ -736,7 +632,16 @@ export function GoodsReceiptListPage() {
         loading={loading}
         columns={columns}
         dataSource={items}
-        pagination={{ pageSize: 20, showTotal: (total) => `${total} phiếu` }}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (t) => `${t} phiếu`,
+          onChange: (nextPage, nextPageSize) => {
+            void loadReceipts(filters, searchInput, nextPage, nextPageSize);
+          },
+        }}
         scroll={{ x: 900 }}
         onRow={(record) => ({
           onClick: () => void openDetail(record.id),
@@ -750,13 +655,16 @@ export function GoodsReceiptListPage() {
             const grn = grnDetailCache[record.id];
             if (!grn) return <Spin size="small" />;
             return (
-              <Table
-                rowKey="id"
-                size="small"
-                pagination={false}
-                dataSource={grn.items}
-                columns={grnLineColumns}
-              />
+              <div className="grn-lines-detail-panel">
+                <p className="grn-lines-detail-panel__title">Chi tiết hàng nhập</p>
+                <Table
+                  rowKey="id"
+                  size="small"
+                  pagination={false}
+                  dataSource={grn.items}
+                  columns={grnLineColumns}
+                />
+              </div>
             );
           },
         }}
@@ -767,111 +675,88 @@ export function GoodsReceiptListPage() {
         width={980}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        styles={{ body: { paddingTop: 8, paddingBottom: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
         extra={
-          <Button type="primary" onClick={handleCreate} loading={saving}>
-            Lưu nháp
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleCreate}
+            loading={saving}
+            disabled={!!poDraftGrn}
+          >
+            Lưu phiếu
           </Button>
         }
       >
-        <Form form={form} layout="vertical">
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-            <Form.Item
-              name="purchaseOrderId"
-              label="Liên kết đơn đặt hàng (khuyến nghị)"
-              style={{ flex: 1, marginBottom: 16 }}
-            >
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                placeholder="Chọn đơn đã duyệt, còn hàng chưa nhận"
-                options={approvedPos.map((p) => ({
-                  value: p.id,
-                  label: `${p.poNumber} — ${p.supplierName} (${p.itemCount} SP)`,
-                }))}
+        <Form
+          form={form}
+          layout="vertical"
+          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}
+        >
+          <GoodsReceiptFormHeader
+            suppliers={suppliers}
+            warehouses={warehouses}
+            approvedPos={approvedPos}
+            purchaseOrderId={purchaseOrderId}
+            linkedPo={linkedPo}
+            poLoading={poLoading}
+            onEditPo={() => setPoEditOpen(true)}
+          />
+          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            {poDraftGrn && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 8 }}
+                message={`PO đã có phiếu chờ nhập kho ${poDraftGrn.grnNumber}`}
+                description="Hoàn tất nhập kho hoặc hủy phiếu đó trước khi tạo phiếu mới cho PO này."
+                action={
+                  <Button size="small" icon={<FolderOpenOutlined />} onClick={() => void openExistingDraftGrn(poDraftGrn.id)}>
+                    Mở phiếu
+                  </Button>
+                }
               />
-            </Form.Item>
-            <Form.Item label=" " colon={false} style={{ marginBottom: 16 }}>
-              <Button
-                disabled={!purchaseOrderId || !linkedPo || !canEditPurchaseOrder(linkedPo.status)}
-                onClick={() => setPoEditOpen(true)}
-              >
-                Điều chỉnh PO
-              </Button>
-            </Form.Item>
+            )}
+            <Form.List name="items">
+              {(fields, { add, remove }) => {
+                if (poDraftGrn) {
+                  return null;
+                }
+                if (!purchaseOrderId) {
+                  return renderManualLines(fields, add, remove);
+                }
+                if (poLoading) {
+                  return (
+                    <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                      <Spin tip="Đang tải hàng từ PO..." />
+                    </div>
+                  );
+                }
+                if (!linkedPo) {
+                  return (
+                    <Typography.Text type="danger">
+                      Không tải được PO — bỏ chọn PO hoặc chọn PO khác.
+                    </Typography.Text>
+                  );
+                }
+                if (fields.length === 0) {
+                  return (
+                    <Typography.Text type="secondary">PO đã nhận đủ — chọn PO khác.</Typography.Text>
+                  );
+                }
+                return (
+                  <GrnPoLinesEditor
+                    form={form}
+                    supplierId={supplierId}
+                    linkedPo={linkedPo}
+                    fields={fields}
+                    remove={remove}
+                    maxScrollY={560}
+                  />
+                );
+              }}
+            </Form.List>
           </div>
-          {purchaseOrderId && linkedPo && !poLoading && (
-            <Typography.Paragraph type="secondary" style={{ marginTop: -8, marginBottom: 12 }}>
-              Danh sách hàng còn phải nhận từ {linkedPo.poNumber}. Điền số lô, HSD, sửa SL nếu giao thiếu —{' '}
-              <strong>Xóa</strong> nếu NCC không giao mặt hàng đó.
-            </Typography.Paragraph>
-          )}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <Form.Item
-              name="supplierId"
-              label="Nhà cung cấp"
-              rules={[{ required: true }]}
-              style={{ flex: '1 1 240px', marginBottom: 16, minWidth: 180 }}
-            >
-              <Select
-                disabled={!!purchaseOrderId}
-                showSearch
-                optionFilterProp="label"
-                options={suppliers.map((s) => ({ value: s.id, label: s.supplierName }))}
-              />
-            </Form.Item>
-            <Form.Item
-              name="warehouseId"
-              label="Kho nhận"
-              rules={[{ required: true }]}
-              style={{ flex: '1 1 200px', marginBottom: 16, minWidth: 160 }}
-            >
-              <Select
-                disabled={!!purchaseOrderId}
-                showSearch
-                optionFilterProp="label"
-                options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
-              />
-            </Form.Item>
-            <Form.Item
-              name="receiptDate"
-              label="Ngày nhập"
-              rules={[{ required: true, message: 'Chọn ngày nhập' }]}
-              style={{ flex: '0 0 180px', marginBottom: 16 }}
-            >
-              <PharmaDatePicker placeholder="dd/mm/yyyy" />
-            </Form.Item>
-          </div>
-          <Form.Item name="notes" label="Ghi chú" style={{ marginBottom: 16 }}>
-            <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.List name="items">
-            {(fields, { add, remove }) => {
-              if (!purchaseOrderId) {
-                return renderManualLines(fields, add, remove);
-              }
-              if (poLoading) {
-                return (
-                  <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                    <Spin tip="Đang tải hàng từ PO..." />
-                  </div>
-                );
-              }
-              if (!linkedPo) {
-                return (
-                  <Typography.Text type="danger">
-                    Không tải được PO — bỏ chọn PO hoặc chọn PO khác.
-                  </Typography.Text>
-                );
-              }
-              if (fields.length === 0) {
-                return (
-                  <Typography.Text type="secondary">PO đã nhận đủ — chọn PO khác.</Typography.Text>
-                );
-              }
-              return renderPoLineTable(fields, remove);
-            }}
-          </Form.List>
         </Form>
       </Drawer>
 
@@ -885,31 +770,39 @@ export function GoodsReceiptListPage() {
 
       <Drawer
         title={detail ? `Xem ${detail.grnNumber}` : 'Xem phiếu nhập hàng'}
-        width={720}
+        width={880}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         extra={
-          detail &&
-          canWrite && (
+          detail && (
             <Space>
+              <Button icon={<PrinterOutlined />} onClick={() => printGoodsReceipt(detail)}>
+                In A4
+              </Button>
+              {canWrite && (
+                <>
               {detail.status === 1 && (
-                <Button type="primary" onClick={() => handleComplete(detail.id)}>
+                <Button type="primary" icon={<CheckOutlined />} onClick={() => handleComplete(detail.id)}>
                   Hoàn tất nhập kho
                 </Button>
               )}
               {detail.status === 1 && (
                 <Popconfirm
-                  title="Hủy phiếu nhập nháp?"
+                  title="Hủy phiếu chờ nhập kho?"
                   okText="Hủy phiếu"
                   cancelText="Đóng"
                   onConfirm={() => void handleCancel(detail.id)}
                 >
-                  <Button danger>Hủy phiếu</Button>
+                  <Button danger icon={<CloseCircleOutlined />}>
+                    Hủy phiếu
+                  </Button>
                 </Popconfirm>
               )}
               {canArchiveGrn(detail.status, detail.deletedAt) && (
                 <Popconfirm title="Ẩn phiếu đã hủy khỏi danh sách?" onConfirm={() => void handleArchive(detail.id)}>
-                  <Button danger>Ẩn phiếu</Button>
+                  <Button danger icon={<EyeInvisibleOutlined />}>
+                    Ẩn phiếu
+                  </Button>
                 </Popconfirm>
               )}
               {detail.deletedAt && canPurge && (
@@ -917,15 +810,19 @@ export function GoodsReceiptListPage() {
                   title="Xóa vĩnh viễn? Không thể hoàn tác."
                   onConfirm={() => void handlePurge(detail.id)}
                 >
-                  <Button danger type="primary">
+                  <Button danger type="primary" icon={<DeleteOutlined />}>
                     Xóa vĩnh viễn
                   </Button>
                 </Popconfirm>
               )}
               {showLockedDeleteGrn(detail.status, detail.deletedAt) && (
                 <Tooltip title="Không ẩn được phiếu đã ghi nhận nhập kho">
-                  <Button disabled>Ẩn phiếu</Button>
+                  <Button disabled icon={<EyeInvisibleOutlined />}>
+                    Ẩn phiếu
+                  </Button>
                 </Tooltip>
+              )}
+                </>
               )}
             </Space>
           )
@@ -938,16 +835,30 @@ export function GoodsReceiptListPage() {
               <Descriptions.Item label="Kho">{detail.warehouseName}</Descriptions.Item>
               <Descriptions.Item label="PO">{detail.poNumber ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
-                <Tag>{GRN_STATUS_LABELS[detail.status]}</Tag>
+                <Tag color={GRN_STATUS_TAG[detail.status] ?? 'default'}>{GRN_STATUS_LABELS[detail.status]}</Tag>
               </Descriptions.Item>
             </Descriptions>
-            <Table
-              rowKey="id"
-              size="small"
-              pagination={false}
-              dataSource={detail.items}
-              columns={grnLineColumns}
-            />
+            <div className="grn-lines-detail-panel">
+              <p className="grn-lines-detail-panel__title">Chi tiết hàng nhập</p>
+              <Table
+                rowKey="id"
+                size="small"
+                pagination={false}
+                className="grn-lines-table"
+                scroll={{ x: 720 }}
+                dataSource={detail.items}
+                columns={grnLineColumns}
+                summary={() => (
+                  <GrnReadonlyTaxSummaryFooter
+                    items={detail.items}
+                    linkedPo={detailLinkedPo}
+                    leadingColSpan={4}
+                    summaryColSpan={2}
+                    moneyColumnWidth={PROCUREMENT_MONEY_COL_WIDTH}
+                  />
+                )}
+              />
+            </div>
           </>
         )}
       </Drawer>

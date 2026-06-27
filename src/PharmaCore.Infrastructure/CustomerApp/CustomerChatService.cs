@@ -1,3 +1,4 @@
+using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.CustomerApp;
 using PharmaCore.Application.Customers;
 
@@ -9,17 +10,20 @@ internal sealed class CustomerChatService : ICustomerChatService
     private readonly CustomerAppConsentRepository _consents;
     private readonly ICustomerPushService _push;
     private readonly IChatEventHub _events;
+    private readonly IBranchAccessService _branchAccess;
 
     public CustomerChatService(
         CustomerChatRepository repo,
         CustomerAppConsentRepository consents,
         ICustomerPushService push,
-        IChatEventHub events)
+        IChatEventHub events,
+        IBranchAccessService branchAccess)
     {
         _repo = repo;
         _consents = consents;
         _push = push;
         _events = events;
+        _branchAccess = branchAccess;
     }
 
     public async Task<CustomerChatThreadDto> GetThreadAsync(
@@ -71,11 +75,11 @@ internal sealed class CustomerChatService : ICustomerChatService
                 "Cần đồng ý chat dược sĩ trong app (mục Tài khoản) trước khi gửi tin nhắn.");
         }
 
-        var threadId = await _repo.EnsureThreadAsync(tenantId, customerId, cancellationToken);
+        var thread = await EnsureThreadRowAsync(tenantId, customerId, cancellationToken);
         var customerName = await _repo.GetCustomerNameAsync(tenantId, customerId, cancellationToken);
         var row = await _repo.InsertMessageAsync(
             tenantId,
-            threadId,
+            thread.Id,
             CustomerChatSenderTypes.Customer,
             customerId,
             body,
@@ -100,7 +104,8 @@ internal sealed class CustomerChatService : ICustomerChatService
         Guid tenantId,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repo.ListThreadsAsync(tenantId, cancellationToken);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var rows = await _repo.ListThreadsAsync(tenantId, allowed, cancellationToken);
         var items = rows.Select(row => new AdminChatThreadListItemDto(
             row.ThreadId,
             row.CustomerId,
@@ -126,6 +131,7 @@ internal sealed class CustomerChatService : ICustomerChatService
         if (thread is null)
             return new AdminChatMessageListResult([], false);
 
+        await _branchAccess.EnsureWarehouseAccessAsync(thread.WarehouseId, cancellationToken);
         var result = await ListMessagesForThreadAsync(thread.Id, beforeId, limit, cancellationToken);
         return new AdminChatMessageListResult(result.Items, result.HasMore);
     }
@@ -139,10 +145,10 @@ internal sealed class CustomerChatService : ICustomerChatService
         CancellationToken cancellationToken = default)
     {
         var body = NormalizeBody(request.Body);
-        var threadId = await _repo.EnsureThreadAsync(tenantId, customerId, cancellationToken);
+        var thread = await EnsureThreadForStaffAsync(tenantId, customerId, cancellationToken);
         var row = await _repo.InsertMessageAsync(
             tenantId,
-            threadId,
+            thread.Id,
             CustomerChatSenderTypes.Staff,
             staffUserId,
             body,
@@ -166,8 +172,46 @@ internal sealed class CustomerChatService : ICustomerChatService
     {
         var thread = await _repo.GetThreadAsync(tenantId, customerId, cancellationToken);
         if (thread is null) return;
+        await _branchAccess.EnsureWarehouseAccessAsync(thread.WarehouseId, cancellationToken);
         await _repo.MarkReadAsync(thread.Id, CustomerChatSenderTypes.Staff, cancellationToken);
         _events.NotifyRead(tenantId, customerId, CustomerChatSenderTypes.Staff);
+    }
+
+    public Task SyncThreadWarehouseAsync(
+        Guid tenantId,
+        Guid customerId,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default) =>
+        _repo.SyncThreadWarehouseAsync(tenantId, customerId, warehouseId, cancellationToken);
+
+    private async Task<ChatThreadRow> EnsureThreadForStaffAsync(
+        Guid tenantId,
+        Guid customerId,
+        CancellationToken cancellationToken)
+    {
+        var thread = await _repo.GetThreadAsync(tenantId, customerId, cancellationToken);
+        if (thread is not null)
+        {
+            await _branchAccess.EnsureWarehouseAccessAsync(thread.WarehouseId, cancellationToken);
+            return thread;
+        }
+
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var warehouseId = await _repo.ResolveDefaultWarehouseIdAsync(tenantId, allowed, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy kho phù hợp với quyền chi nhánh.");
+        var id = await _repo.EnsureThreadAsync(tenantId, customerId, warehouseId, cancellationToken);
+        return new ChatThreadRow(id, warehouseId, 0, 0, null, null);
+    }
+
+    private async Task<ChatThreadRow> EnsureStaffThreadAccessAsync(
+        Guid tenantId,
+        Guid customerId,
+        CancellationToken cancellationToken)
+    {
+        var thread = await _repo.GetThreadAsync(tenantId, customerId, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy hội thoại chat.");
+        await _branchAccess.EnsureWarehouseAccessAsync(thread.WarehouseId, cancellationToken);
+        return thread;
     }
 
     private async Task<ChatThreadRow> EnsureThreadRowAsync(
@@ -179,8 +223,10 @@ internal sealed class CustomerChatService : ICustomerChatService
         if (thread is not null)
             return thread;
 
-        var id = await _repo.EnsureThreadAsync(tenantId, customerId, cancellationToken);
-        return new ChatThreadRow(id, 0, 0, null, null);
+        var warehouseId = await _repo.ResolveDefaultWarehouseIdAsync(tenantId, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy kho mặc định.");
+        var id = await _repo.EnsureThreadAsync(tenantId, customerId, warehouseId, cancellationToken);
+        return new ChatThreadRow(id, warehouseId, 0, 0, null, null);
     }
 
     private async Task<CustomerChatMessageListResult> ListMessagesForThreadAsync(

@@ -12,7 +12,7 @@ import type {
 } from '@/shared/api/generated';
 
 export const PO_STATUS_LABELS: Record<number, string> = {
-  1: 'Nháp',
+  1: 'Chờ duyệt',
   2: 'Đơn mới',
   3: 'Nhận một phần',
   4: 'Đã nhận đủ',
@@ -30,15 +30,22 @@ export const PO_STATUS_TAG: Record<number, string> = {
   6: 'red',
 };
 
-/** PO có thể sửa SL / thêm dòng (Nháp, Đơn mới, Nhận một phần). */
+/** PO có thể sửa SL / thêm dòng (Chờ duyệt, Đơn mới, Nhận một phần). */
 export function canEditPurchaseOrder(status: number): boolean {
   return status === 1 || status === 2 || status === 3;
 }
 
 export const GRN_STATUS_LABELS: Record<number, string> = {
-  1: 'Nháp',
+  1: 'Chờ nhập kho',
   2: 'Hoàn tất',
   3: 'Đã hủy',
+};
+
+/** Màu Tag trạng thái phiếu nhập trên danh sách */
+export const GRN_STATUS_TAG: Record<number, string> = {
+  1: 'blue',
+  2: 'green',
+  3: 'red',
 };
 
 export const SUPPLIER_STATUS_LABELS: Record<number, string> = {
@@ -53,9 +60,16 @@ export const PAYMENT_METHOD_LABELS: Record<number, string> = {
 };
 
 export const SUPPLIER_PAYMENT_STATUS_LABELS: Record<number, string> = {
-  1: 'Nháp',
+  1: 'Chờ ghi sổ',
   2: 'Đã ghi sổ',
   3: 'Đã hủy',
+};
+
+/** Màu Tag trạng thái phiếu thanh toán NCC */
+export const SUPPLIER_PAYMENT_STATUS_TAG: Record<number, string> = {
+  1: 'blue',
+  2: 'green',
+  3: 'red',
 };
 
 export interface SupplierPaymentListFilters {
@@ -103,6 +117,17 @@ export type SupplierPayablesDetail = {
   unappliedCredit: number;
   aging: SupplierPayablesAging;
   lines: SupplierPayablesDetailLine[];
+};
+
+export type ProcurementVatTreatment = {
+  id: string;
+  treatmentCode: string;
+  treatmentName: string;
+  ratePercent: number;
+  isNotSubject: boolean;
+  sortOrder: number;
+  isActive: boolean;
+  canDelete: boolean;
 };
 
 export type LastPurchasePriceHint = Pick<
@@ -162,6 +187,11 @@ export type PurchaseOrderDetail = Omit<
 > & {
   items: PurchaseOrderItem[];
   itemCount?: number;
+  vatTreatmentId: string;
+  vatTreatmentCode: string;
+  vatTreatmentName: string;
+  vatIsNotSubject: boolean;
+  taxRatePercent?: number;
 };
 
 export type GoodsReceiptListItem = Req<
@@ -175,7 +205,10 @@ export type GoodsReceiptListItem = Req<
   | 'status'
   | 'receiptDate'
   | 'itemCount'
->;
+> & {
+  purchaseOrderId?: string;
+  poNumber?: string;
+};
 
 export type GoodsReceiptItem = Req<
   GoodsReceiptItemDto,
@@ -220,6 +253,8 @@ export interface PurchaseOrderListFilters {
   productId?: string;
   pendingReceiptOnly?: boolean;
   includeArchived?: boolean;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface GoodsReceiptListFilters {
@@ -232,6 +267,15 @@ export interface GoodsReceiptListFilters {
   purchaseOrderId?: string;
   productId?: string;
   includeArchived?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PagedListResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export type SupplierPaymentListItem = Req<

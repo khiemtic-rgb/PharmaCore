@@ -16,7 +16,7 @@ public sealed class PurchaseOrdersController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = ProcurementPolicies.Read)]
-    public async Task<ActionResult<IReadOnlyList<PurchaseOrderListItemDto>>> List(
+    public async Task<ActionResult<ProcurementPagedListResult<PurchaseOrderListItemDto>>> List(
         [FromQuery] string? search,
         [FromQuery] Guid? supplierId,
         [FromQuery] Guid? warehouseId,
@@ -26,9 +26,11 @@ public sealed class PurchaseOrdersController : ControllerBase
         [FromQuery] Guid? productId,
         [FromQuery] bool pendingReceiptOnly = false,
         [FromQuery] bool includeArchived = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default) =>
         Ok(await _orders.GetAllAsync(
-            new PurchaseOrderListFilter(search, supplierId, warehouseId, status, dateFrom, dateTo, productId, pendingReceiptOnly, includeArchived),
+            new PurchaseOrderListFilter(search, supplierId, warehouseId, status, dateFrom, dateTo, productId, pendingReceiptOnly, includeArchived, page, pageSize),
             cancellationToken));
 
     [HttpGet("price-hint")]

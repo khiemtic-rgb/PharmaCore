@@ -83,6 +83,20 @@ export type SalesOrderListItem = Req<
   | 'itemCount'
 >;
 
+export interface SalesOrderListFilters {
+  search?: string;
+  status?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface SalesOrderPagedListResult {
+  items: SalesOrderListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export type SalesPaymentLine = Req<SalesPaymentDto, 'paymentMethod' | 'amount'>;
 
 export type SalesOrderItem = Req<

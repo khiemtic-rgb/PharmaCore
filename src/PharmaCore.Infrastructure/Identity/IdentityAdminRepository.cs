@@ -643,7 +643,8 @@ internal sealed class IdentityAdminRepository
                 e.employee_code AS EmployeeCode,
                 e.full_name AS FullName,
                 e.phone AS Phone,
-                (u.id IS NOT NULL) AS HasUserAccount
+                (u.id IS NOT NULL) AS HasUserAccount,
+                (SELECT COUNT(*)::int FROM employee_branches eb WHERE eb.employee_id = e.id) AS BranchCount
             FROM employees e
             LEFT JOIN users u ON u.employee_id = e.id AND u.deleted_at IS NULL
             WHERE e.tenant_id = @TenantId AND e.deleted_at IS NULL
@@ -713,7 +714,8 @@ internal sealed class IdentityAdminRepository
                 e.employee_code AS EmployeeCode,
                 e.full_name AS FullName,
                 e.phone AS Phone,
-                (u.id IS NOT NULL) AS HasUserAccount
+                (u.id IS NOT NULL) AS HasUserAccount,
+                (SELECT COUNT(*)::int FROM employee_branches eb WHERE eb.employee_id = e.id) AS BranchCount
             FROM employees e
             LEFT JOIN users u ON u.employee_id = e.id AND u.deleted_at IS NULL
             WHERE e.id = @EmployeeId AND e.tenant_id = @TenantId AND e.deleted_at IS NULL
@@ -721,6 +723,102 @@ internal sealed class IdentityAdminRepository
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         return await conn.QuerySingleOrDefaultAsync<EmployeeLookupDto>(sql, new { EmployeeId = employeeId, TenantId });
+    }
+
+    public async Task<EmployeeDetailDto?> GetEmployeeDetailAsync(Guid employeeId, CancellationToken cancellationToken)
+    {
+        var lookup = await GetEmployeeLookupAsync(employeeId, cancellationToken);
+        if (lookup is null) return null;
+
+        var branches = await GetEmployeeBranchesAsync(employeeId, cancellationToken);
+        return new EmployeeDetailDto(
+            lookup.Id,
+            lookup.EmployeeCode,
+            lookup.FullName,
+            lookup.Phone,
+            lookup.HasUserAccount,
+            branches);
+    }
+
+    public async Task<IReadOnlyList<EmployeeBranchAssignmentDto>> GetEmployeeBranchesAsync(
+        Guid employeeId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                b.id AS BranchId,
+                b.branch_code AS BranchCode,
+                b.branch_name AS BranchName,
+                eb.is_primary AS IsPrimary
+            FROM employee_branches eb
+            INNER JOIN branches b
+              ON b.id = eb.branch_id AND b.tenant_id = @TenantId AND b.deleted_at IS NULL
+            WHERE eb.employee_id = @EmployeeId
+            ORDER BY eb.is_primary DESC, b.branch_name
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<EmployeeBranchAssignmentDto>(sql, new { EmployeeId = employeeId, TenantId }))
+            .ToList();
+    }
+
+    public async Task<bool> BranchIdsBelongToTenantAsync(
+        IReadOnlyList<Guid> branchIds,
+        CancellationToken cancellationToken)
+    {
+        if (branchIds.Count == 0) return true;
+
+        const string sql = """
+            SELECT COUNT(*)::int FROM branches
+            WHERE tenant_id = @TenantId AND id = ANY(@BranchIds) AND deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var count = await conn.ExecuteScalarAsync<int>(sql, new { TenantId, BranchIds = branchIds.ToArray() });
+        return count == branchIds.Count;
+    }
+
+    public async Task ReplaceEmployeeBranchesAsync(
+        Guid employeeId,
+        IReadOnlyList<Guid> branchIds,
+        Guid? primaryBranchId,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        await conn.ExecuteAsync(
+            "DELETE FROM employee_branches WHERE employee_id = @EmployeeId",
+            new { EmployeeId = employeeId },
+            tx);
+
+        if (branchIds.Count == 0)
+        {
+            await tx.CommitAsync(cancellationToken);
+            return;
+        }
+
+        var distinct = branchIds.Distinct().ToList();
+        var primary = primaryBranchId ?? distinct[0];
+        if (!distinct.Contains(primary))
+            primary = distinct[0];
+
+        const string insertSql = """
+            INSERT INTO employee_branches (employee_id, branch_id, is_primary)
+            VALUES (@EmployeeId, @BranchId, @IsPrimary)
+            """;
+
+        foreach (var branchId in distinct)
+        {
+            await conn.ExecuteAsync(insertSql, new
+            {
+                EmployeeId = employeeId,
+                BranchId = branchId,
+                IsPrimary = branchId == primary,
+            }, tx);
+        }
+
+        await tx.CommitAsync(cancellationToken);
     }
 
     public async Task<bool> RoleIdsBelongToTenantAsync(IReadOnlyList<Guid> roleIds, CancellationToken cancellationToken)

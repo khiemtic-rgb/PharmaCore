@@ -117,8 +117,13 @@ public sealed class SalesController : ControllerBase
 
     [HttpGet("orders")]
     [Authorize(Policy = SalesPolicies.Read)]
-    public async Task<ActionResult<IReadOnlyList<SalesOrderListItemDto>>> List(CancellationToken cancellationToken) =>
-        Ok(await _sales.GetOrdersAsync(cancellationToken));
+    public async Task<ActionResult<SalesOrderPagedListResult>> List(
+        [FromQuery] string? search,
+        [FromQuery] short? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken cancellationToken = default) =>
+        Ok(await _sales.GetOrdersAsync(new SalesOrderListFilter(search, status, page, pageSize), cancellationToken));
 
     [HttpGet("orders/{id:guid}")]
     [Authorize(Policy = SalesPolicies.Read)]

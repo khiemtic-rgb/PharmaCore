@@ -114,15 +114,16 @@ internal sealed class CustomerReservationRepository
         short fulfillmentType,
         Guid? addressId,
         string? notes,
+        Guid warehouseId,
         IDbConnection conn,
         IDbTransaction tx,
         CancellationToken cancellationToken)
     {
         const string sql = """
             INSERT INTO customer_reservations (
-                tenant_id, customer_id, reservation_number, status, fulfillment_type, address_id, notes
+                tenant_id, customer_id, reservation_number, status, fulfillment_type, address_id, notes, warehouse_id
             ) VALUES (
-                @TenantId, @CustomerId, @ReservationNumber, @Status, @FulfillmentType, @AddressId, @Notes
+                @TenantId, @CustomerId, @ReservationNumber, @Status, @FulfillmentType, @AddressId, @Notes, @WarehouseId
             )
             RETURNING id
             """;
@@ -135,6 +136,7 @@ internal sealed class CustomerReservationRepository
             FulfillmentType = fulfillmentType,
             AddressId = addressId,
             Notes = notes,
+            WarehouseId = warehouseId,
         }, tx);
     }
 
@@ -203,7 +205,8 @@ internal sealed class CustomerReservationRepository
     public async Task<IReadOnlyList<CustomerReservationStaffListItemDto>> ListForStaffAsync(
         Guid tenantId,
         short[]? statuses,
-        CancellationToken cancellationToken)
+        Guid[]? allowedWarehouseIds = null,
+        CancellationToken cancellationToken = default)
     {
         var sql = """
             SELECT
@@ -221,6 +224,8 @@ internal sealed class CustomerReservationRepository
             INNER JOIN customers c ON c.id = r.customer_id
             WHERE r.tenant_id = @TenantId
             """;
+        if (allowedWarehouseIds is { Length: > 0 })
+            sql += " AND r.warehouse_id = ANY(@AllowedWarehouseIds)";
         if (statuses is { Length: > 0 })
             sql += " AND r.status = ANY(@Statuses)";
         sql += " ORDER BY r.submitted_at DESC";
@@ -230,6 +235,7 @@ internal sealed class CustomerReservationRepository
         {
             TenantId = tenantId,
             Statuses = statuses,
+            AllowedWarehouseIds = allowedWarehouseIds,
         });
         return rows.Select(MapStaffListItem).ToList();
     }
@@ -244,6 +250,8 @@ internal sealed class CustomerReservationRepository
             SELECT
                 r.id AS Id,
                 r.reservation_number AS ReservationNumber,
+                r.customer_id AS CustomerId,
+                r.warehouse_id AS WarehouseId,
                 r.status AS Status,
                 r.fulfillment_type AS FulfillmentType,
                 r.address_id AS AddressId,
@@ -289,6 +297,8 @@ internal sealed class CustomerReservationRepository
             SELECT
                 r.id AS Id,
                 r.reservation_number AS ReservationNumber,
+                r.customer_id AS CustomerId,
+                r.warehouse_id AS WarehouseId,
                 r.status AS Status,
                 r.fulfillment_type AS FulfillmentType,
                 r.address_id AS AddressId,
@@ -403,17 +413,31 @@ internal sealed class CustomerReservationRepository
         });
     }
 
-    public async Task<Guid?> ResolveDefaultWarehouseIdAsync(Guid tenantId, CancellationToken cancellationToken)
+    public async Task<Guid?> ResolveDefaultWarehouseIdAsync(
+        Guid tenantId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
     {
-        const string sql = """
+        var scopeFilter = allowedWarehouseIds is { Length: > 0 }
+            ? " AND id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
             SELECT id FROM warehouses
             WHERE tenant_id = @TenantId AND deleted_at IS NULL AND status = 1
+            {scopeFilter}
             ORDER BY is_default DESC, warehouse_name
             LIMIT 1
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new { TenantId = tenantId });
+        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new
+        {
+            TenantId = tenantId,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        });
     }
+
+    public Task<Guid?> ResolveDefaultWarehouseIdAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        ResolveDefaultWarehouseIdAsync(tenantId, null, cancellationToken);
 
     public async Task<ReservationHeaderRow?> GetHeaderAsync(
         Guid tenantId,
@@ -425,6 +449,7 @@ internal sealed class CustomerReservationRepository
                 r.id AS Id,
                 r.reservation_number AS ReservationNumber,
                 r.customer_id AS CustomerId,
+                r.warehouse_id AS WarehouseId,
                 r.status AS Status,
                 r.fulfillment_type AS FulfillmentType,
                 r.address_id AS AddressId,
@@ -610,6 +635,7 @@ internal sealed record ReservationHeaderRow
     public Guid Id { get; init; }
     public string ReservationNumber { get; init; } = "";
     public Guid CustomerId { get; init; }
+    public Guid WarehouseId { get; init; }
     public short Status { get; init; }
     public short FulfillmentType { get; init; }
     public Guid? AddressId { get; init; }

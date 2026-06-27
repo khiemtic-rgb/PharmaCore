@@ -5,6 +5,7 @@ using PharmaCore.Application.Dashboard;
 using PharmaCore.Application.Procurement;
 using PharmaCore.Application.Sales;
 using PharmaCore.Infrastructure.Data;
+using PharmaCore.Infrastructure.Inventory;
 using PharmaCore.Infrastructure.Security;
 
 namespace PharmaCore.Infrastructure.Dashboard;
@@ -25,6 +26,7 @@ internal sealed class DashboardRepository
     public async Task<DashboardOverviewDto> GetOverviewAsync(
         int expiryDays,
         decimal lowStockThreshold,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
         if (expiryDays < 1) expiryDays = 30;
@@ -35,9 +37,25 @@ internal sealed class DashboardRepository
         var (weekStart, weekEnd) = VietnamBusinessCalendar.RollingDaysRangeUtc(utcNow, 7);
         var expiryCutoff = VietnamBusinessCalendar.Today(utcNow).AddDays(expiryDays);
 
+        var orderWarehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND o.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var batchWarehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND b.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var warehouseJoinFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND w.id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var poWarehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND p.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var draftWarehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
 
-        const string salesTodaySql = """
+        var salesTodaySql = $"""
             SELECT
                 COALESCE((
                     SELECT SUM(sp.amount)
@@ -45,13 +63,16 @@ internal sealed class DashboardRepository
                     INNER JOIN sales_orders o ON o.id = sp.sales_order_id
                     WHERE o.tenant_id = @TenantId
                       AND sp.paid_at >= @TodayStart AND sp.paid_at < @TodayEnd
+                      {orderWarehouseFilter}
                 ), 0)
                 - COALESCE((
                     SELECT SUM(rp.amount)
                     FROM sales_return_payments rp
                     INNER JOIN sales_returns r ON r.id = rp.sales_return_id
+                    INNER JOIN sales_orders o ON o.id = r.sales_order_id
                     WHERE r.tenant_id = @TenantId
                       AND rp.paid_at >= @TodayStart AND rp.paid_at < @TodayEnd
+                      {orderWarehouseFilter}
                 ), 0) AS TodayNetTotal,
                 COALESCE((
                     SELECT SUM(sp.amount)
@@ -59,13 +80,16 @@ internal sealed class DashboardRepository
                     INNER JOIN sales_orders o ON o.id = sp.sales_order_id
                     WHERE o.tenant_id = @TenantId
                       AND sp.paid_at >= @WeekStart AND sp.paid_at < @WeekEnd
+                      {orderWarehouseFilter}
                 ), 0)
                 - COALESCE((
                     SELECT SUM(rp.amount)
                     FROM sales_return_payments rp
                     INNER JOIN sales_returns r ON r.id = rp.sales_return_id
+                    INNER JOIN sales_orders o ON o.id = r.sales_order_id
                     WHERE r.tenant_id = @TenantId
                       AND rp.paid_at >= @WeekStart AND rp.paid_at < @WeekEnd
+                      {orderWarehouseFilter}
                 ), 0) AS WeekNetTotal,
                 COALESCE((
                     SELECT COUNT(*)::int
@@ -73,20 +97,24 @@ internal sealed class DashboardRepository
                     WHERE o.tenant_id = @TenantId
                       AND o.status = @OrderCompleted
                       AND o.order_date >= @TodayStart AND o.order_date < @TodayEnd
+                      {orderWarehouseFilter}
                 ), 0) AS TodayOrderCount
             """;
 
+        var queryParams = new
+        {
+            TenantId,
+            TodayStart = todayStart,
+            TodayEnd = todayEnd,
+            WeekStart = weekStart,
+            WeekEnd = weekEnd,
+            OrderCompleted = SalesOrderStatuses.Completed,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        };
+
         var sales = await conn.QuerySingleAsync<(decimal TodayNetTotal, decimal WeekNetTotal, int TodayOrderCount)>(
             salesTodaySql,
-            new
-            {
-                TenantId,
-                TodayStart = todayStart,
-                TodayEnd = todayEnd,
-                WeekStart = weekStart,
-                WeekEnd = weekEnd,
-                OrderCompleted = SalesOrderStatuses.Completed,
-            });
+            queryParams);
 
         const string catalogSql = """
             SELECT
@@ -97,7 +125,7 @@ internal sealed class DashboardRepository
         var catalog = await conn.QuerySingleAsync<(int ProductCount, int CustomerCount)>(
             catalogSql, new { TenantId });
 
-        const string inventorySql = """
+        var inventorySql = $"""
             SELECT
                 COUNT(*) FILTER (WHERE b.quantity_available > 0)::int AS ActiveBatchCount,
                 COUNT(*) FILTER (
@@ -107,17 +135,47 @@ internal sealed class DashboardRepository
                 )::int AS NearExpiryBatchCount,
                 COUNT(*) FILTER (
                     WHERE b.quantity_available > 0
-                      AND b.quantity_available <= @LowStockThreshold
+                      AND b.quantity_available <= {LowStockThresholdSql.EffectiveMinStockExpr}
                 )::int AS LowStockBatchCount
             FROM inventory_batches b
+            INNER JOIN products p ON p.id = b.product_id AND p.tenant_id = b.tenant_id
+            INNER JOIN warehouses w ON w.id = b.warehouse_id AND w.tenant_id = b.tenant_id
+            LEFT JOIN product_categories c
+              ON c.id = p.category_id AND c.tenant_id = p.tenant_id AND c.deleted_at IS NULL
             WHERE b.tenant_id = @TenantId
+              {batchWarehouseFilter}
             """;
 
         var inventory = await conn.QuerySingleAsync<(int ActiveBatchCount, int NearExpiryBatchCount, int LowStockBatchCount)>(
             inventorySql,
-            new { TenantId, ExpiryBefore = expiryCutoff, LowStockThreshold = lowStockThreshold });
+            new { TenantId, ExpiryBefore = expiryCutoff, FallbackThreshold = lowStockThreshold, AllowedWarehouseIds = allowedWarehouseIds });
 
-        const string procurementSql = """
+        var lowStockProductSql = $"""
+            SELECT COUNT(*)::int FROM (
+                SELECT p.id, w.id
+                FROM products p
+                INNER JOIN warehouses w
+                  ON w.tenant_id = p.tenant_id AND w.deleted_at IS NULL AND w.status = 1
+                  {warehouseJoinFilter}
+                LEFT JOIN product_categories c
+                  ON c.id = p.category_id AND c.tenant_id = p.tenant_id AND c.deleted_at IS NULL
+                LEFT JOIN inventory_batches b
+                  ON b.product_id = p.id AND b.warehouse_id = w.id AND b.tenant_id = p.tenant_id
+                WHERE p.tenant_id = @TenantId AND p.deleted_at IS NULL AND p.status = 1
+                GROUP BY
+                    p.id, p.min_stock_qty,
+                    w.id, w.min_stock_qty,
+                    c.min_stock_qty
+                HAVING COALESCE(SUM(b.quantity_available), 0)
+                    <= {LowStockThresholdSql.EffectiveMinStockExpr}
+            ) sub
+            """;
+
+        var lowStockProductCount = await conn.QuerySingleAsync<int>(
+            lowStockProductSql,
+            new { TenantId, FallbackThreshold = lowStockThreshold, AllowedWarehouseIds = allowedWarehouseIds });
+
+        var procurementSql = $"""
             SELECT COUNT(*)::int
             FROM purchase_orders p
             WHERE p.tenant_id = @TenantId
@@ -127,6 +185,7 @@ internal sealed class DashboardRepository
                   SELECT 1 FROM purchase_order_items i
                   WHERE i.purchase_order_id = p.id AND i.received_qty < i.ordered_qty
               )
+              {poWarehouseFilter}
             """;
 
         var pendingPo = await conn.QuerySingleAsync<int>(
@@ -136,14 +195,16 @@ internal sealed class DashboardRepository
                 TenantId,
                 StatusApproved = PurchaseOrderStatuses.Approved,
                 StatusPartial = PurchaseOrderStatuses.PartiallyReceived,
+                AllowedWarehouseIds = allowedWarehouseIds,
             });
 
-        const string o2oSql = """
+        var o2oSql = $"""
             SELECT
                 COALESCE((
                     SELECT COUNT(*)::int FROM customer_draft_orders
                     WHERE tenant_id = @TenantId
                       AND status IN (@DraftSent, @DraftConfirmed)
+                      {draftWarehouseFilter}
                 ), 0) AS DraftOrdersAwaitingCount,
                 COALESCE((
                     SELECT COUNT(*)::int FROM customer_reservations
@@ -166,6 +227,7 @@ internal sealed class DashboardRepository
                 ResPending = CustomerReservationStatuses.Pending,
                 ResConfirmed = CustomerReservationStatuses.Confirmed,
                 ResReady = CustomerReservationStatuses.Ready,
+                AllowedWarehouseIds = allowedWarehouseIds,
             });
 
         return new DashboardOverviewDto(
@@ -175,6 +237,7 @@ internal sealed class DashboardRepository
                 inventory.ActiveBatchCount,
                 inventory.NearExpiryBatchCount,
                 inventory.LowStockBatchCount,
+                lowStockProductCount,
                 expiryDays),
             new DashboardProcurementSnapshotDto(pendingPo),
             new DashboardO2oSnapshotDto(

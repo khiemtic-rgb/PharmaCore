@@ -69,6 +69,11 @@ public sealed record PurchaseOrderDetailDto(
     DateOnly? ExpectedDate,
     decimal Subtotal,
     decimal TaxAmount,
+    short TaxRatePercent,
+    Guid VatTreatmentId,
+    string VatTreatmentCode,
+    string VatTreatmentName,
+    bool VatIsNotSubject,
     decimal TotalAmount,
     string? Notes,
     IReadOnlyList<PurchaseOrderItemDto> Items,
@@ -86,7 +91,7 @@ public sealed record CreatePurchaseOrderRequest(
     DateOnly? ExpectedDate,
     string? Notes,
     IReadOnlyList<CreatePurchaseOrderItemRequest> Items,
-    decimal TaxAmount = 0);
+    Guid VatTreatmentId);
 
 public sealed record UpdatePurchaseOrderItemRequest(
     Guid? Id,
@@ -99,7 +104,31 @@ public sealed record UpdatePurchaseOrderRequest(
     DateOnly? ExpectedDate,
     string? Notes,
     IReadOnlyList<UpdatePurchaseOrderItemRequest> Items,
-    decimal TaxAmount = 0);
+    Guid VatTreatmentId);
+
+public sealed record ProcurementVatTreatmentDto(
+    Guid Id,
+    string TreatmentCode,
+    string TreatmentName,
+    decimal RatePercent,
+    bool IsNotSubject,
+    int SortOrder,
+    bool IsActive,
+    bool CanDelete);
+
+public sealed record CreateProcurementVatTreatmentRequest(
+    string TreatmentCode,
+    string TreatmentName,
+    decimal RatePercent,
+    bool IsNotSubject,
+    int SortOrder = 0);
+
+public sealed record UpdateProcurementVatTreatmentRequest(
+    string TreatmentName,
+    decimal RatePercent,
+    bool IsNotSubject,
+    int SortOrder,
+    bool IsActive);
 
 public sealed record GoodsReceiptListItemDto(
     Guid Id,
@@ -219,7 +248,9 @@ public sealed record PurchaseOrderListFilter(
     DateOnly? DateTo = null,
     Guid? ProductId = null,
     bool PendingReceiptOnly = false,
-    bool IncludeArchived = false);
+    bool IncludeArchived = false,
+    int Page = 1,
+    int PageSize = 50);
 
 public sealed record GoodsReceiptListFilter(
     string? Search = null,
@@ -230,7 +261,15 @@ public sealed record GoodsReceiptListFilter(
     DateOnly? DateTo = null,
     Guid? PurchaseOrderId = null,
     Guid? ProductId = null,
-    bool IncludeArchived = false);
+    bool IncludeArchived = false,
+    int Page = 1,
+    int PageSize = 50);
+
+public sealed record ProcurementPagedListResult<T>(
+    IReadOnlyList<T> Items,
+    int Total,
+    int Page,
+    int PageSize);
 
 public sealed record SupplierPayablesAgingBucketsDto(
     decimal Current,

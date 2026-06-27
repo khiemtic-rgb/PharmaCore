@@ -5,6 +5,7 @@ import type {
   GoodsReceiptListItem,
   LastPurchasePriceHint,
   PurchaseOrderDetail,
+  PagedListResult,
   PurchaseOrderListFilters,
   PurchaseOrderListItem,
   Supplier,
@@ -66,6 +67,11 @@ function normalizePoDetail(data: Record<string, unknown>): PurchaseOrderDetail {
     expectedDate: (data.expectedDate ?? data.ExpectedDate) as string | undefined,
     subtotal: Number(data.subtotal ?? data.Subtotal ?? 0),
     taxAmount: Number(data.taxAmount ?? data.TaxAmount ?? 0),
+    taxRatePercent: Number(data.taxRatePercent ?? data.TaxRatePercent ?? 0),
+    vatTreatmentId: String(data.vatTreatmentId ?? data.VatTreatmentId ?? ''),
+    vatTreatmentCode: String(data.vatTreatmentCode ?? data.VatTreatmentCode ?? ''),
+    vatTreatmentName: String(data.vatTreatmentName ?? data.VatTreatmentName ?? ''),
+    vatIsNotSubject: Boolean(data.vatIsNotSubject ?? data.VatIsNotSubject ?? false),
     notes: (data.notes ?? data.Notes) as string | undefined,
     items: rawItems.map(normalizePoItem),
   };
@@ -183,13 +189,26 @@ function buildListParams(filters?: Record<string, string | number | boolean | un
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
+function normalizePagedList<T>(
+  data: Record<string, unknown>,
+  normalizeItem: (row: Record<string, unknown>) => T,
+): PagedListResult<T> {
+  const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return {
+    items: rawItems.map(normalizeItem),
+    total: Number(data.total ?? data.Total ?? 0),
+    page: Number(data.page ?? data.Page ?? 1),
+    pageSize: Number(data.pageSize ?? data.PageSize ?? rawItems.length),
+  };
+}
+
 export async function fetchPurchaseOrders(
   filters?: PurchaseOrderListFilters,
-): Promise<PurchaseOrderListItem[]> {
-  const { data } = await http.get<Record<string, unknown>[]>('/procurement/purchase-orders', {
+): Promise<PagedListResult<PurchaseOrderListItem>> {
+  const { data } = await http.get<Record<string, unknown>>('/procurement/purchase-orders', {
     params: buildListParams(filters as Record<string, string | number | boolean | undefined>),
   });
-  return data.map((row) => normalizePoListItem(row));
+  return normalizePagedList(data, normalizePoListItem);
 }
 
 export async function fetchPurchaseOrder(id: string): Promise<PurchaseOrderDetail> {
@@ -202,7 +221,7 @@ export async function createPurchaseOrder(payload: {
   warehouseId: string;
   expectedDate?: string;
   notes?: string;
-  taxAmount?: number;
+  vatTreatmentId: string;
   items: { productId: string; productUnitId: string; orderedQty: number; unitPrice: number }[];
 }): Promise<PurchaseOrderDetail> {
   const { data } = await http.post<Record<string, unknown>>('/procurement/purchase-orders', payload);
@@ -214,7 +233,7 @@ export async function updatePurchaseOrder(
   payload: {
     expectedDate?: string;
     notes?: string;
-    taxAmount?: number;
+    vatTreatmentId: string;
     items: {
       id?: string;
       productId: string;
@@ -258,11 +277,11 @@ export async function deletePurchaseOrder(id: string): Promise<void> {
 
 export async function fetchGoodsReceipts(
   filters?: GoodsReceiptListFilters,
-): Promise<GoodsReceiptListItem[]> {
-  const { data } = await http.get<Record<string, unknown>[]>('/procurement/goods-receipts', {
+): Promise<PagedListResult<GoodsReceiptListItem>> {
+  const { data } = await http.get<Record<string, unknown>>('/procurement/goods-receipts', {
     params: buildListParams(filters as Record<string, string | number | boolean | undefined>),
   });
-  return data.map((row) => normalizeGrnListItem(row));
+  return normalizePagedList(data, normalizeGrnListItem);
 }
 
 export async function fetchGoodsReceipt(id: string): Promise<GoodsReceiptDetail> {
@@ -453,4 +472,53 @@ export async function fetchSupplierPayablesDetail(supplierId: string) {
     ...normalizePayablesRow(data),
     lines,
   };
+}
+
+function normalizeVatTreatment(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? row.Id),
+    treatmentCode: String(row.treatmentCode ?? row.TreatmentCode ?? ''),
+    treatmentName: String(row.treatmentName ?? row.TreatmentName ?? ''),
+    ratePercent: Number(row.ratePercent ?? row.RatePercent ?? 0),
+    isNotSubject: Boolean(row.isNotSubject ?? row.IsNotSubject ?? false),
+    sortOrder: Number(row.sortOrder ?? row.SortOrder ?? 0),
+    isActive: Boolean(row.isActive ?? row.IsActive ?? true),
+    canDelete: Boolean(row.canDelete ?? row.CanDelete ?? false),
+  };
+}
+
+export async function fetchVatTreatments(activeOnly = true) {
+  const { data } = await http.get<Record<string, unknown>[]>('/procurement/vat-treatments', {
+    params: { activeOnly },
+  });
+  return data.map((row) => normalizeVatTreatment(row));
+}
+
+export async function createVatTreatment(payload: {
+  treatmentCode: string;
+  treatmentName: string;
+  ratePercent: number;
+  isNotSubject: boolean;
+  sortOrder?: number;
+}) {
+  const { data } = await http.post<Record<string, unknown>>('/procurement/vat-treatments', payload);
+  return normalizeVatTreatment(data);
+}
+
+export async function updateVatTreatment(
+  id: string,
+  payload: {
+    treatmentName: string;
+    ratePercent: number;
+    isNotSubject: boolean;
+    sortOrder: number;
+    isActive: boolean;
+  },
+) {
+  const { data } = await http.put<Record<string, unknown>>(`/procurement/vat-treatments/${id}`, payload);
+  return normalizeVatTreatment(data);
+}
+
+export async function deleteVatTreatment(id: string) {
+  await http.delete(`/procurement/vat-treatments/${id}`);
 }

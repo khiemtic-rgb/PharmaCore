@@ -28,6 +28,8 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
     private readonly ICustomerPushService _push;
     private readonly IDraftOrderEventHub _events;
     private readonly ICurrentUserAccessor _user;
+    private readonly IBranchAccessService _branchAccess;
+    private readonly ICustomerChatService _chat;
     private readonly IDbConnectionFactory _db;
 
     public CustomerDraftOrderService(
@@ -36,6 +38,8 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         ICustomerPushService push,
         IDraftOrderEventHub events,
         ICurrentUserAccessor user,
+        IBranchAccessService branchAccess,
+        ICustomerChatService chat,
         IDbConnectionFactory db)
     {
         _repo = repo;
@@ -43,15 +47,20 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         _push = push;
         _events = events;
         _user = user;
+        _branchAccess = branchAccess;
+        _chat = chat;
         _db = db;
     }
 
-    public Task<CustomerDraftOrderListResult> ListForStaffAsync(
+    public async Task<CustomerDraftOrderListResult> ListForStaffAsync(
         Guid tenantId,
         Guid? customerId,
         short[]? statuses,
-        CancellationToken cancellationToken = default) =>
-        MapListAsync(tenantId, customerId, statuses, excludeHiddenByCustomer: false, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        return await MapListAsync(tenantId, customerId, statuses, excludeHiddenByCustomer: false, allowed, cancellationToken);
+    }
 
     public async Task<CustomerDraftOrderDto?> GetForStaffAsync(
         Guid tenantId,
@@ -59,7 +68,9 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         CancellationToken cancellationToken = default)
     {
         var header = await _repo.GetHeaderAsync(tenantId, draftOrderId, cancellationToken);
-        return header is null ? null : await MapDetailAsync(header, cancellationToken);
+        if (header is null) return null;
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
+        return await MapDetailAsync(header, cancellationToken);
     }
 
     public async Task<CustomerDraftOrderDto> CreateAsync(
@@ -95,6 +106,8 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         await _repo.InsertItemsAsync(draftId, pricedLines, conn, tx, cancellationToken);
         await tx.CommitAsync(cancellationToken);
 
+        await _chat.SyncThreadWarehouseAsync(tenantId, request.CustomerId, warehouseId, cancellationToken);
+
         return (await GetForStaffAsync(tenantId, draftId, cancellationToken))!;
     }
 
@@ -108,6 +121,11 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         ValidateRequest(request);
         var existing = await _repo.GetHeaderAsync(tenantId, draftOrderId, cancellationToken)
             ?? throw new InvalidOperationException("Không tìm thấy đơn tạm.");
+        var warehouseId = await ResolveWarehouseIdAsync(
+            tenantId,
+            request.WarehouseId ?? existing.WarehouseId,
+            cancellationToken);
+        await _branchAccess.EnsureWarehouseAccessAsync(warehouseId, cancellationToken);
         if (existing.Status != CustomerDraftOrderStatuses.Draft)
             throw new InvalidOperationException("Chỉ sửa được đơn tạm ở trạng thái nháp.");
 
@@ -120,6 +138,7 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
             tenantId,
             draftOrderId,
             request,
+            warehouseId,
             pricing.SubtotalGross,
             pricing.OrderDiscountAmount,
             pricing.TotalAmount,
@@ -128,6 +147,8 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
             cancellationToken);
         await _repo.InsertItemsAsync(draftOrderId, pricedLines, conn, tx, cancellationToken);
         await tx.CommitAsync(cancellationToken);
+
+        await _chat.SyncThreadWarehouseAsync(tenantId, request.CustomerId, warehouseId, cancellationToken);
 
         return (await GetForStaffAsync(tenantId, draftOrderId, cancellationToken))!;
     }
@@ -140,6 +161,7 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
     {
         var header = await _repo.GetHeaderAsync(tenantId, draftOrderId, cancellationToken)
             ?? throw new InvalidOperationException("Không tìm thấy đơn tạm.");
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
         if (header.Status != CustomerDraftOrderStatuses.Draft)
             throw new InvalidOperationException("Chỉ gửi được đơn tạm ở trạng thái nháp.");
 
@@ -165,6 +187,9 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         Guid draftOrderId,
         CancellationToken cancellationToken = default)
     {
+        var header = await _repo.GetHeaderAsync(tenantId, draftOrderId, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy đơn tạm.");
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
         if (!await _repo.MarkCancelledAsync(tenantId, draftOrderId, cancellationToken))
             throw new InvalidOperationException("Không hủy được đơn tạm.");
         return (await GetForStaffAsync(tenantId, draftOrderId, cancellationToken))!;
@@ -179,6 +204,7 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         if (header is null || !PosLoadableStatuses.Contains(header.Status))
             return null;
 
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
         var items = await _repo.ListItemsAsync(draftOrderId, cancellationToken);
         return new CustomerDraftOrderPosLoadDto(
             header.Id,
@@ -207,6 +233,9 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         Guid salesOrderId,
         CancellationToken cancellationToken = default)
     {
+        var header = await _repo.GetHeaderAsync(tenantId, draftOrderId, cancellationToken)
+            ?? throw new InvalidOperationException("Không tìm thấy đơn tạm.");
+        await _branchAccess.EnsureWarehouseAccessAsync(header.WarehouseId, cancellationToken);
         if (!await _repo.MarkCompletedAsync(tenantId, draftOrderId, salesOrderId, cancellationToken))
             throw new InvalidOperationException("Không liên kết được đơn tạm với đơn bán.");
     }
@@ -215,7 +244,7 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         Guid tenantId,
         Guid customerId,
         CancellationToken cancellationToken = default) =>
-        MapListAsync(tenantId, customerId, CustomerVisibleStatuses, excludeHiddenByCustomer: true, cancellationToken);
+        MapListAsync(tenantId, customerId, CustomerVisibleStatuses, excludeHiddenByCustomer: true, allowedWarehouseIds: null, cancellationToken);
 
     public async Task<CustomerDraftOrderDto?> GetForCustomerAsync(
         Guid tenantId,
@@ -280,9 +309,10 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         Guid? customerId,
         short[]? statuses,
         bool excludeHiddenByCustomer,
+        Guid[]? allowedWarehouseIds,
         CancellationToken cancellationToken)
     {
-        var rows = await _repo.ListAsync(tenantId, customerId, statuses, excludeHiddenByCustomer, cancellationToken);
+        var rows = await _repo.ListAsync(tenantId, customerId, statuses, excludeHiddenByCustomer, allowedWarehouseIds, cancellationToken);
         var items = rows.Select(row => new CustomerDraftOrderListItemDto(
             row.Id,
             row.DraftNumber,
@@ -392,8 +422,15 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
         Guid? warehouseId,
         CancellationToken cancellationToken)
     {
-        if (warehouseId is Guid id)
+        var (scopedId, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
+        if (scopedId is Guid id)
             return id;
+
+        if (allowed is { Length: > 0 })
+        {
+            return await _repo.ResolveDefaultWarehouseIdAsync(tenantId, allowed, cancellationToken)
+                ?? allowed[0];
+        }
 
         return await _repo.ResolveDefaultWarehouseIdAsync(tenantId, cancellationToken)
             ?? throw new InvalidOperationException("Chưa cấu hình kho mặc định.");

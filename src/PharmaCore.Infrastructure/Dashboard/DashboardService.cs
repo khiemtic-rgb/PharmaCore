@@ -1,3 +1,4 @@
+using PharmaCore.Application.Abstractions;
 using PharmaCore.Application.Dashboard;
 
 namespace PharmaCore.Infrastructure.Dashboard;
@@ -5,12 +6,20 @@ namespace PharmaCore.Infrastructure.Dashboard;
 internal sealed class DashboardService : IDashboardService
 {
     private readonly DashboardRepository _repository;
+    private readonly IBranchAccessService _branchAccess;
 
-    public DashboardService(DashboardRepository repository) => _repository = repository;
+    public DashboardService(DashboardRepository repository, IBranchAccessService branchAccess)
+    {
+        _repository = repository;
+        _branchAccess = branchAccess;
+    }
 
-    public Task<DashboardOverviewDto> GetOverviewAsync(
+    public async Task<DashboardOverviewDto> GetOverviewAsync(
         int expiryDays = 30,
         decimal lowStockThreshold = 10,
-        CancellationToken cancellationToken = default) =>
-        _repository.GetOverviewAsync(expiryDays, lowStockThreshold, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        return await _repository.GetOverviewAsync(expiryDays, lowStockThreshold, allowed, cancellationToken);
+    }
 }

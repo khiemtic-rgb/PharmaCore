@@ -294,7 +294,7 @@ export function CustomerDraftOrderListPage() {
         showIcon
         style={{ marginBottom: 16 }}
         message="Đơn gửi từ POS (Gửi khách hàng) hiển thị tại đây — không nằm trong tab Đơn bán"
-        description="Quy trình: Tạm lưu → Gửi khách → Khách xác nhận tạm (tuỳ chọn) → Nạp POS (thanh toán + in hóa đơn)."
+        description="Quy trình: Nháp → Gửi khách → Khách đã xác nhận (tuỳ chọn) → Nạp POS (thanh toán + in hóa đơn)."
       />
 
       <Space wrap style={filterBarStyle}>
@@ -375,7 +375,7 @@ export function CustomerDraftOrderListPage() {
           showIcon
           style={{ marginBottom: 12 }}
           message={`${pendingCount} đơn chờ xử lý tại quầy`}
-          description="Đơn 「Khách xác nhận tạm」 hoặc 「Đã gửi khách」 — bấm Nạp POS để thanh toán và in hóa đơn."
+          description="Đơn 「Khách đã xác nhận」 hoặc 「Đã gửi khách」 — bấm Nạp POS để thanh toán và in hóa đơn."
         />
       ) : null}
 

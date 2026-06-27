@@ -127,6 +127,9 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             request.RoleIds,
             cancellationToken);
 
+        if (employeeId is not null)
+            await AssignEmployeeBranchesAsync(employeeId.Value, request.BranchIds, request.PrimaryBranchId, cancellationToken);
+
         return (await _repository.GetUserAsync(userId, cancellationToken))!;
     }
 
@@ -183,6 +186,9 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             passwordHash,
             request.RoleIds,
             cancellationToken);
+
+        if (updated && employeeId is not null && request.BranchIds is not null)
+            await AssignEmployeeBranchesAsync(employeeId.Value, request.BranchIds, request.PrimaryBranchId, cancellationToken);
 
         return updated ? await _repository.GetUserAsync(userId, cancellationToken) : null;
     }
@@ -308,7 +314,49 @@ internal sealed class IdentityAdminService : IIdentityAdminService
             string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim(),
             cancellationToken);
 
+        await AssignEmployeeBranchesAsync(id, request.BranchIds, request.PrimaryBranchId, cancellationToken);
+
         return (await _repository.GetEmployeeLookupAsync(id, cancellationToken))!;
+    }
+
+    public Task<EmployeeDetailDto?> GetEmployeeAsync(Guid employeeId, CancellationToken cancellationToken = default) =>
+        _repository.GetEmployeeDetailAsync(employeeId, cancellationToken);
+
+    public async Task<EmployeeDetailDto?> UpdateEmployeeBranchesAsync(
+        Guid employeeId,
+        UpdateEmployeeBranchesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (await _repository.GetEmployeeLookupAsync(employeeId, cancellationToken) is null)
+            return null;
+
+        await AssignEmployeeBranchesAsync(employeeId, request.BranchIds, request.PrimaryBranchId, cancellationToken);
+        return await _repository.GetEmployeeDetailAsync(employeeId, cancellationToken);
+    }
+
+    private async Task AssignEmployeeBranchesAsync(
+        Guid employeeId,
+        IReadOnlyList<Guid>? branchIds,
+        Guid? primaryBranchId,
+        CancellationToken cancellationToken)
+    {
+        if (branchIds is null)
+            return;
+
+        var distinct = branchIds.Where(id => id != Guid.Empty).Distinct().ToList();
+        if (distinct.Count == 0)
+        {
+            await _repository.ReplaceEmployeeBranchesAsync(employeeId, [], null, cancellationToken);
+            return;
+        }
+
+        if (!await _repository.BranchIdsBelongToTenantAsync(distinct, cancellationToken))
+            throw new InvalidOperationException("Một hoặc nhiều chi nhánh không hợp lệ.");
+
+        if (primaryBranchId is Guid primary && !distinct.Contains(primary))
+            throw new InvalidOperationException("Chi nhánh chính phải nằm trong danh sách được gán.");
+
+        await _repository.ReplaceEmployeeBranchesAsync(employeeId, distinct, primaryBranchId, cancellationToken);
     }
 
     private async Task<Guid?> ResolveEmployeeIdAsync(
