@@ -1,0 +1,177 @@
+---
+import type { Messages } from '../i18n';
+
+interface Props {
+  m: Messages['founding'];
+  contactHref?: string;
+  compact?: boolean;
+}
+
+const { m, contactHref = '/vi/lien-he#contact-form', compact = false } = Astro.props;
+---
+
+<section class:list={['founding-band', { 'founding-band--compact': compact }]}>
+  <div class="container founding-inner">
+    <div class="founding-copy">
+      <p class="founding-eyebrow">{m.eyebrow}</p>
+      <h2 class="founding-title">{m.title}</h2>
+      <p class="founding-lead">{m.lead}</p>
+
+      <div class="founding-price">
+        <span class="founding-price-value">{m.priceValue}</span>
+        <span class="founding-price-unit">{m.priceUnit}</span>
+      </div>
+
+      <ul class="founding-list">
+        {m.bullets.map((item) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+
+      <p class="founding-note">{m.note}</p>
+
+      <div class="founding-actions">
+        <a class="btn btn-primary" href={contactHref}>{m.ctaPrimary}</a>
+        {m.ctaSecondary && !compact && (
+          <a class="btn btn-secondary" href={m.ctaSecondaryHref}>{m.ctaSecondary}</a>
+        )}
+      </div>
+    </div>
+
+    {
+      !compact && (
+        <aside class="founding-aside card">
+          <h3 class="founding-aside-title">{m.asideTitle}</h3>
+          <ol class="founding-timeline">
+            {m.timeline.map((step) => (
+              <li>
+                <strong>{step.label}</strong>
+                <span>{step.desc}</span>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .founding-band {
+    background: linear-gradient(160deg, #e8f2fb 0%, #f4f8fc 55%, var(--color-accent-light) 100%);
+    border-block: 1px solid var(--color-border);
+    padding: 2.5rem 0;
+  }
+
+  .founding-band--compact {
+    padding: 1.75rem 0;
+    background: var(--color-accent-light);
+  }
+
+  .founding-inner {
+    display: grid;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .founding-inner {
+      grid-template-columns: 1fr minmax(260px, 320px);
+    }
+  }
+
+  .founding-eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+
+  .founding-title {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+    color: var(--color-primary);
+    line-height: 1.25;
+  }
+
+  .founding-lead {
+    margin: 0 0 1rem;
+    color: var(--color-muted);
+    max-width: 52ch;
+  }
+
+  .founding-price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .founding-price-value {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    line-height: 1;
+  }
+
+  .founding-price-unit {
+    font-size: 0.95rem;
+    color: var(--color-muted);
+  }
+
+  .founding-list {
+    margin: 0 0 1rem;
+    padding-left: 1.2rem;
+    color: var(--color-text);
+  }
+
+  .founding-list li {
+    margin-bottom: 0.35rem;
+  }
+
+  .founding-note {
+    margin: 0 0 1.25rem;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    max-width: 55ch;
+  }
+
+  .founding-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .founding-aside-title {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    color: var(--color-primary);
+  }
+
+  .founding-timeline {
+    margin: 0;
+    padding-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .founding-timeline li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .founding-timeline strong {
+    font-size: 0.88rem;
+    color: var(--color-primary);
+  }
+
+  .founding-timeline span {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+</style>

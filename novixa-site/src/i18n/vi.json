@@ -48,6 +48,56 @@
     "aiTitle": "Trợ lý thông minh (AI)",
     "aiDesc": "Gợi ý nhập hàng, phân tích tồn chậm và hỗ trợ ra quyết định — lộ trình phát triển 2026."
   },
+  "founding": {
+    "eyebrow": "Early Access · 2 slot / tháng",
+    "title": "Founding Early Access",
+    "lead": "Dành cho nhà thuốc và chuỗi nhỏ muốn vận hành thật trên Novixa — có hỗ trợ migrate và training, không tự triển khai một mình.",
+    "priceValue": "299.000đ",
+    "priceUnit": "/ tháng · 4 tháng đầu",
+    "bullets": [
+      "Trải nghiệm đầy đủ: POS, tồn lô FEFO, app khách, loyalty, O2O và báo cáo",
+      "Migrate danh mục + tồn đầu và training quầy — miễn phí khi tham gia case study",
+      "Tháng 5: chốt gói theo mức bạn thực sự dùng (từ quầy hoặc mở rộng chuỗi)",
+      "Cam kết hợp đồng tối thiểu 6 tháng"
+    ],
+    "note": "Giá niêm yết đầy đủ sẽ công bố sau giai đoạn founding. Hiện ưu tiên trao đổi trực tiếp qua demo — không so sánh công khai với từng phần mềm cụ thể trên thị trường.",
+    "ctaPrimary": "Đăng ký Founding / Demo",
+    "ctaSecondary": "Nhắn tin đăng ký",
+    "ctaSecondaryHref": "/vi/lien-he#contact-form",
+    "asideTitle": "Timeline founding",
+    "timeline": [
+      { "label": "Tháng 1–4", "desc": "299k/th · dùng đầy đủ tính năng vận hành" },
+      { "label": "Tháng 3", "desc": "Báo cáo sử dụng · hẹn chốt gói" },
+      { "label": "Tháng 5", "desc": "Chọn gói phù hợp — không tự động nâng giá" },
+      { "label": "Sau đó", "desc": "Giá theo catalog đã thống nhất khi ký" }
+    ]
+  },
+  "foundingFaq": {
+    "title": "Câu hỏi thường gặp",
+    "intro": "Giai đoạn đầu Novixa mở Early Access có giới hạn — dưới đây là các câu hỏi hay gặp trước khi đăng ký.",
+    "items": [
+      {
+        "q": "Founding Early Access là gì?",
+        "a": "Là giai đoạn chạy thật tại quầy nhà thuốc với mức ưu đãi 4 tháng đầu. Bạn dùng đầy đủ tính năng vận hành (POS, kho lô, app khách, loyalty…) trong khi chúng tôi hỗ trợ migrate dữ liệu và training — không phải bản demo hay dùng thử 14 ngày."
+      },
+      {
+        "q": "Sau 4 tháng tính phí thế nào?",
+        "a": "Tháng thứ 5 bạn chốt gói theo mức thực sự sử dụng: nếu chỉ cần quầy và kho lô thì ở mức gói cơ bản; nếu tiếp tục dùng app, loyalty và O2O thì chuyển gói mở rộng. Novixa không tự động nâng giá — có xác nhận trước khi áp dụng."
+      },
+      {
+        "q": "Novixa phù hợp nhà thuốc nào?",
+        "a": "Phù hợp nhà thuốc GPP muốn gom quầy bán, tồn theo lô và chăm sóc khách trên một nền — đặc biệt chuỗi 2–10 cửa hoặc đơn lẻ đang dùng Excel kèm POS quầy. Nếu bạn chỉ cần thu ngân đơn giản, không quan tâm lô và hạn dùng, các giải pháp POS bán lẻ phổ biến có thể đủ dùng."
+      },
+      {
+        "q": "Có cam kết tối thiểu không?",
+        "a": "Có — 6 tháng: 4 tháng founding và 2 tháng ở gói đã chọn sau khi thống nhất. Điều này giúp đủ thời gian go-live, làm quen vận hành và đo hiệu quả thực tế."
+      },
+      {
+        "q": "Sao chưa có bảng giá đầy đủ trên website?",
+        "a": "Chúng tôi đang trong giai đoạn founding với số lượng có giới hạn. Giá chi tiết theo quy mô (một cửa hay chuỗi) sẽ trao đổi trong buổi demo và chốt rõ khi ký — tránh niêm yết sớm khi sản phẩm và dịch vụ triển khai vẫn đang tinh chỉnh cùng khách hàng đầu tiên."
+      }
+    ]
+  },
   "about": {
     "title": "Về Novixa",
     "p1": "Novixa (Smart Pharmacy Solutions) hướng tới giải pháp dược thông minh: giúp nhà thuốc vận hành chính xác, tuân thủ GPP và mở rộng bằng dữ liệu.",
@@ -76,7 +126,7 @@
     "facebookLabel": "Fanpage Facebook",
     "facebookPageName": "Novixa",
     "facebookUrl": "https://www.facebook.com/novixa68",
-    "formNote": "Nội dung form được gửi tới email Novixa. Lần đầu có thể cần xác nhận kích hoạt từ Formsubmit.",
+    "formNote": "Nội dung form được gửi tới email Novixa. Ghi “FOUNDING” trong tin nhắn nếu bạn muốn đăng ký Early Access.",
     "successTitle": "Đã gửi tin nhắn",
     "successMessage": "Cảm ơn bạn! Chúng tôi sẽ phản hồi qua số điện thoại hoặc email bạn cung cấp.",
     "nameRequired": "Vui lòng nhập họ tên.",

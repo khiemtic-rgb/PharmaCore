@@ -1,0 +1,62 @@
+---
+import type { Messages } from '../i18n';
+
+interface Props {
+  m: Messages['foundingFaq'];
+}
+
+const { m } = Astro.props;
+---
+
+<section class="section founding-faq-section">
+  <div class="container founding-faq-wrap">
+    <h2 class="section-title">{m.title}</h2>
+    <p class="section-intro">{m.intro}</p>
+    <dl class="founding-faq-list">
+      {
+        m.items.map((item) => (
+          <>
+            <dt>{item.q}</dt>
+            <dd>{item.a}</dd>
+          </>
+        ))
+      }
+    </dl>
+  </div>
+</section>
+
+<style>
+  .founding-faq-section {
+    padding-top: 0;
+  }
+
+  .founding-faq-wrap {
+    max-width: 720px;
+  }
+
+  .founding-faq-list {
+    margin: 0;
+  }
+
+  .founding-faq-list dt {
+    margin: 1.25rem 0 0.35rem;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .founding-faq-list dt:first-child {
+    margin-top: 0;
+  }
+
+  .founding-faq-list dd {
+    margin: 0;
+    color: var(--color-text);
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .founding-faq-list dd:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+</style>

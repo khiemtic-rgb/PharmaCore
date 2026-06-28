@@ -2,6 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import FoundingEarlyAccess from '../../components/FoundingEarlyAccess.astro';
+import FoundingFaq from '../../components/FoundingFaq.astro';
 import { t } from '../../i18n';
 import '../../styles/global.css';
 
@@ -33,6 +35,8 @@ const hasPhone = Boolean(c.phoneTel?.trim());
     <div class="container">
       <h1 class="section-title">{c.title}</h1>
       <p class="section-intro">{c.intro}</p>
+
+      <FoundingEarlyAccess m={m.founding} contactHref="#contact-form" compact />
 
       {
         sent && (
@@ -142,6 +146,8 @@ const hasPhone = Boolean(c.phoneTel?.trim());
           </form>
         </div>
       </div>
+
+      <FoundingFaq m={m.foundingFaq} />
     </div>
   </section>
   <Footer slot="footer" />

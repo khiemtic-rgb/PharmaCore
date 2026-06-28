@@ -2,6 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import FoundingEarlyAccess from '../../components/FoundingEarlyAccess.astro';
+import FoundingFaq from '../../components/FoundingFaq.astro';
 import { t } from '../../i18n';
 import '../../styles/global.css';
 
@@ -36,8 +38,14 @@ const m = t('vi');
           <p>{m.solutions.aiDesc}</p>
         </article>
       </div>
-      <p style="margin-top: 2rem">
-        <a class="btn btn-primary" href="/vi/lien-he">{m.home.ctaContact}</a>
+    </div>
+  </section>
+  <FoundingEarlyAccess m={m.founding} />
+  <FoundingFaq m={m.foundingFaq} />
+  <section class="section" style="padding-top: 0">
+    <div class="container">
+      <p>
+        <a class="btn btn-primary" href="/vi/lien-he#contact-form">{m.founding.ctaPrimary}</a>
       </p>
     </div>
   </section>
