@@ -2,9 +2,11 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import Header from '../../../components/Header.astro';
 import Footer from '../../../components/Footer.astro';
+import ArticleCta from '../../../components/ArticleCta.astro';
 import { getCollection, render } from 'astro:content';
 import { filterPublishedPosts } from '../../../lib/publishedNews';
 import { formatNewsDate } from '../../../lib/newsDate';
+import { articleOgImagePath, buildArticleJsonLd } from '../../../lib/articleSeo';
 import { t } from '../../../i18n';
 import '../../../styles/global.css';
 
@@ -21,22 +23,59 @@ export async function getStaticPaths() {
 const m = t('vi');
 const { post } = Astro.props;
 const { Content } = await render(post);
+const ogImage = articleOgImagePath(post.id);
+const publishedTime = post.data.pubDate.toISOString();
+const jsonLd = buildArticleJsonLd(post);
 ---
 
 <BaseLayout
   title={post.data.title}
   description={post.data.description}
   type="article"
+  image={ogImage}
   canonicalPath={`/vi/tin-tuc/${post.id}`}
+  publishedTime={publishedTime}
+  jsonLd={jsonLd}
 >
   <Header slot="header" />
-  <section class="section">
+  <article class="section" itemscope itemtype="https://schema.org/Article">
     <div class="container prose">
       <p><a href="/vi/tin-tuc">{m.news.back}</a></p>
-      <h1>{post.data.title}</h1>
-      <p class="news-meta">{formatNewsDate(post.data.pubDate)}</p>
-      <Content />
+      <h1 itemprop="headline">{post.data.title}</h1>
+      <p class="news-meta">
+        <time datetime={publishedTime} itemprop="datePublished">{formatNewsDate(post.data.pubDate)}</time>
+      </p>
+      <figure class="article-hero-image">
+        <img
+          src={ogImage}
+          alt={`${post.data.title} — Novixa`}
+          width="1200"
+          height="630"
+          loading="eager"
+          itemprop="image"
+        />
+      </figure>
+      <div itemprop="articleBody">
+        <Content />
+      </div>
+      <ArticleCta />
     </div>
-  </section>
+  </article>
   <Footer slot="footer" />
 </BaseLayout>
+
+<style>
+  .article-hero-image {
+    margin: 1.25rem 0 1.75rem;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow);
+  }
+
+  .article-hero-image img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>

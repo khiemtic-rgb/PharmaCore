@@ -7,18 +7,21 @@
   },
   "scripts": {
     "sync:assets": "node scripts/sync-brand-assets.mjs",
-    "prebuild": "npm run sync:assets",
+    "prebuild": "npm run sync:assets && npm run generate:news-images",
     "dev": "npm run sync:assets && astro dev --host localhost --port 4321",
     "build": "astro build",
     "preview": "astro preview --host localhost --port 4321",
     "astro": "astro",
     "import:news": "node scripts/import-tin-tuc.mjs",
+    "generate:news-images": "node scripts/generate-news-images.mjs",
     "post:fanpage": "node scripts/post-fanpage-today.mjs",
     "post:fanpage:dry": "node scripts/post-fanpage-today.mjs --dry-run",
     "post:fanpage:verify": "node scripts/verify-fanpage-token.mjs"
   },
   "dependencies": {
-    "astro": "^6.4.7"
+    "@astrojs/sitemap": "^3.7.0",
+    "astro": "^6.4.7",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "xlsx": "^0.18.5"

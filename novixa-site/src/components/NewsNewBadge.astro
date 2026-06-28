@@ -1,0 +1,10 @@
+---
+interface Props {
+  show: boolean;
+  label?: string;
+}
+
+const { show, label = 'Mới' } = Astro.props;
+---
+
+{show && <span class="news-badge">{label}</span>}

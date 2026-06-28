@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
+import { generateNewsImage } from './news-image-lib.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -217,7 +218,7 @@ ${content}
   fs.writeFileSync(path.join(OUT_DIR, filename), body, 'utf8');
 }
 
-function main() {
+async function main() {
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
   if (!fs.existsSync(IMPORT_DIR)) fs.mkdirSync(IMPORT_DIR, { recursive: true });
 
@@ -245,6 +246,13 @@ function main() {
     const exists = fs.existsSync(target);
 
     writeMarkdown(item, filename);
+    const slug = filename.replace(/\.md$/, '');
+    await generateNewsImage({
+      slug,
+      title: item.title,
+      description: item.description ?? '',
+    });
+
     if (exists) {
       updated++;
       console.log(`↻ Cập nhật: ${filename} (${formatPubDate(item.pubDate)})`);
@@ -257,4 +265,7 @@ function main() {
   console.log(`\nXong: ${created} mới, ${updated} cập nhật (nguồn: ${path.basename(input)})`);
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

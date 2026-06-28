@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadFanpageCredentials } from './fanpage-config.mjs';
+import { BRAND_TAGLINE, generateFromMarkdownFile, OUT_DIR } from './news-image-lib.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -26,8 +27,10 @@ function parseFrontmatter(raw) {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return {};
   const meta = {};
-  for (const line of match[1].split('\n')) {
-    const m = line.match(/^(\w+):\s*(.+)$/);
+  for (const line of match[1].split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const m = trimmed.match(/^(\w+):\s*(.+)$/);
     if (!m) continue;
     let val = m[2].trim();
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
@@ -72,6 +75,8 @@ function listArticlesForDate(targetDay) {
       description: meta.description ?? '',
       pubDate: meta.pubDate,
       url: `${SITE_URL}/vi/tin-tuc/${slug}`,
+      imageUrl: `${SITE_URL}/images/tin-tuc/${slug}.png`,
+      mdPath: path.join(CONTENT_DIR, file),
     });
   }
 
@@ -81,6 +86,7 @@ function listArticlesForDate(targetDay) {
 function buildMessage(article) {
   const lines = [article.title];
   if (article.description) lines.push('', article.description);
+  lines.push('', BRAND_TAGLINE);
   lines.push('', `Đọc thêm: ${article.url}`);
   return lines.join('\n');
 }
@@ -89,6 +95,7 @@ async function postToFacebook({ pageId, accessToken, article }) {
   const body = new URLSearchParams({
     message: buildMessage(article),
     link: article.url,
+    picture: article.imageUrl,
     access_token: accessToken,
   });
 
@@ -140,7 +147,14 @@ async function main() {
     if (dryRun) {
       console.log(`  [dry-run] ${article.title}`);
       console.log(`    ${article.url}`);
+      console.log(`    ảnh: ${article.imageUrl}`);
       continue;
+    }
+
+    const imagePath = path.join(OUT_DIR, `${article.slug}.png`);
+    if (!fs.existsSync(imagePath)) {
+      console.log(`  tạo ảnh: ${article.slug}.png`);
+      await generateFromMarkdownFile(article.mdPath);
     }
 
     try {

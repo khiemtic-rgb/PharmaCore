@@ -86,6 +86,7 @@
   "news": {
     "title": "Tin tức",
     "intro": "Cập nhật phát triển sản phẩm, vận hành nhà thuốc và hướng đi Novixa — theo lịch đăng.",
+    "newBadge": "Mới",
     "readMore": "Đọc tiếp",
     "back": "← Quay lại tin tức"
   },

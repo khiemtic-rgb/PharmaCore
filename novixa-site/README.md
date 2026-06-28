@@ -109,6 +109,23 @@ npm run post:fanpage:dry -- --date=2026-07-01
 npm run post:fanpage
 ```
 
+## SEO bài tin (tự động)
+
+Mỗi bài tin có:
+
+| Thành phần | Mô tả |
+|------------|--------|
+| **Ảnh OG 1200×630** | `public/images/tin-tuc/{slug}.png` — chủ đề theo title, tagline *Novixa — Nền tảng quản trị nhà thuốc thế hệ mới* |
+| **JSON-LD Article** | Schema.org trên trang chi tiết |
+| **Open Graph / Twitter** | Title, description, ảnh riêng từng bài |
+| **Sitemap** | `/sitemap-index.xml` (Astro sitemap) |
+| **robots.txt** | Trỏ sitemap |
+| **CTA cuối bài** | Link Giải pháp + Liên hệ |
+
+Sinh ảnh: `npm run generate:news-images` (tự chạy khi `import:news` và `prebuild`).
+
+Sau deploy: submit sitemap tại [Google Search Console](https://search.google.com/search-console).
+
 ## Liên hệ (Zalo, Fanpage, form email)
 
 Cấu hình trong `src/i18n/vi.json` → mục `contact`:

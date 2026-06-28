@@ -29,7 +29,7 @@ jobs:
           if [ -f import/tin-tuc.xlsx ] || [ -f import/tin-tuc.csv ]; then
             npm run import:news
           else
-            echo "Không có file import — chỉ trigger publish theo ngày."
+            npm run generate:news-images
           fi
 
       - name: Commit bài import (nếu đổi)
