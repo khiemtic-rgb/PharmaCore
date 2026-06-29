@@ -9,6 +9,7 @@ import { CUSTOMER_STATUS_LABELS } from '@/shared/api/customer-admin.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
 import { CustomerFormDrawer } from '@/modules/customer/CustomerFormDrawer';
+import { CustomerImportCard } from '@/modules/customer/CustomerImportCard';
 import { formatDisplayDate } from '@/shared/utils/date';
 
 export function CustomerListPage() {
@@ -126,6 +127,11 @@ export function CustomerListPage() {
           ) : null
         }
       >
+        {canWrite ? (
+          <Card size="small" title="Import khách hàng (Excel/CSV)" style={{ marginBottom: 16 }}>
+            <CustomerImportCard onImported={load} />
+          </Card>
+        ) : null}
         <Space wrap style={{ marginBottom: 16 }}>
           <Input
             allowClear

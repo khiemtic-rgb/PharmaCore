@@ -4,10 +4,10 @@ import type { ColumnsType } from 'antd/es/table';
 import type { FormListFieldData } from 'antd/es/form/FormList';
 import type { FormInstance } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
-import { GrnPoTaxSummaryTableFooter } from '@/modules/procurement/GrnPoTaxSummary';
-import { ProcurementQuantityCell } from '@/modules/procurement/procurement-quantity-cell';
-import { grnLineTotal } from '@/modules/procurement/grn-po-tax';
+import { grnLineNetTotal } from '@/modules/procurement/grn-pricing';
+import { GrnLineDiscountFields } from '@/modules/procurement/GrnPricingPanel';
 import { PROCUREMENT_MONEY_COL_WIDTH } from '@/modules/procurement/GrnPoTaxSummary';
+import { ProcurementQuantityCell } from '@/modules/procurement/procurement-quantity-cell';
 import { PoUnitPriceField } from '@/modules/procurement/PoUnitPriceField';
 import { PharmaExpiryPicker } from '@/shared/ui/PharmaDatePicker';
 import type { PurchaseOrderDetail } from '@/shared/api/procurement.types';
@@ -43,7 +43,6 @@ interface GrnPoLinesEditorProps {
 export function GrnPoLinesEditor({
   form,
   supplierId,
-  linkedPo,
   fields,
   remove,
   maxScrollY = 520,
@@ -58,12 +57,15 @@ export function GrnPoLinesEditor({
   const columns: ColumnsType<FormListFieldData> = [
     {
       title: 'Sản phẩm',
-      width: 240,
+      ellipsis: true,
       render: (_, field) => {
         const line = watchedItems?.[field.name];
         return (
           <>
-            <div style={{ lineHeight: 1.3 }}>
+            <div
+              style={{ lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={line ? `${line.productCode} — ${line.productName}` : undefined}
+            >
               <strong>{line?.productCode}</strong>
               <span style={{ color: '#888' }}> — {line?.productName}</span>
             </div>
@@ -82,7 +84,8 @@ export function GrnPoLinesEditor({
     },
     {
       title: 'ĐVT',
-      width: 56,
+      width: 48,
+      className: 'grn-col-nowrap',
       render: (_, field) => watchedItems?.[field.name]?.unitName ?? '—',
     },
     {
@@ -140,17 +143,23 @@ export function GrnPoLinesEditor({
       ),
     },
     {
-      title: 'HSD (T/N)',
-      width: 110,
+      title: 'HSD',
+      width: 100,
+      className: 'grn-col-nowrap',
       render: (_, field) => (
         <Form.Item
           name={[field.name, 'expiryDate']}
           rules={[{ required: true, message: 'HSD' }]}
           style={{ marginBottom: 0 }}
         >
-          <PharmaExpiryPicker style={{ width: 110 }} inTable />
+          <PharmaExpiryPicker style={{ width: '100%' }} inTable />
         </Form.Item>
       ),
+    },
+    {
+      title: 'CK dòng',
+      width: 156,
+      render: (_, field) => <GrnLineDiscountFields fieldName={field.name} />,
     },
     {
       title: (
@@ -195,7 +204,7 @@ export function GrnPoLinesEditor({
               textAlign: 'right',
             }}
           >
-            {formatDisplayMoney(grnLineTotal(line))}
+            {formatDisplayMoney(grnLineNetTotal(line))}
           </span>
         );
       },
@@ -218,20 +227,14 @@ export function GrnPoLinesEditor({
 
   return (
     <Table
-      className="grn-lines-table"
+      className="grn-lines-table grn-lines-table--detail"
       rowKey="key"
       size="small"
       pagination={false}
-      scroll={{ x: 960, ...(tableScrollY ? { y: tableScrollY } : {}) }}
+      tableLayout="fixed"
+      scroll={tableScrollY ? { y: tableScrollY } : undefined}
       dataSource={fields}
       columns={columns}
-      summary={() =>
-        linkedPo ? (
-          <Table.Summary>
-            <GrnPoTaxSummaryTableFooter form={form} linkedPo={linkedPo} />
-          </Table.Summary>
-        ) : null
-      }
     />
   );
 }

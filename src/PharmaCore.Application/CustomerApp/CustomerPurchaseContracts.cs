@@ -6,6 +6,8 @@ public sealed record CustomerPurchaseListItemDto(
     short Status,
     DateTimeOffset OrderDate,
     decimal TotalAmount,
+    decimal AmountPaid,
+    decimal Outstanding,
     int ItemCount,
     decimal TotalRefunded);
 
@@ -30,6 +32,8 @@ public sealed record CustomerPurchaseDetailDto(
     decimal Subtotal,
     decimal DiscountAmount,
     decimal TotalAmount,
+    decimal AmountPaid,
+    decimal Outstanding,
     decimal TotalRefunded,
     string? Notes,
     int? LoyaltyPointsEarned,

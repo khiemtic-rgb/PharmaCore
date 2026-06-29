@@ -42,6 +42,11 @@ function normalizeDetail(row: Record<string, unknown>): CustomerDetail {
         ? Boolean(row.appVerified ?? row.AppVerified)
         : undefined,
     appLastLoginAt: (row.appLastLoginAt ?? row.AppLastLoginAt) as string | undefined,
+    allowCredit: Boolean(row.allowCredit ?? row.AllowCredit),
+    creditLimit:
+      row.creditLimit != null || row.CreditLimit != null
+        ? Number(row.creditLimit ?? row.CreditLimit)
+        : null,
   };
 }
 
@@ -117,6 +122,72 @@ export async function updateCustomer(
 ): Promise<CustomerDetail> {
   const { data } = await http.put<Record<string, unknown>>(`/customers/${customerId}`, payload);
   return normalizeDetail(data);
+}
+
+export type CustomerImportError = { rowNumber: number; message: string };
+
+export type CustomerImportResult = {
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: CustomerImportError[];
+};
+
+const CUSTOMER_IMPORT_BATCH_SIZE = 500;
+const CUSTOMER_IMPORT_TIMEOUT_MS = 120_000;
+
+function normalizeCustomerImportResult(data: Record<string, unknown>): CustomerImportResult {
+  const errors = ((data.errors ?? data.Errors ?? []) as Record<string, unknown>[]).map((row) => ({
+    rowNumber: Number(row.rowNumber ?? row.RowNumber ?? 0),
+    message: String(row.message ?? row.Message ?? ''),
+  }));
+  return {
+    created: Number(data.created ?? data.Created ?? 0),
+    skipped: Number(data.skipped ?? data.Skipped ?? 0),
+    failed: Number(data.failed ?? data.Failed ?? 0),
+    errors,
+  };
+}
+
+export async function importCustomers(
+  rows: Array<{
+    rowNumber: number;
+    customerCode: string;
+    fullName: string;
+    phone: string;
+    email?: string;
+    dateOfBirth?: string;
+    gender?: number;
+  }>,
+  onBatchProgress?: (current: number, total: number) => void,
+): Promise<CustomerImportResult> {
+  if (rows.length === 0) {
+    return { created: 0, skipped: 0, failed: 0, errors: [] };
+  }
+
+  const batches: (typeof rows)[] = [];
+  for (let i = 0; i < rows.length; i += CUSTOMER_IMPORT_BATCH_SIZE) {
+    batches.push(rows.slice(i, i + CUSTOMER_IMPORT_BATCH_SIZE));
+  }
+
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors: CustomerImportError[] = [];
+
+  for (let i = 0; i < batches.length; i++) {
+    onBatchProgress?.(i + 1, batches.length);
+    const { data } = await http.post<Record<string, unknown>>('/customers/import', batches[i], {
+      timeout: CUSTOMER_IMPORT_TIMEOUT_MS,
+    });
+    const batchResult = normalizeCustomerImportResult(data);
+    created += batchResult.created;
+    skipped += batchResult.skipped;
+    failed += batchResult.failed;
+    errors.push(...batchResult.errors);
+  }
+
+  return { created, skipped, failed, errors };
 }
 
 export async function fetchCustomerOrders(

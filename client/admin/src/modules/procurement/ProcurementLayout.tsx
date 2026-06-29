@@ -18,6 +18,7 @@ import type { ProductNavTab } from '@/shared/product/product-phases';
 import { useProductNavGuard } from '@/shared/product/useProductNavGuard';
 
 const allTabs: ProductNavTab[] = [
+  { key: 'suppliers', label: 'Nhà cung cấp', path: '/procurement/suppliers', icon: <TeamOutlined /> },
   {
     key: 'orders',
     label: 'Đơn đặt hàng',
@@ -26,11 +27,10 @@ const allTabs: ProductNavTab[] = [
   },
   {
     key: 'receipts',
-    label: 'Phiếu nhập hàng',
+    label: 'Phiếu nhập',
     path: '/procurement/goods-receipts',
     icon: <ContainerOutlined />,
   },
-  { key: 'suppliers', label: 'Nhà cung cấp', path: '/procurement/suppliers', icon: <TeamOutlined /> },
   {
     key: 'vat-settings',
     label: 'Thuế GTGT',
@@ -57,15 +57,15 @@ const allTabs: ProductNavTab[] = [
 export function ProcurementLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const tabs = useProductNavGuard(allTabs, '/procurement/purchase-orders');
+  const tabs = useProductNavGuard(allTabs, '/procurement/suppliers');
 
   useEffect(() => {
     if (location.pathname === '/procurement' || location.pathname === '/procurement/') {
-      navigate('/procurement/purchase-orders', { replace: true });
+      navigate('/procurement/suppliers', { replace: true });
     }
   }, [location.pathname, navigate]);
 
-  const activeKey = tabs.find((t) => location.pathname.startsWith(t.path))?.key ?? 'orders';
+  const activeKey = tabs.find((t) => location.pathname.startsWith(t.path))?.key ?? 'suppliers';
 
   return (
     <div>

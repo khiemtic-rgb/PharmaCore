@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { ProductNavTab } from '@/shared/product/product-phases';
 import { filterProductNavTabs } from '@/shared/product/product-phases';
@@ -7,7 +7,7 @@ import { filterProductNavTabs } from '@/shared/product/product-phases';
 export function useProductNavGuard(allTabs: ProductNavTab[], fallbackPath: string) {
   const location = useLocation();
   const navigate = useNavigate();
-  const visibleTabs = filterProductNavTabs(allTabs);
+  const visibleTabs = useMemo(() => filterProductNavTabs(allTabs), [allTabs]);
 
   useEffect(() => {
     const matched = [...allTabs]

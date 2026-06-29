@@ -93,6 +93,8 @@ public static class DependencyInjection
 
         services.AddScoped<CustomerPurchaseRepository>();
         services.AddScoped<ICustomerPurchaseService, CustomerPurchaseService>();
+        services.AddScoped<CustomerReceivablesRepository>();
+        services.AddScoped<ICustomerAppReceivablesService, CustomerAppReceivablesService>();
 
         services.AddScoped<CustomerAddressRepository>();
         services.AddScoped<ICustomerAddressService, CustomerAddressService>();
@@ -152,6 +154,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerConsentService, CustomerConsentService>();
         services.AddScoped<CustomerAdminRepository>();
         services.AddScoped<ICustomerAdminService, CustomerAdminService>();
+        services.AddScoped<ICustomerImportService, CustomerImportService>();
         services.AddScoped<IdentityAdminRepository>();
         services.AddScoped<IIdentityAdminService, IdentityAdminService>();
 
@@ -163,6 +166,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IAuditLogQuery, AuditLogQueryService>();
         services.AddScoped<ISupplierService, SupplierService>();
+        services.AddScoped<ISupplierImportService, SupplierImportService>();
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<IGoodsReceiptService, GoodsReceiptService>();
         services.AddScoped<ISupplierPaymentService, SupplierPaymentService>();
@@ -171,6 +175,8 @@ public static class DependencyInjection
 
         services.AddScoped<SalesRepository>();
         services.AddScoped<ISalesService, SalesService>();
+        services.AddScoped<ICustomerReceivablesService, CustomerReceivablesService>();
+        services.AddScoped<ICustomerPaymentService, CustomerPaymentService>();
 
         return services;
     }

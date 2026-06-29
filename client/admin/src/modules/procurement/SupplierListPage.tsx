@@ -29,6 +29,7 @@ import { apiErrorMessage } from '@/shared/api/api-error';
 import type { Supplier } from '@/shared/api/procurement.types';
 import { SUPPLIER_STATUS_LABELS } from '@/shared/api/procurement.types';
 import { filterSuppliersById } from '@/modules/procurement/procurement-list-filters';
+import { SupplierImportCard } from '@/modules/procurement/SupplierImportCard';
 import { downloadCsv } from '@/shared/utils/download-csv';
 
 import { useProcurementWrite } from '@/shared/auth/usePermission';
@@ -229,6 +230,12 @@ export function SupplierListPage() {
           </Col>
         </Row>
       </div>
+
+      {canWrite && (
+        <Card size="small" title="Import NCC (Excel/CSV)" style={{ marginBottom: 16 }}>
+          <SupplierImportCard onImported={load} />
+        </Card>
+      )}
 
       <Table
         rowKey="id"

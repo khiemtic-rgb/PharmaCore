@@ -15,6 +15,7 @@ import {
   openThermalPrintWindow,
   rowBetween,
 } from '@/modules/sales/thermal-receipt-print';
+import { resolveOrderPaymentSummary, SALES_PAYMENT_METHOD_CREDIT } from '@/modules/sales/sales-order-payment-summary';
 import { escapeHtml } from '@/shared/utils/escape-html';
 
 function returnedQty(line: SalesOrderItem): number {
@@ -56,7 +57,7 @@ function buildLineItemHtml(
 
 function buildPaymentSection(order: SalesOrderDetail, hasReturns: boolean): string {
   const { lines: netLines } = buildOrderNetPaymentLines(order);
-  const payments = order.payments ?? [];
+  const { amountPaid, outstanding, hasOutstanding } = resolveOrderPaymentSummary(order);
 
   if (hasReturns && netLines.length > 0) {
     return netLines
@@ -67,16 +68,25 @@ function buildPaymentSection(order: SalesOrderDetail, hasReturns: boolean): stri
       .join('');
   }
 
-  if (payments.length === 0) {
-    return rowBetween('Thanh toán', formatThermalMoney(order.totalAmount));
-  }
-
-  return payments
+  const paymentRows = (order.payments ?? [])
+    .filter((p) => p.paymentMethod !== SALES_PAYMENT_METHOD_CREDIT)
     .map((p) => {
       const label = SALES_PAYMENT_METHOD_LABELS[p.paymentMethod] ?? String(p.paymentMethod);
       return rowBetween(label, formatThermalMoney(p.amount), 'sub');
     })
     .join('');
+
+  if (hasOutstanding) {
+    return (
+      paymentRows +
+      rowBetween('Đã thanh toán', formatThermalMoney(amountPaid), 'sub') +
+      rowBetween('Còn nợ (đơn này)', formatThermalMoney(outstanding), 'sub')
+    );
+  }
+
+  if (paymentRows) return paymentRows;
+
+  return rowBetween('Thanh toán', formatThermalMoney(order.totalAmount));
 }
 
 function voucherDiscountLabel(order: SalesOrderDetail): string {
@@ -90,6 +100,7 @@ function voucherDiscountLabel(order: SalesOrderDetail): string {
 
 export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: ReceiptStoreSettings): string {
   const hasReturns = order.items.some((line) => returnedQty(line) > 0);
+  const { hasOutstanding } = resolveOrderPaymentSummary(order);
   const totalRefunded =
     order.totalRefunded && order.totalRefunded > 0
       ? order.totalRefunded
@@ -132,7 +143,7 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
       ${rowBetween('Còn lại', formatThermalMoney(netPayable), 'total')}
     `
     : `
-      ${rowBetween('Tạm tính', formatThermalMoney(order.subtotal), 'sub')}
+      ${rowBetween('Tổng tiền hàng', formatThermalMoney(order.subtotal), 'sub')}
       ${lineDiscountTotal > 0 ? rowBetween('Chiết khấu SP', `-${formatThermalMoney(lineDiscountTotal)}`, 'sub') : ''}
       ${order.discountAmount > 0 ? rowBetween('Chiết khấu đơn', `-${formatThermalMoney(order.discountAmount)}`, 'sub') : ''}
       ${(order.voucherDiscountAmount ?? 0) > 0 ? rowBetween(voucherDiscountLabel(order), `-${formatThermalMoney(order.voucherDiscountAmount ?? 0)}`, 'sub') : ''}
@@ -155,6 +166,7 @@ export function buildSalesInvoiceHtml(order: SalesOrderDetail, receiptStore: Rec
     ${order.shiftNumber ? `<div class="meta">Ca: ${escapeHtml(order.shiftNumber)}</div>` : ''}
     ${order.customerName ? `<div class="meta">Khách: ${escapeHtml(order.customerName)}</div>` : `<div class="meta">Khách: Khách lẻ</div>`}
     ${(order.loyaltyPointsEarned ?? 0) > 0 ? `<div class="meta">Tích điểm: +${order.loyaltyPointsEarned!.toLocaleString('vi-VN')} điểm</div>` : ''}
+    ${hasOutstanding ? `<div class="meta">Phần nợ không tích điểm</div>` : ''}
     ${(order.loyaltyPointsRedeemed ?? 0) > 0 ? `<div class="meta">Đổi điểm: −${order.loyaltyPointsRedeemed!.toLocaleString('vi-VN')} điểm (−${formatThermalMoney(order.loyaltyDiscountAmount ?? 0)})</div>` : ''}
     ${(order.voucherDiscountAmount ?? 0) > 0 ? `<div class="meta">Voucher: −${formatThermalMoney(order.voucherDiscountAmount ?? 0)}${order.voucherCode ? ` (${escapeHtml(order.voucherCode)})` : ''}</div>` : ''}
     ${hasReturns ? `<div class="meta">TT: ${escapeHtml(statusLabel)}</div>` : ''}

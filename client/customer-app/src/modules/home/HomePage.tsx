@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } 
 import { Alert, Button, Card, Col, Row, Space, Spin, Statistic, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { fetchDraftOrders, fetchLoyaltySummary, fetchReminders, fetchReservations, getApiErrorMessage } from '@/shared/api/customer-app.api';
+import { fetchDraftOrders, fetchLoyaltySummary, fetchReceivablesSummary, fetchReminders, fetchReservations, getApiErrorMessage } from '@/shared/api/customer-app.api';
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
 import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
 import { CUSTOMER_DRAFT_ORDER_STATUS, CUSTOMER_RESERVATION_STATUS, type LoyaltyProgramSummary } from '@/shared/api/customer-app.types';
@@ -57,15 +57,17 @@ export function HomePage() {
   const [nextReminder, setNextReminder] = useState<string | null>(null);
   const [pendingDraftCount, setPendingDraftCount] = useState(0);
   const [activeReservationCount, setActiveReservationCount] = useState(0);
+  const [totalReceivable, setTotalReceivable] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoadError(null);
     try {
-      const [loyaltyResult, remindersResult, draftsResult, reservationsResult] = await Promise.allSettled([
+      const [loyaltyResult, remindersResult, draftsResult, reservationsResult, receivablesResult] = await Promise.allSettled([
         fetchLoyaltySummary(),
         fetchReminders(),
         fetchDraftOrders(),
         fetchReservations(),
+        fetchReceivablesSummary(),
       ]);
 
       if (loyaltyResult.status === 'rejected') {
@@ -80,6 +82,10 @@ export function HomePage() {
 
       if (reservationsResult.status === 'rejected') {
         console.error(getApiErrorMessage(reservationsResult.reason, 'Không tải được đặt trước'));
+      }
+
+      if (receivablesResult.status === 'rejected') {
+        console.error(getApiErrorMessage(receivablesResult.reason, 'Không tải được công nợ'));
       }
 
       if (loyaltyResult.status === 'fulfilled') {
@@ -115,6 +121,10 @@ export function HomePage() {
               r.status === CUSTOMER_RESERVATION_STATUS.Ready,
           ).length,
         );
+      }
+
+      if (receivablesResult.status === 'fulfilled') {
+        setTotalReceivable(receivablesResult.value.totalReceivable);
       }
     } finally {
       setInitialLoading(false);
@@ -218,6 +228,22 @@ export function HomePage() {
                 </Typography.Text>
               </TappableHomeCard>
             </Col>
+            {totalReceivable > 0.009 ? (
+              <Col span={24}>
+                <TappableHomeCard title="Xem công nợ tại nhà thuốc" onClick={() => navigate('/receivables')}>
+                  <Statistic
+                    title="Còn nợ"
+                    value={totalReceivable}
+                    suffix="đ"
+                    valueStyle={{ fontSize: 22, color: '#c2410c' }}
+                    formatter={(v) => Number(v).toLocaleString('vi-VN')}
+                  />
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    Thanh toán tại quầy nhà thuốc
+                  </Typography.Text>
+                </TappableHomeCard>
+              </Col>
+            ) : null}
           </Row>
 
           {pendingDraftCount > 0 ? (

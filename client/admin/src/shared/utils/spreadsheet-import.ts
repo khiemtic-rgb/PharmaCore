@@ -66,17 +66,48 @@ export function parseDecimal(value: string): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
+function isValidIsoParts(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const dt = new Date(year, month - 1, day);
+  return dt.getFullYear() === year && dt.getMonth() === month - 1 && dt.getDate() === day;
+}
+
+function toIsoDate(year: string, month: string, day: string): string | undefined {
+  const y = year.length === 2 ? Number(`20${year}`) : Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (!isValidIsoParts(y, m, d)) return undefined;
+  return `${String(y).padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
 export function parseOptionalDate(value: string): string | undefined {
   if (!value) return undefined;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const dmy = value.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
-  if (dmy) {
-    const day = dmy[1].padStart(2, '0');
-    const month = dmy[2].padStart(2, '0');
-    let year = dmy[3];
-    if (year.length === 2) year = `20${year}`;
-    return `${year}-${month}-${day}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-');
+    return toIsoDate(y, m, d);
   }
+
+  const parts = value.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+  if (parts) {
+    const a = Number(parts[1]);
+    const b = Number(parts[2]);
+    const year = parts[3];
+
+    // Excel thường xuất MM/DD/YY (vd. 12/31/30); VN thường DD/MM/YYYY.
+    const candidates: Array<[string, string]> = [];
+    if (a > 12) candidates.push([parts[1], parts[2]]); // DD/MM
+    else if (b > 12) candidates.push([parts[2], parts[1]]); // MM/DD → day, month
+    else {
+      candidates.push([parts[1], parts[2]]); // ưu tiên DD/MM
+      candidates.push([parts[2], parts[1]]); // thử MM/DD
+    }
+
+    for (const [day, month] of candidates) {
+      const iso = toIsoDate(year, month, day);
+      if (iso) return iso;
+    }
+  }
+
   const parsed = Date.parse(value);
   if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().slice(0, 10);
   return undefined;

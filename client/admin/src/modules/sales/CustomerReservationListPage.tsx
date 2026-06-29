@@ -33,7 +33,13 @@ import {
 } from '@/shared/api/customer-reservations.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
-import { filterBarStyle, sectionGapStyle } from '@/modules/sales/sales-ui-styles';
+import { sectionGapStyle } from '@/modules/sales/sales-ui-styles';
+import {
+  buildCustomerSearchSuggestions,
+  buildDocumentSearchSuggestions,
+  matchesSalesListDualSearch,
+} from '@/modules/sales/sales-list-customer-search';
+import { SalesListDualSearchBar, SalesListDualSearchWrap } from '@/modules/sales/SalesListDualSearchBar';
 
 const STATUS_FILTER_OPTIONS = Object.entries(CUSTOMER_RESERVATION_STATUS_LABELS).map(([value, label]) => ({
   value: Number(value),
@@ -56,7 +62,8 @@ export function CustomerReservationListPage() {
   const [awaitingOnly, setAwaitingOnly] = useState(
     () => searchParams.get('awaiting') === '1' || searchParams.get('awaiting') === 'true',
   );
-  const [search, setSearch] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [documentQuery, setDocumentQuery] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<CustomerReservation | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -91,19 +98,35 @@ export function CustomerReservationListPage() {
     return () => window.clearInterval(timer);
   }, [items, load]);
 
+  const customerSuggestions = useMemo(
+    () => buildCustomerSearchSuggestions(items, customerQuery),
+    [items, customerQuery],
+  );
+
+  const documentSuggestions = useMemo(
+    () => buildDocumentSearchSuggestions(items.map((row) => row.reservationNumber), documentQuery),
+    [items, documentQuery],
+  );
+
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return items.filter((row) => {
       if (awaitingOnly && !AWAITING_STATUSES.includes(row.status)) return false;
       if (statusFilter != null && row.status !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        row.reservationNumber.toLowerCase().includes(q) ||
-        row.customerName.toLowerCase().includes(q) ||
-        (row.customerPhone ?? '').includes(q)
+      return matchesSalesListDualSearch(
+        { customerQuery, documentQuery },
+        {
+          customerName: row.customerName,
+          customerPhone: row.customerPhone,
+          documentNumbers: [row.reservationNumber],
+        },
       );
     });
-  }, [items, search, statusFilter, awaitingOnly]);
+  }, [items, customerQuery, documentQuery, statusFilter, awaitingOnly]);
+
+  const clearSearch = () => {
+    setCustomerQuery('');
+    setDocumentQuery('');
+  };
 
   const awaitingCount = items.filter((row) => AWAITING_STATUSES.includes(row.status)).length;
 
@@ -207,12 +230,22 @@ export function CustomerReservationListPage() {
   return (
     <div style={sectionGapStyle}>
       <Card size="small">
-        <Space wrap style={filterBarStyle}>
-          <Input.Search
-            allowClear
-            placeholder="Tìm số yêu cầu, tên, SĐT..."
-            style={{ width: 280 }}
-            onSearch={setSearch}
+        <SalesListDualSearchWrap>
+          <SalesListDualSearchBar
+            customerValue={customerQuery}
+            documentValue={documentQuery}
+            onCustomerChange={setCustomerQuery}
+            onDocumentChange={setDocumentQuery}
+            onApply={(values) => {
+              setCustomerQuery(values.customer);
+              setDocumentQuery(values.document);
+            }}
+            onClear={clearSearch}
+            customerSuggestions={customerSuggestions}
+            documentSuggestions={documentSuggestions}
+            documentPlaceholder="Số yêu cầu"
+            liveFilter
+            showApplyButton={false}
           />
           <Select
             allowClear
@@ -238,7 +271,7 @@ export function CustomerReservationListPage() {
           <Button icon={<ReloadOutlined />} onClick={() => void load()}>
             Tải lại
           </Button>
-        </Space>
+        </SalesListDualSearchWrap>
       </Card>
 
       <Table

@@ -54,6 +54,7 @@ export interface CustomerDraftOrderListItem {
   draftNumber: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string | null;
   status: number;
   totalAmount: number;
   itemCount: number;
@@ -172,6 +173,7 @@ function normalizeListItem(row: Record<string, unknown>): CustomerDraftOrderList
     draftNumber: String(row.draftNumber ?? row.DraftNumber ?? ''),
     customerId: String(row.customerId ?? row.CustomerId),
     customerName: String(row.customerName ?? row.CustomerName ?? ''),
+    customerPhone: (row.customerPhone ?? row.CustomerPhone) as string | null | undefined,
     status: Number(row.status ?? row.Status ?? 1),
     totalAmount: Number(row.totalAmount ?? row.TotalAmount ?? 0),
     itemCount: Number(row.itemCount ?? row.ItemCount ?? 0),

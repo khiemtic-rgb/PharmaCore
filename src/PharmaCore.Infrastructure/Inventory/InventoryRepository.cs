@@ -565,16 +565,95 @@ internal sealed class InventoryRepository
         return batchIds;
     }
 
-    public async Task<IReadOnlyList<OpeningBalanceBatchListItemDto>> GetOpeningBalanceBatchesAsync(
-        Guid? warehouseId,
-        Guid[]? allowedWarehouseIds,
-        CancellationToken cancellationToken)
+    public async Task<(IReadOnlyList<OpeningBalanceBatchListItemDto> Items, int Total, int SummaryTotal, int SummaryVoidableCount)>
+        GetOpeningBalanceBatchesAsync(
+            Guid? warehouseId,
+            Guid[]? allowedWarehouseIds,
+            Guid? productId,
+            string? search,
+            string? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
     {
-        var extra = warehouseId is not null
-            ? " AND b.warehouse_id = @WarehouseId"
-            : allowedWarehouseIds is { Length: > 0 }
-                ? " AND b.warehouse_id = ANY(@AllowedWarehouseIds)"
-                : "";
+        var offset = (page - 1) * pageSize;
+        var scopeExtra = new List<string>();
+        var extra = new List<string>();
+        if (warehouseId is not null)
+        {
+            scopeExtra.Add("b.warehouse_id = @WarehouseId");
+            extra.Add("b.warehouse_id = @WarehouseId");
+        }
+        else if (allowedWarehouseIds is { Length: > 0 })
+        {
+            scopeExtra.Add("b.warehouse_id = ANY(@AllowedWarehouseIds)");
+            extra.Add("b.warehouse_id = ANY(@AllowedWarehouseIds)");
+        }
+        if (productId is not null)
+            extra.Add("b.product_id = @ProductId");
+        if (!string.IsNullOrWhiteSpace(search))
+            extra.Add("(p.product_code ILIKE @SearchPattern OR p.product_name ILIKE @SearchPattern OR b.batch_number ILIKE @SearchPattern)");
+
+        const string canVoidSql = """
+            (
+                b.quantity_available > 0
+                AND NOT EXISTS (
+                    SELECT 1 FROM stock_movements m
+                    WHERE m.batch_id = b.id
+                      AND m.reference_type NOT IN (@OpeningRef, @VoidRef)
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM inventory_transfer_items ti
+                    INNER JOIN inventory_transfers t ON t.id = ti.transfer_id
+                    WHERE ti.batch_id = b.id AND t.status <> @TransferCancelled
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM inventory_adjustment_items ai
+                    INNER JOIN inventory_adjustments a ON a.id = ai.adjustment_id
+                    WHERE ai.batch_id = b.id AND a.status <> @AdjustmentCancelled
+                )
+                AND b.quantity_available = b.quantity_received
+            )
+            """;
+
+        if (string.Equals(status, "voidable", StringComparison.OrdinalIgnoreCase))
+            extra.Add(canVoidSql);
+        else if (string.Equals(status, "locked", StringComparison.OrdinalIgnoreCase))
+            extra.Add($"NOT {canVoidSql}");
+
+        var whereExtra = extra.Count > 0 ? " AND " + string.Join(" AND ", extra) : "";
+        var scopeWhereExtra = scopeExtra.Count > 0 ? " AND " + string.Join(" AND ", scopeExtra) : "";
+        var searchPattern = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%";
+
+        const string baseFrom = """
+            FROM inventory_batches b
+            INNER JOIN warehouses w ON w.id = b.warehouse_id
+            INNER JOIN products p ON p.id = b.product_id
+            INNER JOIN LATERAL (
+                SELECT
+                    COALESCE(SUM(sm.quantity), 0) AS opening_qty,
+                    MIN(sm.movement_date) AS first_opening_date
+                FROM stock_movements sm
+                WHERE sm.batch_id = b.id AND sm.reference_type = @OpeningRef
+            ) ob ON TRUE
+            WHERE b.tenant_id = @TenantId
+              AND ob.opening_qty > 0
+              AND b.quantity_available > 0
+            """;
+
+        var countSql = $"""
+            SELECT COUNT(*)::int
+            {baseFrom}
+            {whereExtra}
+            """;
+
+        var summaryCountSql = $"""
+            SELECT
+                COUNT(*)::int AS SummaryTotal,
+                COUNT(*) FILTER (WHERE {canVoidSql})::int AS SummaryVoidableCount
+            {baseFrom}
+            {scopeWhereExtra}
+            """;
 
         var sql = $"""
             SELECT
@@ -593,25 +672,7 @@ internal sealed class InventoryRepository
                 b.quantity_available AS QuantityAvailable,
                 ob.opening_qty AS OpeningQuantity,
                 ob.first_opening_date AS FirstOpeningDate,
-                (
-                    b.quantity_available > 0
-                    AND NOT EXISTS (
-                        SELECT 1 FROM stock_movements m
-                        WHERE m.batch_id = b.id
-                          AND m.reference_type NOT IN (@OpeningRef, @VoidRef)
-                    )
-                    AND NOT EXISTS (
-                        SELECT 1 FROM inventory_transfer_items ti
-                        INNER JOIN inventory_transfers t ON t.id = ti.transfer_id
-                        WHERE ti.batch_id = b.id AND t.status <> @TransferCancelled
-                    )
-                    AND NOT EXISTS (
-                        SELECT 1 FROM inventory_adjustment_items ai
-                        INNER JOIN inventory_adjustments a ON a.id = ai.adjustment_id
-                        WHERE ai.batch_id = b.id AND a.status <> @AdjustmentCancelled
-                    )
-                    AND b.quantity_available = b.quantity_received
-                ) AS CanVoid,
+                {canVoidSql} AS CanVoid,
                 CASE
                     WHEN b.quantity_available <= 0 THEN 'Lô đã hết tồn'
                     WHEN EXISTS (
@@ -632,34 +693,32 @@ internal sealed class InventoryRepository
                     WHEN b.quantity_available < b.quantity_received THEN 'Tồn đã thay đổi so với lúc nhập'
                     ELSE NULL
                 END AS VoidBlockReason
-            FROM inventory_batches b
-            INNER JOIN warehouses w ON w.id = b.warehouse_id
-            INNER JOIN products p ON p.id = b.product_id
-            INNER JOIN LATERAL (
-                SELECT
-                    COALESCE(SUM(sm.quantity), 0) AS opening_qty,
-                    MIN(sm.movement_date) AS first_opening_date
-                FROM stock_movements sm
-                WHERE sm.batch_id = b.id AND sm.reference_type = @OpeningRef
-            ) ob ON TRUE
-            WHERE b.tenant_id = @TenantId
-              AND ob.opening_qty > 0
-              AND b.quantity_available > 0
-              {extra}
-            ORDER BY ob.first_opening_date DESC, p.product_name, b.batch_number
+            {baseFrom}
+            {whereExtra}
+            ORDER BY b.expiry_date NULLS LAST, p.product_name, b.batch_number
+            LIMIT @PageSize OFFSET @Offset
             """;
 
-        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        return (await conn.QueryAsync<OpeningBalanceBatchListItemDto>(sql, new
+        var param = new
         {
             TenantId,
             WarehouseId = warehouseId,
             AllowedWarehouseIds = allowedWarehouseIds,
+            ProductId = productId,
+            SearchPattern = searchPattern,
             OpeningRef = StockReferenceTypes.OpeningBalance,
             VoidRef = StockReferenceTypes.OpeningBalanceVoid,
             TransferCancelled = TransferStatuses.Cancelled,
             AdjustmentCancelled = AdjustmentStatuses.Cancelled,
-        })).ToList();
+            PageSize = pageSize,
+            Offset = offset,
+        };
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var total = await conn.QuerySingleAsync<int>(countSql, param);
+        var summary = await conn.QuerySingleAsync<(int SummaryTotal, int SummaryVoidableCount)>(summaryCountSql, param);
+        var items = (await conn.QueryAsync<OpeningBalanceBatchListItemDto>(sql, param)).ToList();
+        return (items, total, summary.SummaryTotal, summary.SummaryVoidableCount);
     }
 
     public async Task VoidOpeningBalanceBatchAsync(Guid batchId, CancellationToken cancellationToken)

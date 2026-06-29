@@ -119,11 +119,15 @@ public sealed class SalesController : ControllerBase
     [Authorize(Policy = SalesPolicies.Read)]
     public async Task<ActionResult<SalesOrderPagedListResult>> List(
         [FromQuery] string? search,
+        [FromQuery] string? customerSearch,
+        [FromQuery] string? documentSearch,
         [FromQuery] short? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default) =>
-        Ok(await _sales.GetOrdersAsync(new SalesOrderListFilter(search, status, page, pageSize), cancellationToken));
+        Ok(await _sales.GetOrdersAsync(
+            new SalesOrderListFilter(search, customerSearch, documentSearch, status, page, pageSize),
+            cancellationToken));
 
     [HttpGet("orders/{id:guid}")]
     [Authorize(Policy = SalesPolicies.Read)]
@@ -224,8 +228,10 @@ public sealed class SalesController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<SalesReturnListItemDto>>> ListReturns(
         [FromQuery] int limit = 50,
         [FromQuery] string? search = null,
+        [FromQuery] string? customerSearch = null,
+        [FromQuery] string? documentSearch = null,
         CancellationToken cancellationToken = default) =>
-        Ok(await _sales.GetSaleReturnsAsync(limit, search, cancellationToken));
+        Ok(await _sales.GetSaleReturnsAsync(limit, search, customerSearch, documentSearch, cancellationToken));
 
     [HttpGet("returns/{id:guid}")]
     [Authorize(Policy = SalesPolicies.Read)]

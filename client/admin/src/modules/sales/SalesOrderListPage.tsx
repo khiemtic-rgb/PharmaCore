@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  AutoComplete,
   Button,
   Card,
   Descriptions,
   Drawer,
-  Input,
   Popconfirm,
   Select,
   Space,
@@ -18,10 +16,10 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   EyeOutlined,
   EditOutlined,
+  DollarOutlined,
   PrinterOutlined,
   ReloadOutlined,
   RollbackOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
 import {
   cancelDraftSale,
@@ -32,8 +30,16 @@ import {
   fetchSalesOrder,
   fetchSalesOrders,
   fetchSalesReturn,
+  searchCustomers,
 } from '@/shared/api/sales.api';
-import type { PosCheckoutConfirm, PosCustomerLoyalty, SalesOrderDetail, SalesOrderListItem, SalesReturnListItem } from '@/shared/api/sales.types';
+import type {
+  CustomerListItem,
+  PosCheckoutConfirm,
+  PosCustomerLoyalty,
+  SalesOrderDetail,
+  SalesOrderListItem,
+  SalesReturnListItem,
+} from '@/shared/api/sales.types';
 import { SALES_RETURN_STATUS_LABELS } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
@@ -44,13 +50,22 @@ import {
   SALE_STATUS_FILTER_OPTIONS,
 } from '@/modules/sales/sales-order-status';
 import { OrderDetailFinancials } from '@/modules/sales/OrderDetailFinancials';
+import { buildCustomerPaymentCreateUrl } from '@/modules/sales/customer-payment-nav';
+import { resolveOrderPaymentSummary } from '@/modules/sales/sales-order-payment-summary';
+import { CustomerFormDrawer } from '@/modules/customer/CustomerFormDrawer';
+import type { CustomerDetail } from '@/shared/api/customer-admin.types';
 import { PosCheckoutModal } from '@/modules/sales/PosCheckoutModal';
 import { SalesReturnDetailDrawer } from '@/modules/sales/SalesReturnDetailDrawer';
 import { SalesReturnModal } from '@/modules/sales/SalesReturnModal';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
 import { formatPosCheckoutSuccessMessage } from '@/modules/sales/pos-checkout-message';
 import { printSalesReturn } from '@/modules/sales/sales-return-print';
-import { filterBarStyle, sectionGapStyle, sectionGapTopStyle, TabularMoney } from '@/modules/sales/sales-ui-styles';
+import { sectionGapStyle, sectionGapTopStyle, TabularMoney } from '@/modules/sales/sales-ui-styles';
+import {
+  buildCustomerSearchSuggestions,
+  buildDocumentSearchSuggestions,
+} from '@/modules/sales/sales-list-customer-search';
+import { SalesListDualSearchBar, SalesListDualSearchWrap } from '@/modules/sales/SalesListDualSearchBar';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { formatDisplayMoney } from '@/shared/utils/money';
@@ -69,8 +84,10 @@ export function SalesOrderListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [customerInput, setCustomerInput] = useState('');
+  const [documentInput, setDocumentInput] = useState('');
+  const [appliedCustomer, setAppliedCustomer] = useState('');
+  const [appliedDocument, setAppliedDocument] = useState('');
   const [statusFilter, setStatusFilter] = useState<number | typeof PARTIAL_RETURN_STATUS | undefined>();
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<SalesOrderDetail | null>(null);
@@ -82,20 +99,25 @@ export function SalesOrderListPage() {
   const [returnDetailOpen, setReturnDetailOpen] = useState(false);
   const [returnDetailId, setReturnDetailId] = useState<string | null>(null);
   const [draftCheckoutOpen, setDraftCheckoutOpen] = useState(false);
+  const [draftCustomerId, setDraftCustomerId] = useState<string>();
   const [draftCustomerLoyalty, setDraftCustomerLoyalty] = useState<PosCustomerLoyalty | null>(null);
   const [draftCompleting, setDraftCompleting] = useState(false);
+  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
 
   const load = useCallback(async (
-    nextPage = page,
-    nextPageSize = pageSize,
-    nextSearch = search,
-    nextStatus = statusFilter,
+    nextPage: number,
+    nextPageSize: number,
+    nextStatus: number | typeof PARTIAL_RETURN_STATUS | undefined = statusFilter,
+    customerSearch: string = appliedCustomer,
+    documentSearch: string = appliedDocument,
   ) => {
     setLoading(true);
     try {
       const apiStatus = typeof nextStatus === 'number' ? nextStatus : undefined;
       const result = await fetchSalesOrders({
-        search: nextSearch.trim() || undefined,
+        customerSearch: customerSearch.trim() || undefined,
+        documentSearch: documentSearch.trim() || undefined,
         status: apiStatus,
         page: nextPage,
         pageSize: nextPageSize,
@@ -113,50 +135,66 @@ export function SalesOrderListPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter]);
+  }, [statusFilter, appliedCustomer, appliedDocument]);
+
+  const applySearch = (values: { customer: string; document: string }) => {
+    const customer = values.customer.trim();
+    const document = values.document.trim();
+    setCustomerInput(customer);
+    setDocumentInput(document);
+    setAppliedCustomer(customer);
+    setAppliedDocument(document);
+  };
+
+  const reloadList = useCallback(() => {
+    void load(page, pageSize, statusFilter, appliedCustomer, appliedDocument);
+  }, [load, page, pageSize, statusFilter, appliedCustomer, appliedDocument]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void searchCustomers()
+      .then(setCustomers)
+      .catch(() => {
+        /* POS/search KH tùy chọn */
+      });
+  }, []);
 
   useEffect(() => {
-    const onFocus = () => void load();
+    const onFocus = () => reloadList();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [load]);
+  }, [reloadList]);
 
-  const searchSuggestions = useMemo(() => {
-    const q = searchInput.trim().toLowerCase();
-    const seen = new Set<string>();
-    return items
-      .filter((row) => {
-        if (!q) return false;
-        return (
-          row.orderNumber.toLowerCase().includes(q) ||
-          row.warehouseName.toLowerCase().includes(q) ||
-          (row.customerName?.toLowerCase().includes(q) ?? false)
-        );
-      })
-      .slice(0, 15)
-      .map((row) => {
-        const value = row.orderNumber;
-        if (seen.has(value)) return null;
-        seen.add(value);
-        return {
-          value,
-          label: `${row.orderNumber} — ${row.warehouseName}${row.customerName ? ` · ${row.customerName}` : ''}`,
-        };
-      })
-      .filter((opt): opt is { value: string; label: string } => opt !== null);
-  }, [items, searchInput]);
+  useEffect(() => {
+    void load(1, pageSize, statusFilter, appliedCustomer, appliedDocument);
+  }, [statusFilter, pageSize, appliedCustomer, appliedDocument, load]);
+
+  const customerSuggestions = useMemo(() => {
+    const rows = [
+      ...customers.map((customer) => ({
+        customerName: customer.fullName,
+        customerPhone: customer.phone,
+      })),
+      ...items.map((row) => ({
+        customerName: row.customerName ?? '',
+        customerPhone: null as string | null,
+      })),
+    ];
+    return buildCustomerSearchSuggestions(rows, customerInput);
+  }, [customers, items, customerInput]);
+
+  const documentSuggestions = useMemo(
+    () => buildDocumentSearchSuggestions(items.map((row) => row.orderNumber), documentInput),
+    [items, documentInput],
+  );
 
   const filteredItems = items;
 
-  const applySearch = (value?: string) => {
-    const next = (value ?? searchInput).trim();
-    setSearchInput(value ?? searchInput);
-    setSearch(next);
-    void load(1, pageSize, next, statusFilter);
+  const resetFilters = () => {
+    setCustomerInput('');
+    setDocumentInput('');
+    setAppliedCustomer('');
+    setAppliedDocument('');
+    setStatusFilter(undefined);
   };
 
   const loadOrderReturns = useCallback(async (orderId: string) => {
@@ -221,28 +259,53 @@ export function SalesOrderListPage() {
     } else {
       setOrderReturns([]);
     }
-    void load();
+    void load(page, pageSize);
   };
 
   const handleCompleteDraft = () => {
     if (!detail) return;
+    setDraftCustomerId(detail.customerId);
     setDraftCheckoutOpen(true);
   };
 
+  const handleQuickCustomerSaved = useCallback((customer: CustomerDetail) => {
+    const listItem: CustomerListItem = {
+      id: customer.id,
+      customerCode: customer.customerCode,
+      fullName: customer.fullName,
+      phone: customer.phone,
+      allowCredit: customer.allowCredit,
+      creditLimit: customer.creditLimit ?? undefined,
+    };
+    setCustomers((prev) => {
+      if (prev.some((row) => row.id === customer.id)) {
+        return prev.map((row) => (row.id === customer.id ? listItem : row));
+      }
+      return [...prev, listItem].sort((a, b) => a.fullName.localeCompare(b.fullName, 'vi'));
+    });
+    setDraftCustomerId(customer.id);
+    message.success(`Đã chọn ${customer.fullName} (${customer.customerCode})`);
+  }, []);
+
   useEffect(() => {
-    if (!draftCheckoutOpen || !detail?.customerId || detail.totalAmount <= 0) {
+    if (!draftCheckoutOpen || !draftCustomerId || !detail || detail.totalAmount <= 0) {
       setDraftCustomerLoyalty(null);
       return;
     }
     let cancelled = false;
     void (async () => {
-      const loyalty = await fetchPosCustomerLoyalty(detail.customerId!, detail.totalAmount);
+      const loyalty = await fetchPosCustomerLoyalty(draftCustomerId, detail.totalAmount);
       if (!cancelled) setDraftCustomerLoyalty(loyalty);
     })();
     return () => {
       cancelled = true;
     };
-  }, [draftCheckoutOpen, detail?.customerId, detail?.totalAmount]);
+  }, [draftCheckoutOpen, draftCustomerId, detail?.totalAmount]);
+
+  const draftCustomer = useMemo(
+    () => customers.find((c) => c.id === draftCustomerId),
+    [customers, draftCustomerId],
+  );
 
   const confirmCompleteDraft = async ({ payments, loyaltyDiscountAmount }: PosCheckoutConfirm) => {
     if (!detail) {
@@ -253,6 +316,7 @@ export function SalesOrderListPage() {
     try {
       const updated = await completeDraftSale(detail.id, {
         payments,
+        customerId: draftCustomerId ?? detail.customerId ?? null,
         ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0
           ? { loyaltyDiscountAmount }
           : {}),
@@ -263,7 +327,7 @@ export function SalesOrderListPage() {
       if (!(await printSalesInvoice(updated))) {
         message.warning('Trình duyệt chặn cửa sổ in — bấm In hóa đơn trong chi tiết đơn.');
       }
-      void load();
+      void load(page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không hoàn tất được đơn'));
       throw error;
@@ -278,7 +342,7 @@ export function SalesOrderListPage() {
       await cancelDraftSale(detail.id);
       message.success('Đã hủy đơn tạm');
       setDetailOpen(false);
-      void load();
+      void load(page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không hủy được đơn'));
     }
@@ -360,9 +424,21 @@ export function SalesOrderListPage() {
     {
       title: 'Tổng tiền',
       dataIndex: 'totalAmount',
-      width: 120,
+      width: 130,
       align: 'right',
-      render: (v: number) => <TabularMoney>{formatDisplayMoney(v)}</TabularMoney>,
+      render: (v: number, row) => {
+        const outstanding = row.outstanding ?? 0;
+        return (
+          <Space direction="vertical" size={0} style={{ alignItems: 'flex-end' }}>
+            <TabularMoney>{formatDisplayMoney(v)}</TabularMoney>
+            {outstanding > 0.009 ? (
+              <Tag color="orange" style={{ margin: 0, fontSize: 11 }}>
+                Nợ {formatDisplayMoney(outstanding)}
+              </Tag>
+            ) : null}
+          </Space>
+        );
+      },
     },
     {
       title: 'Thao tác',
@@ -392,41 +468,41 @@ export function SalesOrderListPage() {
   ];
 
   const lineColumns: ColumnsType<SalesOrderDetail['items'][number]> = [
-    { title: 'Mã SP', dataIndex: 'productCode', width: 100 },
-    { title: 'Tên SP', dataIndex: 'productName' },
-    { title: 'Lô', dataIndex: 'batchNumber', width: 100, render: (v?: string) => v ?? '—' },
+    { title: 'Mã SP', dataIndex: 'productCode', width: 72, ellipsis: true },
+    { title: 'Tên SP', dataIndex: 'productName', ellipsis: true },
+    { title: 'Lô', dataIndex: 'batchNumber', width: 76, ellipsis: true, render: (v?: string) => v ?? '—' },
     {
       title: 'HSD',
       dataIndex: 'expiryDate',
-      width: 100,
+      width: 84,
       render: (v?: string) => (v ? formatDisplayDate(v) : '—'),
     },
-    { title: 'ĐVT', dataIndex: 'unitName', width: 70 },
+    { title: 'ĐVT', dataIndex: 'unitName', width: 48, ellipsis: true },
     {
-      title: 'SL',
+      title: 'Sl mua',
       dataIndex: 'quantity',
-      width: 70,
+      width: 56,
       align: 'right',
       render: (v: number) => v.toLocaleString('vi-VN'),
     },
     {
-      title: 'Đã trả',
+      title: 'Sl trả',
       dataIndex: 'returnedQuantity',
-      width: 70,
+      width: 56,
       align: 'right',
       render: (v?: number) => (v ? v.toLocaleString('vi-VN') : '—'),
     },
     {
       title: 'Đơn giá',
       dataIndex: 'unitPrice',
-      width: 100,
+      width: 84,
       align: 'right',
       render: (v: number) => <TabularMoney>{formatDisplayMoney(v)}</TabularMoney>,
     },
     {
       title: 'Thành tiền',
       dataIndex: 'lineTotal',
-      width: 110,
+      width: 92,
       align: 'right',
       render: (v: number) => <TabularMoney>{formatDisplayMoney(v)}</TabularMoney>,
     },
@@ -498,6 +574,31 @@ export function SalesOrderListPage() {
       (line) => line.batchId && line.quantity - (line.returnedQuantity ?? 0) > 0.0001,
     ) ?? [];
 
+  const canCollectOrderDebt =
+    Boolean(
+      detail &&
+        canWrite &&
+        detail.customerId &&
+        isCompletedSaleStatus(detail.status) &&
+        resolveOrderPaymentSummary(detail).hasOutstanding,
+    );
+
+  const openCollectOrderDebt = () => {
+    if (!detail?.customerId) {
+      message.warning('Đơn không có khách hàng để thu nợ');
+      return;
+    }
+    const { outstanding } = resolveOrderPaymentSummary(detail);
+    setDetailOpen(false);
+    navigate(
+      buildCustomerPaymentCreateUrl({
+        customerId: detail.customerId,
+        salesOrderId: detail.id,
+        amount: outstanding,
+      }),
+    );
+  };
+
   return (
     <Card title="Đơn bán hàng">
       <Alert
@@ -512,55 +613,36 @@ export function SalesOrderListPage() {
           </Button>
         }
       />
-      <Space wrap style={filterBarStyle}>
-        <AutoComplete
-          style={{ width: 280 }}
-          options={searchSuggestions}
-          value={searchInput}
-          onSelect={(value) => applySearch(String(value))}
-          onChange={(value) => {
-            setSearchInput(value);
-            if (!value) {
-              setSearch('');
-              void load(1, pageSize, '', statusFilter);
-            }
-          }}
-        >
-          <Input
-            allowClear
-            placeholder="Số đơn, kho, khách hàng"
-            prefix={<SearchOutlined />}
-            onPressEnter={() => applySearch()}
-          />
-        </AutoComplete>
-        <Button type="primary" icon={<SearchOutlined />} onClick={() => applySearch()}>
-          Lọc
-        </Button>
+      <SalesListDualSearchWrap>
+        <SalesListDualSearchBar
+          customerValue={customerInput}
+          documentValue={documentInput}
+          onCustomerChange={setCustomerInput}
+          onDocumentChange={setDocumentInput}
+          onApply={applySearch}
+          customerSuggestions={customerSuggestions}
+          documentSuggestions={documentSuggestions}
+          documentPlaceholder="Số đơn"
+        />
         <Select
           allowClear
           placeholder="Trạng thái"
           style={{ width: 140 }}
           value={statusFilter}
-          onChange={(value) => {
-            setStatusFilter(value);
-            void load(1, pageSize, search, value);
-          }}
+          onChange={(value) => setStatusFilter(value)}
           options={SALE_STATUS_FILTER_OPTIONS.map(({ value, label }) => ({ value, label }))}
         />
+        <Button onClick={resetFilters}>Xóa lọc</Button>
         <Button
-          onClick={() => {
-            setSearch('');
-            setSearchInput('');
-            setStatusFilter(undefined);
-            void load(1, pageSize, '', undefined);
-          }}
+          type="primary"
+          ghost
+          icon={<ReloadOutlined />}
+          onClick={reloadList}
+          loading={loading}
         >
-          Xóa lọc
-        </Button>
-        <Button type="primary" ghost icon={<ReloadOutlined />} onClick={() => void load()} loading={loading}>
           Tải lại
         </Button>
-      </Space>
+      </SalesListDualSearchWrap>
 
       <Table
         rowKey="id"
@@ -574,7 +656,13 @@ export function SalesOrderListPage() {
           showSizeChanger: true,
           showTotal: (t) => `${t} đơn`,
           onChange: (nextPage, nextPageSize) => {
-            void load(nextPage, nextPageSize, search, statusFilter);
+            void load(
+              nextPage,
+              nextPageSize ?? pageSize,
+              statusFilter,
+              appliedCustomer,
+              appliedDocument,
+            );
           },
         }}
         onRow={(record) => ({
@@ -585,7 +673,7 @@ export function SalesOrderListPage() {
 
       <Drawer
         title={detail ? `Xem ${detail.orderNumber}` : 'Xem đơn bán'}
-        width={720}
+        width={880}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         loading={detailLoading}
@@ -637,6 +725,11 @@ export function SalesOrderListPage() {
                         Trả hàng
                       </Button>
                     )}
+                  {canCollectOrderDebt && (
+                    <Button type="primary" icon={<DollarOutlined />} onClick={openCollectOrderDebt}>
+                      Thu nợ
+                    </Button>
+                  )}
                 </Space>
               </Card>
             ) : null}
@@ -672,12 +765,17 @@ export function SalesOrderListPage() {
               <Descriptions.Item label="Ca">{detail.shiftNumber ?? '—'}</Descriptions.Item>
             </Descriptions>
 
-            <OrderDetailFinancials order={detail} />
+            <OrderDetailFinancials
+              order={detail}
+              onCollectDebt={canCollectOrderDebt ? openCollectOrderDebt : undefined}
+            />
 
             <Table
               rowKey="id"
               size="small"
               pagination={false}
+              tableLayout="fixed"
+              style={{ width: '100%' }}
               dataSource={detail.items}
               columns={lineColumns}
             />
@@ -739,11 +837,26 @@ export function SalesOrderListPage() {
             detail.items.reduce((sum, line) => sum + (line.discountAmount ?? 0), 0)
           }
           orderDiscountAmount={detail.discountAmount}
+          customerId={draftCustomerId}
+          customers={customers}
+          onCustomerChange={setDraftCustomerId}
+          onQuickAddCustomer={canWrite ? () => setQuickCustomerOpen(true) : undefined}
+          customerAllowCredit={draftCustomer?.allowCredit}
+          customerCreditLimit={draftCustomer?.creditLimit}
+          customerCurrentOutstanding={draftCustomer?.currentOutstanding}
           customerLoyalty={draftCustomerLoyalty}
           onCancel={() => setDraftCheckoutOpen(false)}
           onConfirm={(result) => confirmCompleteDraft(result)}
         />
       )}
+
+      <CustomerFormDrawer
+        open={quickCustomerOpen}
+        editing={null}
+        variant="quick"
+        onClose={() => setQuickCustomerOpen(false)}
+        onSaved={handleQuickCustomerSaved}
+      />
     </Card>
   );
 }

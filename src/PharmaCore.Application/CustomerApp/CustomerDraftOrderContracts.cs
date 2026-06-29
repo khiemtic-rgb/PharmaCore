@@ -71,6 +71,7 @@ public sealed record CustomerDraftOrderListItemDto(
     string DraftNumber,
     Guid CustomerId,
     string CustomerName,
+    string? CustomerPhone,
     short Status,
     decimal TotalAmount,
     int ItemCount,

@@ -48,6 +48,7 @@ export function ProductImportPage() {
   const [preview, setPreview] = useState<PreviewRow[]>([]);
   const [result, setResult] = useState<ProductImportResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importBatch, setImportBatch] = useState<{ current: number; total: number } | null>(null);
   const [fileName, setFileName] = useState<string>();
 
   const handleFile = useCallback(async (file: File) => {
@@ -70,6 +71,7 @@ export function ProductImportPage() {
   const runImport = async () => {
     if (preview.length === 0) return;
     setImporting(true);
+    setImportBatch(null);
     try {
       const payload = preview.map((row) => ({
         rowNumber: row.rowNumber,
@@ -83,13 +85,16 @@ export function ProductImportPage() {
         brandCode: undefined,
         drugType: 1 as const,
       }));
-      const res = await importProducts(payload);
+      const res = await importProducts(payload, (current, total) => {
+        setImportBatch({ current, total });
+      });
       setResult(res);
       message.success(`Import xong: ${res.created} tạo mới, ${res.skipped} bỏ qua, ${res.failed} lỗi`);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Import thất bại'));
     } finally {
       setImporting(false);
+      setImportBatch(null);
     }
   };
 
@@ -116,7 +121,8 @@ export function ProductImportPage() {
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
           Cột tối thiểu: <code>product_name</code>, khuyến nghị thêm <code>barcode</code>,{' '}
-          <code>retail_price</code>, <code>min_stock_qty</code>. Mã SP trùng sẽ bỏ qua.
+          <code>retail_price</code>, <code>min_stock_qty</code>. Mã SP trùng sẽ bỏ qua. File lớn được
+          gửi theo lô 500 dòng — giữ tab mở vài phút.
         </Typography.Paragraph>
       </div>
 
@@ -148,6 +154,11 @@ export function ProductImportPage() {
             Import {preview.length > 0 ? `(${preview.length} dòng)` : ''}
           </Button>
         </Space>
+        {importBatch && (
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+            Đang import lô {importBatch.current}/{importBatch.total}…
+          </Typography.Text>
+        )}
         {fileName && (
           <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
             File: {fileName}

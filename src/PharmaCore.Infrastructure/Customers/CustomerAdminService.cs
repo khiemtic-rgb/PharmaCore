@@ -97,6 +97,8 @@ internal sealed class CustomerAdminService : ICustomerAdminService
             request.DateOfBirth,
             request.Gender,
             request.Status,
+            request.AllowCredit,
+            request.CreditLimit,
             cancellationToken);
 
         return updated ? await _repository.GetAsync(customerId, cancellationToken) : null;

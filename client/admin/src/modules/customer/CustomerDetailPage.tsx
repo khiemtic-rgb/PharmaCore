@@ -34,6 +34,7 @@ import { CustomerFormDrawer } from '@/modules/customer/CustomerFormDrawer';
 import { CustomerLoyaltyPanel } from '@/modules/customer/CustomerLoyaltyPanel';
 import { CustomerOrdersPanel } from '@/modules/customer/CustomerOrdersPanel';
 import { formatDisplayDate } from '@/shared/utils/date';
+import { formatDisplayMoney } from '@/shared/utils/money';
 
 type DetailTab = 'profile' | 'consents' | 'loyalty' | 'orders';
 
@@ -133,6 +134,16 @@ export function CustomerDetailPage() {
                   <Descriptions.Item label="Giới tính">
                     {detail.gender != null ? (CUSTOMER_GENDER_LABELS[detail.gender] ?? detail.gender) : '—'}
                   </Descriptions.Item>
+                  <Descriptions.Item label="Ghi nợ">
+                    {detail.allowCredit ? 'Có' : 'Không'}
+                  </Descriptions.Item>
+                  {detail.allowCredit ? (
+                    <Descriptions.Item label="Hạn mức nợ">
+                      {detail.creditLimit != null && detail.creditLimit > 0
+                        ? formatDisplayMoney(detail.creditLimit)
+                        : 'Không giới hạn'}
+                    </Descriptions.Item>
+                  ) : null}
                   <Descriptions.Item label="Ngày tạo">
                     {formatDisplayDate(detail.createdAt)}
                   </Descriptions.Item>

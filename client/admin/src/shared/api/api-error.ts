@@ -7,9 +7,21 @@ export function apiErrorMessage(error: unknown, fallback: string) {
     }
     const detail = error.response.data;
     if (typeof detail === 'string' && detail.trim()) return detail;
-    if (detail && typeof detail === 'object' && 'message' in detail) {
-      const msg = String((detail as { message?: string }).message ?? '');
-      if (msg.trim()) return msg;
+    if (detail && typeof detail === 'object') {
+      const errors = (detail as { errors?: Record<string, string[] | string> }).errors;
+      if (errors && typeof errors === 'object') {
+        const lines = Object.entries(errors).flatMap(([field, msgs]) => {
+          const list = Array.isArray(msgs) ? msgs : [String(msgs)];
+          return list.filter(Boolean).map((msg) => `${field}: ${msg}`);
+        });
+        if (lines.length > 0) {
+          return lines.slice(0, 3).join(' · ');
+        }
+      }
+      if ('message' in detail) {
+        const msg = String((detail as { message?: string }).message ?? '');
+        if (msg.trim()) return msg;
+      }
     }
     if (detail && typeof detail === 'object' && 'detail' in detail) {
       const devDetail = String((detail as { detail?: string }).detail ?? '');

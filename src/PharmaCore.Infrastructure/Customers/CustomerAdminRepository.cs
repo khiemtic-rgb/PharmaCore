@@ -74,6 +74,8 @@ internal sealed class CustomerAdminRepository
                 c.gender AS Gender,
                 c.status AS Status,
                 c.created_at AS CreatedAt,
+                c.allow_credit AS AllowCredit,
+                c.credit_limit AS CreditLimit,
                 (ca.id IS NOT NULL) AS HasAppAccount,
                 ca.is_verified AS AppVerified,
                 ca.last_login_at AS AppLastLoginAt
@@ -236,6 +238,8 @@ internal sealed class CustomerAdminRepository
         DateOnly? dateOfBirth,
         short? gender,
         short status,
+        bool allowCredit,
+        decimal? creditLimit,
         CancellationToken cancellationToken)
     {
         const string sql = """
@@ -247,6 +251,8 @@ internal sealed class CustomerAdminRepository
                 date_of_birth = @DateOfBirth,
                 gender = @Gender,
                 status = @Status,
+                allow_credit = @AllowCredit,
+                credit_limit = @CreditLimit,
                 updated_at = NOW()
             WHERE id = @CustomerId
               AND tenant_id = @TenantId
@@ -266,6 +272,8 @@ internal sealed class CustomerAdminRepository
                 DateOfBirth = dateOfBirth,
                 Gender = gender,
                 Status = status,
+                AllowCredit = allowCredit,
+                CreditLimit = creditLimit,
             });
         return rows > 0;
     }
@@ -293,7 +301,9 @@ internal sealed class CustomerAdminRepository
             ToOffset(row.CreatedAt),
             row.HasAppAccount,
             row.AppVerified,
-            row.AppLastLoginAt.HasValue ? ToOffset(row.AppLastLoginAt.Value) : null);
+            row.AppLastLoginAt.HasValue ? ToOffset(row.AppLastLoginAt.Value) : null,
+            row.AllowCredit,
+            row.CreditLimit);
 
     private static CustomerOrderListItemDto MapOrder(CustomerOrderRow row) =>
         new(
@@ -332,6 +342,8 @@ internal sealed class CustomerAdminRepository
         public bool HasAppAccount { get; init; }
         public bool? AppVerified { get; init; }
         public DateTime? AppLastLoginAt { get; init; }
+        public bool AllowCredit { get; init; }
+        public decimal? CreditLimit { get; init; }
     }
 
     private sealed class CustomerOrderRow

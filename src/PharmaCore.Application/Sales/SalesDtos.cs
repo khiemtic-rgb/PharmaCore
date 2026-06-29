@@ -7,7 +7,10 @@ public sealed record CustomerListItemDto(
     string CustomerCode,
     string FullName,
     string Phone,
-    string? Email);
+    string? Email,
+    bool AllowCredit = false,
+    decimal? CreditLimit = null,
+    decimal CurrentOutstanding = 0);
 
 public sealed record PosBatchHintDto(
     Guid BatchId,
@@ -239,6 +242,8 @@ public sealed record CloseSalesShiftRequest(
 
 public sealed record SalesOrderListFilter(
     string? Search = null,
+    string? CustomerSearch = null,
+    string? DocumentSearch = null,
     short? Status = null,
     int Page = 1,
     int PageSize = 50);
@@ -259,6 +264,8 @@ public sealed record SalesOrderListItemDto(
     short Status,
     DateTime OrderDate,
     decimal TotalAmount,
+    decimal AmountPaid,
+    decimal Outstanding,
     int ItemCount,
     decimal TotalRefunded = 0,
     Guid? SalesShiftId = null,
@@ -307,6 +314,8 @@ public sealed record SalesOrderDetailDto(
     short? OrderDiscountType,
     decimal OrderDiscountValue,
     decimal TotalAmount,
+    decimal AmountPaid,
+    decimal Outstanding,
     decimal TotalRefunded,
     string? Notes,
     IReadOnlyList<SalesOrderItemDto> Items,
@@ -320,3 +329,96 @@ public sealed record SalesOrderDetailDto(
     decimal VoucherDiscountAmount = 0,
     string? VoucherCode = null,
     string? VoucherName = null);
+
+public sealed record CustomerReceivablesAgingBucketsDto(
+    decimal Current,
+    decimal Days31To60,
+    decimal Days61To90,
+    decimal Over90);
+
+public sealed record CustomerReceivablesRowDto(
+    Guid CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    string? CustomerPhone,
+    decimal TotalReceivable,
+    decimal UnappliedCredit,
+    CustomerReceivablesAgingBucketsDto Aging,
+    int OpenDocumentCount);
+
+public sealed record CustomerReceivablesDetailLineDto(
+    Guid SalesOrderId,
+    string OrderNumber,
+    DateTime OrderDate,
+    decimal OrderTotal,
+    decimal PaidAmount,
+    decimal Outstanding,
+    int DaysOutstanding);
+
+public sealed record SalesOrderReceivableSourceRow(
+    Guid CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    string? CustomerPhone,
+    Guid SalesOrderId,
+    string OrderNumber,
+    DateTime OrderDate,
+    decimal OrderTotal,
+    decimal AmountPaid,
+    decimal Outstanding);
+
+public sealed record CustomerReceivablesDetailDto(
+    Guid CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    string? CustomerPhone,
+    decimal TotalReceivable,
+    decimal UnappliedCredit,
+    CustomerReceivablesAgingBucketsDto Aging,
+    IReadOnlyList<CustomerReceivablesDetailLineDto> Lines);
+
+public sealed record CustomerPaymentListItemDto(
+    Guid Id,
+    string PaymentNumber,
+    Guid CustomerId,
+    string CustomerName,
+    decimal Amount,
+    short PaymentMethod,
+    short Status,
+    DateTime PaymentDate,
+    DateTime? PostedAt,
+    Guid? SalesOrderId,
+    string? OrderNumber,
+    string? Notes);
+
+public sealed record CreateCustomerPaymentRequest(
+    Guid CustomerId,
+    Guid? SalesOrderId,
+    decimal Amount,
+    short PaymentMethod,
+    string? Notes,
+    DateOnly? PaymentDate = null);
+
+public sealed record UpdateCustomerPaymentRequest(
+    Guid CustomerId,
+    Guid? SalesOrderId,
+    decimal Amount,
+    short PaymentMethod,
+    string? Notes,
+    DateOnly? PaymentDate = null);
+
+public sealed record CustomerPaymentListFilter(
+    string? Search = null,
+    string? CustomerSearch = null,
+    string? DocumentSearch = null,
+    Guid? CustomerId = null,
+    short? Status = null,
+    DateOnly? DateFrom = null,
+    DateOnly? DateTo = null);
+
+public sealed record SalesOrderPaymentLink(
+    Guid Id,
+    Guid CustomerId,
+    Guid WarehouseId,
+    short Status,
+    decimal Outstanding);

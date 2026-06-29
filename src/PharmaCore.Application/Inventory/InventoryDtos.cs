@@ -12,6 +12,14 @@ public sealed record PagedStockProductsResult(
     int Page,
     int PageSize);
 
+public sealed record PagedOpeningBalanceBatchesResult(
+    IReadOnlyList<OpeningBalanceBatchListItemDto> Items,
+    int Total,
+    int Page,
+    int PageSize,
+    int SummaryTotal,
+    int SummaryVoidableCount);
+
 public sealed record StockProductSummaryDto(
     Guid ProductId,
     string ProductCode,

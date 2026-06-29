@@ -147,12 +147,21 @@ internal sealed class InventoryService : IInventoryService
         return new OpeningBalanceResultDto(request.WarehouseId, batchIds.Count, batchIds);
     }
 
-    public async Task<IReadOnlyList<OpeningBalanceBatchListItemDto>> GetOpeningBalanceBatchesAsync(
+    public async Task<PagedOpeningBalanceBatchesResult> GetOpeningBalanceBatchesAsync(
         Guid? warehouseId,
+        Guid? productId,
+        string? search,
+        string? status,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken = default)
     {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 200);
         var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
-        return await _repository.GetOpeningBalanceBatchesAsync(warehouseId, allowed, cancellationToken);
+        var (items, total, summaryTotal, summaryVoidable) = await _repository.GetOpeningBalanceBatchesAsync(
+            warehouseId, allowed, productId, search, status, page, pageSize, cancellationToken);
+        return new PagedOpeningBalanceBatchesResult(items, total, page, pageSize, summaryTotal, summaryVoidable);
     }
 
     public Task VoidOpeningBalanceBatchAsync(Guid batchId, CancellationToken cancellationToken = default) =>

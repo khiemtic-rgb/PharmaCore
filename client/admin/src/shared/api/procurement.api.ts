@@ -25,6 +25,7 @@ function normalizeSupplier(row: Record<string, unknown>): Supplier {
     address: (row.address ?? row.Address) as string | undefined,
     paymentTerms: Number(row.paymentTerms ?? row.PaymentTerms ?? 30),
     status: Number(row.status ?? row.Status ?? 1),
+    isPlaceholder: Boolean(row.isPlaceholder ?? row.IsPlaceholder ?? false),
   };
 }
 
@@ -108,7 +109,11 @@ function normalizeGrnItem(row: Record<string, unknown>) {
     expiryDate: String(row.expiryDate ?? row.ExpiryDate ?? ''),
     quantity: Number(row.quantity ?? row.Quantity ?? 0),
     unitCost: Number(row.unitCost ?? row.UnitCost ?? 0),
+    discountType: (row.discountType ?? row.DiscountType) as number | undefined,
+    discountValue: Number(row.discountValue ?? row.DiscountValue ?? 0),
+    discountAmount: Number(row.discountAmount ?? row.DiscountAmount ?? 0),
     lineTotal: Number(row.lineTotal ?? row.LineTotal ?? 0),
+    inventoryUnitCost: Number(row.inventoryUnitCost ?? row.InventoryUnitCost ?? 0),
   };
 }
 
@@ -118,6 +123,19 @@ function normalizeGrnDetail(data: Record<string, unknown>): GoodsReceiptDetail {
   return {
     ...base,
     notes: (data.notes ?? data.Notes) as string | undefined,
+    subtotalGross: Number(data.subtotalGross ?? data.SubtotalGross ?? 0),
+    lineDiscountTotal: Number(data.lineDiscountTotal ?? data.LineDiscountTotal ?? 0),
+    merchandiseNet: Number(data.merchandiseNet ?? data.MerchandiseNet ?? 0),
+    orderDiscountType: (data.orderDiscountType ?? data.OrderDiscountType) as number | undefined,
+    orderDiscountValue: Number(data.orderDiscountValue ?? data.OrderDiscountValue ?? 0),
+    orderDiscountAmount: Number(data.orderDiscountAmount ?? data.OrderDiscountAmount ?? 0),
+    vatTreatmentId: (data.vatTreatmentId ?? data.VatTreatmentId) as string | undefined,
+    vatTreatmentCode: (data.vatTreatmentCode ?? data.VatTreatmentCode) as string | undefined,
+    vatTreatmentName: (data.vatTreatmentName ?? data.VatTreatmentName) as string | undefined,
+    vatIsNotSubject: Boolean(data.vatIsNotSubject ?? data.VatIsNotSubject ?? false),
+    taxRatePercent: Number(data.taxRatePercent ?? data.TaxRatePercent ?? 0),
+    taxAmount: Number(data.taxAmount ?? data.TaxAmount ?? 0),
+    totalAmount: Number(data.totalAmount ?? data.TotalAmount ?? 0),
     items: rawItems.map(normalizeGrnItem),
   };
 }
@@ -179,6 +197,76 @@ export async function deleteSupplier(id: string): Promise<void> {
   await http.delete(`/procurement/suppliers/${id}`);
 }
 
+export type SupplierImportError = { rowNumber: number; message: string };
+
+export type SupplierImportResult = {
+  created: number;
+  skipped: number;
+  failed: number;
+  errors: SupplierImportError[];
+};
+
+const SUPPLIER_IMPORT_BATCH_SIZE = 500;
+const SUPPLIER_IMPORT_TIMEOUT_MS = 120_000;
+
+function normalizeSupplierImportResult(data: Record<string, unknown>): SupplierImportResult {
+  const errors = ((data.errors ?? data.Errors ?? []) as Record<string, unknown>[]).map((row) => ({
+    rowNumber: Number(row.rowNumber ?? row.RowNumber ?? 0),
+    message: String(row.message ?? row.Message ?? ''),
+  }));
+  return {
+    created: Number(data.created ?? data.Created ?? 0),
+    skipped: Number(data.skipped ?? data.Skipped ?? 0),
+    failed: Number(data.failed ?? data.Failed ?? 0),
+    errors,
+  };
+}
+
+export async function importSuppliers(
+  rows: Array<{
+    rowNumber: number;
+    supplierCode: string;
+    supplierName: string;
+    taxCode?: string;
+    contactName?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    paymentTerms?: number;
+  }>,
+  onBatchProgress?: (current: number, total: number) => void,
+): Promise<SupplierImportResult> {
+  if (rows.length === 0) {
+    return { created: 0, skipped: 0, failed: 0, errors: [] };
+  }
+
+  const batches: (typeof rows)[] = [];
+  for (let i = 0; i < rows.length; i += SUPPLIER_IMPORT_BATCH_SIZE) {
+    batches.push(rows.slice(i, i + SUPPLIER_IMPORT_BATCH_SIZE));
+  }
+
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors: SupplierImportError[] = [];
+
+  for (let i = 0; i < batches.length; i++) {
+    onBatchProgress?.(i + 1, batches.length);
+    const { data } = await http.post<Record<string, unknown>>(
+      '/procurement/suppliers/import',
+      batches[i],
+      { timeout: SUPPLIER_IMPORT_TIMEOUT_MS },
+    );
+    const batchResult = normalizeSupplierImportResult(data);
+    created += batchResult.created;
+    skipped += batchResult.skipped;
+    failed += batchResult.failed;
+    errors.push(...batchResult.errors);
+  }
+
+  return { created, skipped, failed, errors };
+}
+
 function buildListParams(filters?: Record<string, string | number | boolean | undefined>): Record<string, string | number | boolean> | undefined {
   if (!filters) return undefined;
   const params: Record<string, string | number | boolean> = {};
@@ -231,6 +319,7 @@ export async function createPurchaseOrder(payload: {
 export async function updatePurchaseOrder(
   id: string,
   payload: {
+    supplierId?: string;
     expectedDate?: string;
     notes?: string;
     vatTreatmentId: string;
@@ -247,8 +336,14 @@ export async function updatePurchaseOrder(
   return normalizePoDetail(data);
 }
 
-export async function approvePurchaseOrder(id: string): Promise<PurchaseOrderDetail> {
-  const { data } = await http.post<Record<string, unknown>>(`/procurement/purchase-orders/${id}/approve`);
+export async function approvePurchaseOrder(
+  id: string,
+  payload?: { supplierId?: string },
+): Promise<PurchaseOrderDetail> {
+  const { data } = await http.post<Record<string, unknown>>(
+    `/procurement/purchase-orders/${id}/approve`,
+    payload ?? {},
+  );
   return normalizePoDetail(data);
 }
 
@@ -295,6 +390,9 @@ export async function createGoodsReceipt(payload: {
   warehouseId: string;
   receiptDate?: string;
   notes?: string;
+  vatTreatmentId: string;
+  orderDiscountType?: number;
+  orderDiscountValue?: number;
   items: {
     purchaseOrderItemId?: string;
     productId: string;
@@ -304,6 +402,8 @@ export async function createGoodsReceipt(payload: {
     expiryDate: string;
     quantity: number;
     unitCost: number;
+    discountType?: number;
+    discountValue?: number;
   }[];
 }): Promise<GoodsReceiptDetail> {
   const { data } = await http.post<Record<string, unknown>>('/procurement/goods-receipts', payload);

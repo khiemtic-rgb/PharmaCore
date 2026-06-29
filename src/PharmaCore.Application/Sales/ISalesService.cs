@@ -74,6 +74,8 @@ public interface ISalesService
     Task<IReadOnlyList<SalesReturnListItemDto>> GetSaleReturnsAsync(
         int limit = 50,
         string? search = null,
+        string? customerSearch = null,
+        string? documentSearch = null,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SalesReturnListItemDto>> GetSaleReturnsByOrderAsync(

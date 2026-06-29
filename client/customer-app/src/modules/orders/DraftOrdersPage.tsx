@@ -191,6 +191,8 @@ function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
     status: detail.status,
     orderDate: detail.orderDate,
     totalAmount: detail.totalAmount,
+    amountPaid: detail.amountPaid,
+    outstanding: detail.outstanding,
     itemCount: detail.items.length,
     totalRefunded: detail.totalRefunded,
   });
@@ -262,6 +264,19 @@ function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
               )
               .join(' · ')}
           </Typography.Text>
+        ) : null}
+        {detail.outstanding > 0.009 ? (
+          <>
+            <Typography.Text style={{ fontSize: 13 }}>
+              Đã thanh toán: <strong>{formatMoney(detail.amountPaid)}</strong>
+            </Typography.Text>
+            <Typography.Text style={{ fontSize: 13, color: '#c2410c' }}>
+              Còn nợ: <strong>{formatMoney(detail.outstanding)}</strong>
+            </Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Thanh toán phần nợ tại quầy — xem mục Công nợ của tôi.
+            </Typography.Text>
+          </>
         ) : null}
         {detail.notes ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>

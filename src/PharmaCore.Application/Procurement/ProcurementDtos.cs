@@ -10,7 +10,8 @@ public sealed record SupplierDto(
     string? Email,
     string? Address,
     int PaymentTerms,
-    short Status);
+    short Status,
+    bool IsPlaceholder);
 
 public sealed record CreateSupplierRequest(
     string SupplierCode,
@@ -101,10 +102,13 @@ public sealed record UpdatePurchaseOrderItemRequest(
     decimal UnitPrice);
 
 public sealed record UpdatePurchaseOrderRequest(
+    Guid? SupplierId,
     DateOnly? ExpectedDate,
     string? Notes,
     IReadOnlyList<UpdatePurchaseOrderItemRequest> Items,
     Guid VatTreatmentId);
+
+public sealed record ApprovePurchaseOrderRequest(Guid? SupplierId);
 
 public sealed record ProcurementVatTreatmentDto(
     Guid Id,
@@ -157,7 +161,11 @@ public sealed record GoodsReceiptItemDto(
     DateOnly ExpiryDate,
     decimal Quantity,
     decimal UnitCost,
-    decimal LineTotal);
+    short? DiscountType,
+    decimal DiscountValue,
+    decimal DiscountAmount,
+    decimal LineTotal,
+    decimal InventoryUnitCost);
 
 public sealed record GoodsReceiptDetailDto(
     Guid Id,
@@ -171,6 +179,19 @@ public sealed record GoodsReceiptDetailDto(
     short Status,
     DateTime ReceiptDate,
     string? Notes,
+    decimal SubtotalGross,
+    decimal LineDiscountTotal,
+    decimal MerchandiseNet,
+    short? OrderDiscountType,
+    decimal OrderDiscountValue,
+    decimal OrderDiscountAmount,
+    Guid? VatTreatmentId,
+    string? VatTreatmentCode,
+    string? VatTreatmentName,
+    bool VatIsNotSubject,
+    short TaxRatePercent,
+    decimal TaxAmount,
+    decimal TotalAmount,
     IReadOnlyList<GoodsReceiptItemDto> Items,
     DateTime? DeletedAt = null);
 
@@ -182,7 +203,9 @@ public sealed record CreateGoodsReceiptItemRequest(
     DateOnly? ManufactureDate,
     DateOnly ExpiryDate,
     decimal Quantity,
-    decimal UnitCost);
+    decimal UnitCost,
+    short? DiscountType = null,
+    decimal? DiscountValue = null);
 
 public sealed record CreateGoodsReceiptRequest(
     Guid? PurchaseOrderId,
@@ -190,7 +213,10 @@ public sealed record CreateGoodsReceiptRequest(
     Guid WarehouseId,
     DateOnly? ReceiptDate,
     string? Notes,
-    IReadOnlyList<CreateGoodsReceiptItemRequest> Items);
+    Guid VatTreatmentId,
+    IReadOnlyList<CreateGoodsReceiptItemRequest> Items,
+    short? OrderDiscountType = null,
+    decimal? OrderDiscountValue = null);
 
 public sealed record SupplierPaymentListItemDto(
     Guid Id,

@@ -3,8 +3,15 @@ import { Form, Input, InputNumber, Modal, Select, Space, Typography } from 'antd
 import type { PosCheckoutPaymentLine, SalesOrderDetail } from '@/shared/api/sales.types';
 import { SALES_PAYMENT_METHOD_LABELS } from '@/shared/api/sales.types';
 import { previewReturnRefund } from '@/modules/sales/sales-return-pricing';
+import { resolveOrderPaymentSummary } from '@/modules/sales/sales-order-payment-summary';
 import { PosSummaryMoney, PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import { formatDisplayMoney } from '@/shared/utils/money';
+
+function splitReturnRefund(totalRefund: number, outstanding: number, amountPaid: number) {
+  const debtReduced = Math.min(totalRefund, Math.max(0, outstanding));
+  const cashRefund = Math.min(totalRefund - debtReduced, Math.max(0, amountPaid));
+  return { debtReduced, cashRefund };
+}
 
 type Props = {
   open: boolean;
@@ -50,6 +57,20 @@ export function SalesReturnModal({ open, loading, order, onCancel, onConfirm }: 
     return previewReturnRefund(order, quantities ?? {});
   }, [order, quantities]);
 
+  const paymentSummary = useMemo(
+    () => (order ? resolveOrderPaymentSummary(order) : null),
+    [order],
+  );
+
+  const returnSplit = useMemo(() => {
+    if (!paymentSummary) return { debtReduced: 0, cashRefund: 0 };
+    return splitReturnRefund(
+      preview.totalRefund,
+      paymentSummary.outstanding,
+      paymentSummary.amountPaid,
+    );
+  }, [paymentSummary, preview.totalRefund]);
+
   const hasReturnQty = preview.lines.length > 0;
   const canSubmit = hasReturnQty;
 
@@ -89,6 +110,26 @@ export function SalesReturnModal({ open, loading, order, onCancel, onConfirm }: 
               danger={preview.totalRefund > 0}
               strong
             />
+            {preview.totalRefund > 0.009 && returnSplit.debtReduced > 0.009 ? (
+              <PosSummaryRow
+                label="Giảm công nợ"
+                value={formatDisplayMoney(returnSplit.debtReduced)}
+              />
+            ) : null}
+            {preview.totalRefund > 0.009 && returnSplit.cashRefund > 0.009 ? (
+              <PosSummaryRow
+                label="Hoàn tiền mặt cho khách"
+                value={formatDisplayMoney(returnSplit.cashRefund)}
+                danger
+              />
+            ) : null}
+            {preview.totalRefund > 0.009 &&
+            returnSplit.debtReduced > 0.009 &&
+            returnSplit.cashRefund <= 0.009 ? (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Đơn ghi nợ — không hoàn tiền mặt, chỉ giảm nợ trên đơn.
+              </Typography.Text>
+            ) : null}
           </Space>
 
           <Form form={form} layout="vertical">
@@ -124,12 +165,12 @@ export function SalesReturnModal({ open, loading, order, onCancel, onConfirm }: 
             </Form.Item>
             <Form.Item label="Tiền trả khách">
               <PosSummaryMoney
-                value={formatDisplayMoney(preview.totalRefund)}
-                danger={preview.totalRefund > 0}
+                value={formatDisplayMoney(returnSplit.cashRefund)}
+                danger={returnSplit.cashRefund > 0}
                 strong
               />
             </Form.Item>
-            {hasReturnQty && preview.totalRefund > 0 && (
+            {hasReturnQty && returnSplit.cashRefund > 0.009 && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                 Hoàn qua {SALES_PAYMENT_METHOD_LABELS[paymentMethod] ?? '—'} — ghi vào báo cáo ca.
               </Typography.Text>

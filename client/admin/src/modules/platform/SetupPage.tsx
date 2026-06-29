@@ -87,6 +87,29 @@ export function SetupPage() {
   const [tenants, setTenants] = useState<PlatformTenantListItem[]>([]);
   const [extraBranchCount, setExtraBranchCount] = useState(0);
 
+  const refreshTenantList = useCallback(
+    async (platformKey?: string) => {
+      const key = platformKey?.trim() || form.getFieldValue('platformKey')?.trim() || loadStoredPlatformKey();
+      if (key) {
+        saveStoredPlatformKey(key);
+        form.setFieldValue('platformKey', key);
+      }
+
+      const count = tenantsCount;
+      if (count === 0 && !key) {
+        setTenants([]);
+        return;
+      }
+
+      try {
+        setTenants(await fetchPlatformTenants(key || undefined));
+      } catch {
+        setTenants([]);
+      }
+    },
+    [form, tenantsCount],
+  );
+
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -94,15 +117,14 @@ export function SetupPage() {
       setTenantsCount(status.tenantsCount);
       setProvisioningKeyRequired(status.provisioningKeyRequired);
 
-      const platformKey = form.getFieldValue('platformKey') || loadStoredPlatformKey();
-      if (platformKey) {
-        form.setFieldValue('platformKey', platformKey);
+      const storedKey = loadStoredPlatformKey();
+      if (storedKey) {
+        form.setFieldValue('platformKey', storedKey);
       }
 
-      if (status.tenantsCount === 0 || platformKey) {
+      if (status.tenantsCount === 0 || storedKey) {
         try {
-          const rows = await fetchPlatformTenants(platformKey || undefined);
-          setTenants(rows);
+          setTenants(await fetchPlatformTenants(storedKey || undefined));
         } catch {
           setTenants([]);
         }
@@ -119,6 +141,10 @@ export function SetupPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const handlePlatformKeyBlur = () => {
+    void refreshTenantList();
+  };
 
   const onFinish = async (values: SetupFormValues) => {
     if (values.adminPassword !== values.adminPasswordConfirm) {
@@ -221,52 +247,6 @@ export function SetupPage() {
                 />
               )}
 
-              {provisioningKeyRequired ? (
-                <Form.Item
-                  name="platformKey"
-                  label="Mã thiết lập nền tảng"
-                  tooltip="Giá trị Platform__ProvisioningKey trên server API"
-                  rules={[{ required: true, message: 'Nhập mã thiết lập' }]}
-                >
-                  <Input.Password
-                    prefix={<KeyOutlined />}
-                    placeholder="Nhập mã từ cấu hình server"
-                    onBlur={() => {
-                      const key = form.getFieldValue('platformKey')?.trim();
-                      if (key) saveStoredPlatformKey(key);
-                      void reload();
-                    }}
-                  />
-                </Form.Item>
-              ) : null}
-
-              {tenants.length > 0 ? (
-                <>
-                  <Typography.Title level={5}>Nhà thuốc đã tạo</Typography.Title>
-                  <Table
-                    size="small"
-                    rowKey="id"
-                    pagination={false}
-                    dataSource={tenants}
-                    columns={[
-                      { title: 'Mã', dataIndex: 'tenantCode', width: 120 },
-                      { title: 'Tên', dataIndex: 'tenantName' },
-                      {
-                        title: 'Ngày tạo',
-                        dataIndex: 'createdAt',
-                        width: 180,
-                        render: (v: string) => new Date(v).toLocaleString('vi-VN'),
-                      },
-                    ]}
-                  />
-                  <Divider />
-                </>
-              ) : null}
-
-              <Typography.Title level={5}>
-                <ShopOutlined /> Tạo nhà thuốc mới
-              </Typography.Title>
-
               <Form
                 form={form}
                 layout="vertical"
@@ -282,6 +262,47 @@ export function SetupPage() {
                   platformKey: loadStoredPlatformKey(),
                 }}
               >
+                {provisioningKeyRequired ? (
+                  <Form.Item
+                    name="platformKey"
+                    label="Mã thiết lập nền tảng"
+                    tooltip="Giá trị Platform__ProvisioningKey trên server API"
+                    rules={[{ required: true, message: 'Nhập mã thiết lập' }]}
+                  >
+                    <Input.Password
+                      prefix={<KeyOutlined />}
+                      placeholder="Nhập mã từ cấu hình server"
+                      onBlur={handlePlatformKeyBlur}
+                    />
+                  </Form.Item>
+                ) : null}
+
+                {tenants.length > 0 ? (
+                  <>
+                    <Typography.Title level={5}>Nhà thuốc đã tạo</Typography.Title>
+                    <Table
+                      size="small"
+                      rowKey="id"
+                      pagination={false}
+                      dataSource={tenants}
+                      columns={[
+                        { title: 'Mã', dataIndex: 'tenantCode', width: 120 },
+                        { title: 'Tên', dataIndex: 'tenantName' },
+                        {
+                          title: 'Ngày tạo',
+                          dataIndex: 'createdAt',
+                          width: 180,
+                          render: (v: string) => new Date(v).toLocaleString('vi-VN'),
+                        },
+                      ]}
+                    />
+                    <Divider />
+                  </>
+                ) : null}
+
+                <Typography.Title level={5}>
+                  <ShopOutlined /> Tạo nhà thuốc mới
+                </Typography.Title>
                 <Row gutter={16}>
                   <Col xs={24} md={8}>
                     <Form.Item

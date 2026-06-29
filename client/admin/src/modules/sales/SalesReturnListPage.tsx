@@ -1,24 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AutoComplete,
-  Button,
-  Card,
-  Input,
-  Space,
-  Table,
-  Tag,
-  message,
-} from 'antd';
+import { Button, Card, Space, Table, Tag, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EyeOutlined, PrinterOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { EyeOutlined, PrinterOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { fetchSalesReturn, fetchSalesReturns } from '@/shared/api/sales.api';
-import type { SalesReturnListItem } from '@/shared/api/sales.types';
+import { fetchSalesReturn, fetchSalesReturns, searchCustomers } from '@/shared/api/sales.api';
+import type { CustomerListItem, SalesReturnListItem } from '@/shared/api/sales.types';
 import { SALES_RETURN_STATUS_LABELS } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
 import { SalesReturnDetailDrawer } from '@/modules/sales/SalesReturnDetailDrawer';
-import { filterBarStyle, TabularMoney } from '@/modules/sales/sales-ui-styles';
+import {
+  buildCustomerSearchSuggestions,
+  buildDocumentSearchSuggestions,
+} from '@/modules/sales/sales-list-customer-search';
+import { SalesListDualSearchBar, SalesListDualSearchWrap } from '@/modules/sales/SalesListDualSearchBar';
+import { TabularMoney } from '@/modules/sales/sales-ui-styles';
 import { printSalesReturn } from '@/modules/sales/sales-return-print';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { formatDisplayMoney } from '@/shared/utils/money';
@@ -27,54 +23,70 @@ export function SalesReturnListPage() {
   const canRead = useHasPermission('sales.read');
   const navigate = useNavigate();
   const [items, setItems] = useState<SalesReturnListItem[]>([]);
+  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [documentQuery, setDocumentQuery] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailReturnId, setDetailReturnId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (nextCustomerSearch: string, nextDocumentSearch: string) => {
     setLoading(true);
     try {
-      setItems(await fetchSalesReturns(search || undefined));
+      setItems(
+        await fetchSalesReturns({
+          customerSearch: nextCustomerSearch.trim() || undefined,
+          documentSearch: nextDocumentSearch.trim() || undefined,
+        }),
+      );
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không tải được phiếu trả'));
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, []);
 
   useEffect(() => {
-    void load();
+    void load('', '');
   }, [load]);
 
-  const searchSuggestions = useMemo(() => {
-    const q = searchInput.trim().toLowerCase();
-    const seen = new Set<string>();
-    return items
-      .filter((row) => {
-        if (!q) return false;
-        return (
-          row.returnNumber.toLowerCase().includes(q) ||
-          row.orderNumber.toLowerCase().includes(q)
-        );
-      })
-      .slice(0, 15)
-      .map((row) => {
-        const value = row.returnNumber;
-        if (seen.has(value)) return null;
-        seen.add(value);
-        return {
-          value,
-          label: `${row.returnNumber} — ${row.orderNumber}`,
-        };
-      })
-      .filter((opt): opt is { value: string; label: string } => opt !== null);
-  }, [items, searchInput]);
+  useEffect(() => {
+    void searchCustomers()
+      .then(setCustomers)
+      .catch(() => {
+        /* gợi ý KH tùy chọn */
+      });
+  }, []);
 
-  const applySearch = (value?: string) => {
-    setSearchInput(value ?? searchInput);
-    setSearch((value ?? searchInput).trim());
+  const customerSuggestions = useMemo(
+    () =>
+      buildCustomerSearchSuggestions(
+        customers.map((customer) => ({
+          customerName: customer.fullName,
+          customerPhone: customer.phone,
+        })),
+        customerQuery,
+      ),
+    [customers, customerQuery],
+  );
+
+  const documentSuggestions = useMemo(() => {
+    const numbers = items.flatMap((row) => [row.returnNumber, row.orderNumber]);
+    return buildDocumentSearchSuggestions(numbers, documentQuery);
+  }, [items, documentQuery]);
+
+  const applySearch = (values: { customer: string; document: string }) => {
+    const customer = values.customer.trim();
+    const document = values.document.trim();
+    setCustomerQuery(customer);
+    setDocumentQuery(document);
+    void load(customer, document);
+  };
+
+  const resetFilters = () => {
+    setCustomerQuery('');
+    setDocumentQuery('');
+    void load('', '');
   };
 
   const openDetail = (id: string) => {
@@ -171,39 +183,26 @@ export function SalesReturnListPage() {
 
   return (
     <Card title="Phiếu trả hàng">
-      <Space wrap style={filterBarStyle}>
-        <AutoComplete
-          style={{ width: 280 }}
-          options={searchSuggestions}
-          value={searchInput}
-          onSelect={(value) => applySearch(String(value))}
-          onChange={(value) => {
-            setSearchInput(value);
-            if (!value) setSearch('');
+      <SalesListDualSearchWrap>
+        <SalesListDualSearchBar
+          customerValue={customerQuery}
+          documentValue={documentQuery}
+          onCustomerChange={setCustomerQuery}
+          onDocumentChange={setDocumentQuery}
+          onApply={applySearch}
+          onClear={() => {
+            setCustomerQuery('');
+            setDocumentQuery('');
           }}
-        >
-          <Input
-            allowClear
-            placeholder="Số phiếu, số đơn"
-            prefix={<SearchOutlined />}
-            onPressEnter={() => applySearch()}
-          />
-        </AutoComplete>
-        <Button type="primary" icon={<SearchOutlined />} onClick={() => applySearch()}>
-          Lọc
-        </Button>
-        <Button
-          onClick={() => {
-            setSearch('');
-            setSearchInput('');
-          }}
-        >
-          Xóa lọc
-        </Button>
-        <Button type="primary" ghost icon={<ReloadOutlined />} onClick={() => void load()} loading={loading}>
+          customerSuggestions={customerSuggestions}
+          documentSuggestions={documentSuggestions}
+          documentPlaceholder="Số phiếu / đơn bán"
+        />
+        <Button onClick={resetFilters}>Xóa lọc</Button>
+        <Button type="primary" ghost icon={<ReloadOutlined />} onClick={() => void load(customerQuery, documentQuery)} loading={loading}>
           Tải lại
         </Button>
-      </Space>
+      </SalesListDualSearchWrap>
 
       <Table
         rowKey="id"

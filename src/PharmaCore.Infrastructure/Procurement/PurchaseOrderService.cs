@@ -92,6 +92,14 @@ internal sealed class PurchaseOrderService : IPurchaseOrderService
         if (request.Items.Count == 0)
             throw new InvalidOperationException("Thêm ít nhất một dòng hàng.");
 
+        if (po.Status == PurchaseOrderStatuses.Draft &&
+            request.SupplierId is Guid supplierId &&
+            supplierId != po.SupplierId)
+        {
+            if (!await _repository.SupplierExistsAsync(supplierId, cancellationToken))
+                throw new InvalidOperationException("NCC không tồn tại.");
+        }
+
         foreach (var item in request.Items)
         {
             if (item.OrderedQty <= 0)
@@ -116,9 +124,26 @@ internal sealed class PurchaseOrderService : IPurchaseOrderService
         return await _repository.GetPurchaseOrderAsync(id, cancellationToken: cancellationToken);
     }
 
-    public async Task<PurchaseOrderDetailDto?> ApproveAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<PurchaseOrderDetailDto?> ApproveAsync(
+        Guid id,
+        ApprovePurchaseOrderRequest? request,
+        CancellationToken cancellationToken = default)
     {
         var po = await RequirePoAccessAsync(id, cancellationToken);
+        if (po.Status != PurchaseOrderStatuses.Draft)
+            throw new InvalidOperationException("Chỉ duyệt được PO ở trạng thái Nháp.");
+
+        if (await _repository.IsSupplierPlaceholderAsync(po.SupplierId, cancellationToken))
+        {
+            if (request?.SupplierId is not Guid newSupplierId)
+                throw new InvalidOperationException("Chọn NCC thật trước khi duyệt PO.");
+            if (!await _repository.SupplierExistsAsync(newSupplierId, cancellationToken))
+                throw new InvalidOperationException("NCC không tồn tại.");
+            if (await _repository.IsSupplierPlaceholderAsync(newSupplierId, cancellationToken))
+                throw new InvalidOperationException("Không duyệt PO với NCC Chưa xác định.");
+            await _repository.SetPurchaseOrderSupplierAsync(id, newSupplierId, cancellationToken);
+        }
+
         var updated = await _repository.TransitionPurchaseOrderStatusAsync(
             id, PurchaseOrderStatuses.Draft, PurchaseOrderStatuses.Approved, _tenant.UserId, cancellationToken);
         if (!updated)

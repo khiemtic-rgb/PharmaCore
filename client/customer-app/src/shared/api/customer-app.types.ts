@@ -246,6 +246,8 @@ export interface CustomerPurchaseListItem {
   status: number;
   orderDate: string;
   totalAmount: number;
+  amountPaid: number;
+  outstanding: number;
   itemCount: number;
   totalRefunded: number;
 }
@@ -273,6 +275,8 @@ export interface CustomerPurchaseDetail {
   subtotal: number;
   discountAmount: number;
   totalAmount: number;
+  amountPaid: number;
+  outstanding: number;
   totalRefunded: number;
   notes?: string | null;
   loyaltyPointsEarned?: number | null;
@@ -282,6 +286,21 @@ export interface CustomerPurchaseDetail {
   voucherCode?: string | null;
   items: CustomerPurchaseLine[];
   payments: CustomerPurchasePayment[];
+}
+
+export interface CustomerReceivableLine {
+  salesOrderId: string;
+  orderNumber: string;
+  orderDate: string;
+  orderTotal: number;
+  amountPaid: number;
+  outstanding: number;
+}
+
+export interface CustomerReceivablesSummary {
+  totalReceivable: number;
+  openOrderCount: number;
+  lines: CustomerReceivableLine[];
 }
 
 export const CUSTOMER_PURCHASE_STATUS = {

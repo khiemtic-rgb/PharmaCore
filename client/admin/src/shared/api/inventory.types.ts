@@ -78,6 +78,15 @@ export type OpeningBalanceBatch = Req<
   | 'canVoid'
 > & Pick<OpeningBalanceBatchListItemDto, 'saleUnitName'>;
 
+export type PagedOpeningBalanceBatches = {
+  items: OpeningBalanceBatch[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summaryTotal: number;
+  summaryVoidableCount: number;
+};
+
 export type TransferListItem = Req<
   TransferListItemDto,
   | 'id'

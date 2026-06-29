@@ -8,6 +8,11 @@ export const tabularMoneyStyle: CSSProperties = {
 /** Thanh lọc / công cụ phía trên bảng */
 export const filterBarStyle: CSSProperties = {
   marginBottom: 16,
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: 8,
+  minHeight: 40,
 };
 
 /** Khoảng cách block trong drawer / modal */

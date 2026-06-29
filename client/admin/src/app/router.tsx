@@ -99,6 +99,12 @@ const PosPage = lazy(() => import('@/modules/sales/PosPage').then((m) => ({ defa
 const SalesOrderListPage = lazy(() =>
   import('@/modules/sales/SalesOrderListPage').then((m) => ({ default: m.SalesOrderListPage })),
 );
+const CustomerReceivablesPage = lazy(() =>
+  import('@/modules/sales/CustomerReceivablesPage').then((m) => ({ default: m.CustomerReceivablesPage })),
+);
+const CustomerPaymentListPage = lazy(() =>
+  import('@/modules/sales/CustomerPaymentListPage').then((m) => ({ default: m.CustomerPaymentListPage })),
+);
 const CustomerDraftOrderListPage = lazy(() =>
   import('@/modules/sales/CustomerDraftOrderListPage').then((m) => ({
     default: m.CustomerDraftOrderListPage,
@@ -248,7 +254,7 @@ export function AppRouter() {
                   </SuspenseRoute>
                 }
               >
-                <Route index element={<Navigate to="/inventory/stock" replace />} />
+                <Route index element={<Navigate to="/inventory/opening-balance" replace />} />
                 <Route path="stock" element={<StockListPage />} />
                 <Route path="low-stock" element={<LowStockPage />} />
                 <Route path="warehouses" element={<WarehouseListPage />} />
@@ -265,7 +271,7 @@ export function AppRouter() {
                   </SuspenseRoute>
                 }
               >
-                <Route index element={<Navigate to="/procurement/purchase-orders" replace />} />
+                <Route index element={<Navigate to="/procurement/suppliers" replace />} />
                 <Route path="purchase-orders" element={<PurchaseOrderListPage />} />
                 <Route path="goods-receipts" element={<GoodsReceiptListPage />} />
                 <Route path="suppliers" element={<SupplierListPage />} />
@@ -284,15 +290,17 @@ export function AppRouter() {
                 <Route index element={<Navigate to="/sales/pos" replace />} />
                 <Route path="pos" element={<PosPage />} />
                 <Route path="orders" element={<SalesOrderListPage />} />
+                <Route path="customer-receivables" element={<CustomerReceivablesPage />} />
+                <Route path="customer-payments" element={<CustomerPaymentListPage />} />
                 <Route path="customer-drafts" element={<CustomerDraftOrderListPage />} />
                 <Route path="customer-reservations" element={<CustomerReservationListPage />} />
                 <Route path="returns" element={<SalesReturnListPage />} />
                 <Route path="shift" element={<SalesShiftReportPage />} />
                 <Route path="customers" element={<Navigate to="/customer/list" replace />} />
                 <Route path="chat" element={<CustomerChatPage />} />
-                <Route path="loyalty" element={<LoyaltySettingsPage />} />
-                <Route path="vouchers" element={<VoucherListPage />} />
-                <Route path="settings" element={<ReceiptSettingsPage />} />
+                <Route path="settings" element={<Navigate to="/system/pos-settings" replace />} />
+                <Route path="loyalty" element={<Navigate to="/customer/loyalty" replace />} />
+                <Route path="vouchers" element={<Navigate to="/customer/vouchers" replace />} />
               </Route>
               <Route
                 path="customer"
@@ -304,6 +312,8 @@ export function AppRouter() {
               >
                 <Route index element={<Navigate to="/customer/list" replace />} />
                 <Route path="list" element={<CustomerListPage />} />
+                <Route path="loyalty" element={<LoyaltySettingsPage />} />
+                <Route path="vouchers" element={<VoucherListPage />} />
                 <Route path=":customerId" element={<CustomerDetailPage />} />
               </Route>
               <Route
@@ -387,10 +397,11 @@ export function AppRouter() {
                   </SuspenseRoute>
                 }
               >
-                <Route index element={<Navigate to="/system/users" replace />} />
+                <Route index element={<Navigate to="/system/branches" replace />} />
+                <Route path="branches" element={<BranchListPage />} />
                 <Route path="users" element={<UserListPage />} />
                 <Route path="roles" element={<RoleListPage />} />
-                <Route path="branches" element={<BranchListPage />} />
+                <Route path="pos-settings" element={<ReceiptSettingsPage />} />
                 <Route path="audit-log" element={<AuditLogListPage />} />
               </Route>
             </Route>

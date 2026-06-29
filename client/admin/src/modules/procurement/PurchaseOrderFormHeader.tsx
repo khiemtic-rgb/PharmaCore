@@ -13,6 +13,7 @@ export interface PurchaseOrderFormHeaderProps {
   warehouses?: Warehouse[];
   supplierName?: string;
   warehouseName?: string;
+  allowSupplierEdit?: boolean;
 }
 
 export function PurchaseOrderFormHeader({
@@ -23,8 +24,13 @@ export function PurchaseOrderFormHeader({
   warehouses = [],
   supplierName,
   warehouseName,
+  allowSupplierEdit = false,
 }: PurchaseOrderFormHeaderProps) {
   const isCreate = mode === 'create';
+  const supplierOptions = (suppliers ?? []).map((s) => ({
+    value: s.id,
+    label: `${s.supplierCode} — ${s.supplierName}`,
+  }));
 
   return (
     <div style={{ marginBottom: 12 }}>
@@ -44,15 +50,8 @@ export function PurchaseOrderFormHeader({
           rules={isCreate ? [{ required: true, message: 'Chọn NCC' }] : undefined}
           style={{ marginBottom: 0 }}
         >
-          {isCreate ? (
-            <Select
-              showSearch
-              optionFilterProp="label"
-              options={suppliers.map((s) => ({
-                value: s.id,
-                label: `${s.supplierCode} — ${s.supplierName}`,
-              }))}
-            />
+          {isCreate || allowSupplierEdit ? (
+            <Select showSearch optionFilterProp="label" options={supplierOptions} />
           ) : (
             <Select disabled options={[{ value: form.getFieldValue('supplierId'), label: supplierName }]} />
           )}
@@ -74,7 +73,8 @@ export function PurchaseOrderFormHeader({
         </Form.Item>
         <Form.Item
           name="vatTreatmentId"
-          label="Thuế GTGT"
+          label="Thuế tham chiếu"
+          tooltip="Thuế chính thức ghi trên phiếu nhập kho (GRN)"
           rules={[{ required: true, message: 'Chọn thuế' }]}
           style={{ marginBottom: 0 }}
         >

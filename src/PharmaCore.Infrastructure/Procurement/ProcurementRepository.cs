@@ -49,7 +49,8 @@ internal sealed class ProcurementRepository
             SELECT
                 id AS Id, supplier_code AS SupplierCode, supplier_name AS SupplierName,
                 tax_code AS TaxCode, contact_name AS ContactName, phone AS Phone,
-                email AS Email, address AS Address, payment_terms AS PaymentTerms, status AS Status
+                email AS Email, address AS Address, payment_terms AS PaymentTerms, status AS Status,
+                is_placeholder AS IsPlaceholder
             FROM suppliers
             WHERE tenant_id = @TenantId {extra}
             ORDER BY supplier_name
@@ -64,12 +65,60 @@ internal sealed class ProcurementRepository
             SELECT
                 id AS Id, supplier_code AS SupplierCode, supplier_name AS SupplierName,
                 tax_code AS TaxCode, contact_name AS ContactName, phone AS Phone,
-                email AS Email, address AS Address, payment_terms AS PaymentTerms, status AS Status
+                email AS Email, address AS Address, payment_terms AS PaymentTerms, status AS Status,
+                is_placeholder AS IsPlaceholder
             FROM suppliers
             WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         return await conn.QuerySingleOrDefaultAsync<SupplierDto>(sql, new { Id = id, TenantId });
+    }
+
+    public async Task<bool> IsSupplierPlaceholderAsync(Guid supplierId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT is_placeholder FROM suppliers
+            WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var value = await conn.QuerySingleOrDefaultAsync<bool?>(sql, new { Id = supplierId, TenantId });
+        return value == true;
+    }
+
+    public async Task SetPurchaseOrderSupplierAsync(
+        Guid purchaseOrderId,
+        Guid supplierId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE purchase_orders
+            SET supplier_id = @SupplierId, updated_at = NOW()
+            WHERE id = @Id AND tenant_id = @TenantId AND status = @Draft AND deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.ExecuteAsync(sql, new
+        {
+            Id = purchaseOrderId,
+            SupplierId = supplierId,
+            TenantId,
+            Draft = PurchaseOrderStatuses.Draft,
+        });
+        if (rows == 0)
+            throw new InvalidOperationException("Không cập nhật được NCC trên PO nháp.");
+    }
+
+    public async Task<bool> SupplierCodeExistsAsync(string supplierCode, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM suppliers
+                WHERE tenant_id = @TenantId
+                  AND supplier_code = @SupplierCode
+                  AND deleted_at IS NULL
+            )
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<bool>(sql, new { TenantId, SupplierCode = supplierCode.Trim() });
     }
 
     public async Task<Guid> CreateSupplierAsync(CreateSupplierRequest request, CancellationToken cancellationToken)
@@ -273,6 +322,26 @@ internal sealed class ProcurementRepository
             PurchaseOrderStatuses.Approved or
             PurchaseOrderStatuses.PartiallyReceived))
             throw new InvalidOperationException("Không sửa được đơn ở trạng thái này.");
+
+        if (status == PurchaseOrderStatuses.Draft && request.SupplierId is Guid supplierId)
+        {
+            var supplierExists = await conn.QuerySingleAsync<bool>(
+                """
+                SELECT EXISTS(
+                    SELECT 1 FROM suppliers WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL)
+                """,
+                new { Id = supplierId, TenantId },
+                tx);
+            if (!supplierExists)
+                throw new InvalidOperationException("NCC không tồn tại.");
+            await conn.ExecuteAsync(
+                """
+                UPDATE purchase_orders SET supplier_id = @SupplierId, updated_at = NOW()
+                WHERE id = @Id AND tenant_id = @TenantId
+                """,
+                new { Id = id, SupplierId = supplierId, TenantId },
+                tx);
+        }
 
         const string existingSql = """
             SELECT
@@ -702,8 +771,8 @@ internal sealed class ProcurementRepository
 
             if (po.Status != PurchaseOrderStatuses.Approved && po.Status != PurchaseOrderStatuses.PartiallyReceived)
                 throw new InvalidOperationException("PO phải ở trạng thái Đã duyệt hoặc Nhận một phần.");
-            if (po.SupplierId != request.SupplierId || po.WarehouseId != request.WarehouseId)
-                throw new InvalidOperationException("NCC và kho nhận phải khớp với PO.");
+            if (po.WarehouseId != request.WarehouseId)
+                throw new InvalidOperationException("Kho nhận phải khớp với PO.");
 
             var existingDraft = await GetDraftGoodsReceiptForPoAsync(conn, tx, poId, TenantId);
             if (existingDraft is not null)
@@ -714,14 +783,35 @@ internal sealed class ProcurementRepository
         var grnNumber = await NextNumberAsync(conn, tx, "GRN", "goods_receipts", cancellationToken);
         var receiptDate = (request.ReceiptDate ?? DateOnly.FromDateTime(DateTime.UtcNow))
             .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var treatment = await ResolveVatTreatmentAsync(conn, tx, request.VatTreatmentId, cancellationToken);
+        var pricingLines = request.Items
+            .Select(i => (
+                i.Quantity,
+                i.UnitCost,
+                new ProcurementDiscountInput(i.DiscountType, i.DiscountValue)))
+            .ToList();
+        var pricing = ProcurementPricing.PriceReceipt(
+            pricingLines,
+            new ProcurementDiscountInput(request.OrderDiscountType, request.OrderDiscountValue),
+            treatment.RatePercent,
+            treatment.IsNotSubject);
+
         const string headerSql = """
             INSERT INTO goods_receipts (
                 tenant_id, grn_number, purchase_order_id, supplier_id, warehouse_id,
-                status, receipt_date, received_by, notes
+                status, receipt_date, received_by, notes,
+                vat_treatment_id, tax_rate_percent,
+                subtotal_gross, line_discount_total, merchandise_net,
+                order_discount_type, order_discount_value, order_discount_amount,
+                tax_amount, total_amount
             )
             VALUES (
                 @TenantId, @GrnNumber, @PurchaseOrderId, @SupplierId, @WarehouseId,
-                @Status, @ReceiptDate, @ReceivedBy, @Notes
+                @Status, @ReceiptDate, @ReceivedBy, @Notes,
+                @VatTreatmentId, @TaxRatePercent,
+                @SubtotalGross, @LineDiscountTotal, @MerchandiseNet,
+                @OrderDiscountType, @OrderDiscountValue, @OrderDiscountAmount,
+                @TaxAmount, @TotalAmount
             )
             RETURNING id
             """;
@@ -736,20 +826,34 @@ internal sealed class ProcurementRepository
             ReceiptDate = receiptDate,
             ReceivedBy = receivedBy,
             request.Notes,
+            VatTreatmentId = request.VatTreatmentId,
+            TaxRatePercent = treatment.RatePercent,
+            SubtotalGross = pricing.SubtotalGross,
+            LineDiscountTotal = pricing.LineDiscountTotal,
+            MerchandiseNet = pricing.MerchandiseNet,
+            OrderDiscountType = request.OrderDiscountType,
+            OrderDiscountValue = request.OrderDiscountValue ?? 0,
+            OrderDiscountAmount = pricing.OrderDiscountAmount,
+            TaxAmount = pricing.TaxAmount,
+            TotalAmount = pricing.TotalAmount,
         }, tx);
 
         const string itemSql = """
             INSERT INTO goods_receipt_items (
                 tenant_id, goods_receipt_id, purchase_order_item_id, product_id, product_unit_id,
-                batch_number, manufacture_date, expiry_date, quantity, unit_cost, line_total
+                batch_number, manufacture_date, expiry_date, quantity, unit_cost,
+                discount_type, discount_value, discount_amount, line_total, inventory_unit_cost
             )
             VALUES (
                 @TenantId, @GrnId, @PurchaseOrderItemId, @ProductId, @ProductUnitId,
-                @BatchNumber, @ManufactureDate, @ExpiryDate, @Quantity, @UnitCost, @LineTotal
+                @BatchNumber, @ManufactureDate, @ExpiryDate, @Quantity, @UnitCost,
+                @DiscountType, @DiscountValue, @DiscountAmount, @LineTotal, @InventoryUnitCost
             )
             """;
-        foreach (var item in request.Items)
+        for (var index = 0; index < request.Items.Count; index++)
         {
+            var item = request.Items[index];
+            var priced = pricing.Lines[index];
             if (item.PurchaseOrderItemId is Guid poItemId)
             {
                 const string poItemSql = """
@@ -775,7 +879,11 @@ internal sealed class ProcurementRepository
                 item.ExpiryDate,
                 item.Quantity,
                 item.UnitCost,
-                LineTotal = item.Quantity * item.UnitCost,
+                DiscountType = priced.DiscountType,
+                DiscountValue = priced.DiscountValue,
+                DiscountAmount = priced.DiscountAmount,
+                LineTotal = priced.LineNetTotal,
+                InventoryUnitCost = priced.InventoryUnitCost,
             }, tx);
         }
 
@@ -803,11 +911,21 @@ internal sealed class ProcurementRepository
         if (header.Status == GoodsReceiptStatuses.Cancelled)
             throw new InvalidOperationException("Phiếu đã hủy.");
 
+        var supplierPlaceholder = await conn.QuerySingleAsync<bool>(
+            """
+            SELECT COALESCE(is_placeholder, FALSE)
+            FROM suppliers WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL
+            """,
+            new { Id = header.SupplierId, TenantId },
+            tx);
+        if (supplierPlaceholder)
+            throw new InvalidOperationException("Chọn NCC thật trước khi hoàn tất phiếu nhập.");
+
         const string itemsSql = """
             SELECT
                 id AS Id, purchase_order_item_id AS PurchaseOrderItemId, product_id AS ProductId,
                 batch_number AS BatchNumber, manufacture_date AS ManufactureDate, expiry_date AS ExpiryDate,
-                quantity AS Quantity, unit_cost AS UnitCost
+                quantity AS Quantity, unit_cost AS UnitCost, inventory_unit_cost AS InventoryUnitCost
             FROM goods_receipt_items WHERE goods_receipt_id = @GrnId
             """;
         var items = (await conn.QueryAsync<GrnItemRow>(itemsSql, new { GrnId = grnId }, tx)).ToList();
@@ -837,7 +955,7 @@ internal sealed class ProcurementRepository
             await _inventory.InsertMovementAsync(
                 conn, tx, header.WarehouseId, batchId, item.ProductId,
                 StockMovementTypes.In, StockReferenceTypes.GoodsReceipt, grnId,
-                item.Quantity, item.UnitCost, null, cancellationToken);
+                item.Quantity, item.InventoryUnitCost, null, cancellationToken);
 
             if (item.PurchaseOrderItemId is Guid poItemId)
             {
@@ -941,7 +1059,7 @@ internal sealed class ProcurementRepository
             BatchNumber = item.BatchNumber,
             item.ManufactureDate,
             item.ExpiryDate,
-            item.UnitCost,
+            UnitCost = item.InventoryUnitCost,
             item.Quantity,
             SupplierId = supplierId,
             GrnItemId = item.Id,
@@ -1094,11 +1212,18 @@ internal sealed class ProcurementRepository
                 s.supplier_name AS SupplierName, g.warehouse_id AS WarehouseId,
                 w.warehouse_name AS WarehouseName, g.purchase_order_id AS PurchaseOrderId,
                 p.po_number AS PoNumber, g.status AS Status, g.receipt_date AS ReceiptDate,
-                g.notes AS Notes, g.deleted_at AS DeletedAt
+                g.notes AS Notes, g.deleted_at AS DeletedAt,
+                g.subtotal_gross AS SubtotalGross, g.line_discount_total AS LineDiscountTotal,
+                g.merchandise_net AS MerchandiseNet, g.order_discount_type AS OrderDiscountType,
+                g.order_discount_value AS OrderDiscountValue, g.order_discount_amount AS OrderDiscountAmount,
+                g.vat_treatment_id AS VatTreatmentId, vt.treatment_code AS VatTreatmentCode,
+                vt.treatment_name AS VatTreatmentName, vt.is_not_subject AS VatIsNotSubject,
+                g.tax_rate_percent AS TaxRatePercent, g.tax_amount AS TaxAmount, g.total_amount AS TotalAmount
             FROM goods_receipts g
             INNER JOIN suppliers s ON s.id = g.supplier_id
             INNER JOIN warehouses w ON w.id = g.warehouse_id
             LEFT JOIN purchase_orders p ON p.id = g.purchase_order_id
+            LEFT JOIN procurement_vat_treatments vt ON vt.id = g.vat_treatment_id
             WHERE g.id = @Id AND g.tenant_id = @TenantId{deletedFilter}
             """;
         const string itemsSql = """
@@ -1107,7 +1232,10 @@ internal sealed class ProcurementRepository
                 i.product_id AS ProductId, pr.product_code AS ProductCode, pr.product_name AS ProductName,
                 i.product_unit_id AS ProductUnitId, u.unit_name AS UnitName,
                 i.batch_number AS BatchNumber, i.manufacture_date AS ManufactureDate,
-                i.expiry_date AS ExpiryDate, i.quantity AS Quantity, i.unit_cost AS UnitCost, i.line_total AS LineTotal
+                i.expiry_date AS ExpiryDate, i.quantity AS Quantity, i.unit_cost AS UnitCost,
+                i.discount_type AS DiscountType, i.discount_value AS DiscountValue,
+                i.discount_amount AS DiscountAmount, i.line_total AS LineTotal,
+                i.inventory_unit_cost AS InventoryUnitCost
             FROM goods_receipt_items i
             INNER JOIN products pr ON pr.id = i.product_id
             INNER JOIN product_units u ON u.id = i.product_unit_id
@@ -1121,7 +1249,12 @@ internal sealed class ProcurementRepository
         return new GoodsReceiptDetailDto(
             header.Id, header.GrnNumber, header.SupplierId, header.SupplierName,
             header.WarehouseId, header.WarehouseName, header.PurchaseOrderId, header.PoNumber,
-            header.Status, header.ReceiptDate, header.Notes, items, header.DeletedAt);
+            header.Status, header.ReceiptDate, header.Notes,
+            header.SubtotalGross, header.LineDiscountTotal, header.MerchandiseNet,
+            header.OrderDiscountType, header.OrderDiscountValue, header.OrderDiscountAmount,
+            header.VatTreatmentId, header.VatTreatmentCode, header.VatTreatmentName, header.VatIsNotSubject,
+            header.TaxRatePercent, header.TaxAmount, header.TotalAmount,
+            items, header.DeletedAt);
     }
 
     public async Task<IReadOnlyList<SupplierPaymentListItemDto>> GetSupplierPaymentsAsync(
@@ -1342,7 +1475,10 @@ internal sealed class ProcurementRepository
                     s.payment_terms AS PaymentTerms,
                     gr.grn_number AS GrnNumber,
                     gr.receipt_date AS ReceiptDate,
-                    COALESCE(SUM(gri.line_total), 0) AS GrnTotal
+                    CASE
+                        WHEN gr.total_amount > 0 THEN gr.total_amount
+                        ELSE COALESCE(SUM(gri.line_total), 0)
+                    END AS GrnTotal
                 FROM goods_receipts gr
                 INNER JOIN suppliers s ON s.id = gr.supplier_id
                 INNER JOIN goods_receipt_items gri ON gri.goods_receipt_id = gr.id
@@ -1350,8 +1486,10 @@ internal sealed class ProcurementRepository
                   AND gr.status = @GrnCompleted
                   AND gr.deleted_at IS NULL
                   AND s.deleted_at IS NULL
+                  AND COALESCE(s.is_placeholder, FALSE) = FALSE
                   {warehouseFilter}
-                GROUP BY gr.id, gr.supplier_id, s.supplier_code, s.supplier_name, s.payment_terms, gr.grn_number, gr.receipt_date
+                GROUP BY gr.id, gr.supplier_id, s.supplier_code, s.supplier_name, s.payment_terms,
+                         gr.grn_number, gr.receipt_date, gr.total_amount
             ),
             grn_paid AS (
                 SELECT goods_receipt_id AS GrnId, COALESCE(SUM(amount), 0) AS PaidAmount
@@ -1701,6 +1839,7 @@ internal sealed class ProcurementRepository
         public DateOnly ExpiryDate { get; init; }
         public decimal Quantity { get; init; }
         public decimal UnitCost { get; init; }
+        public decimal InventoryUnitCost { get; init; }
     }
 
     private sealed class GrnDetailHeaderRow
@@ -1717,6 +1856,19 @@ internal sealed class ProcurementRepository
         public DateTime ReceiptDate { get; init; }
         public string? Notes { get; init; }
         public DateTime? DeletedAt { get; init; }
+        public decimal SubtotalGross { get; init; }
+        public decimal LineDiscountTotal { get; init; }
+        public decimal MerchandiseNet { get; init; }
+        public short? OrderDiscountType { get; init; }
+        public decimal OrderDiscountValue { get; init; }
+        public decimal OrderDiscountAmount { get; init; }
+        public Guid? VatTreatmentId { get; init; }
+        public string? VatTreatmentCode { get; init; }
+        public string? VatTreatmentName { get; init; }
+        public bool VatIsNotSubject { get; init; }
+        public short TaxRatePercent { get; init; }
+        public decimal TaxAmount { get; init; }
+        public decimal TotalAmount { get; init; }
     }
 }
 

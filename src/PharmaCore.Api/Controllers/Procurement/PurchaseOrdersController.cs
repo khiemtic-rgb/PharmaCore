@@ -72,9 +72,12 @@ public sealed class PurchaseOrdersController : ControllerBase
 
     [HttpPost("{id:guid}/approve")]
     [Authorize(Policy = ProcurementPolicies.Write)]
-    public async Task<ActionResult<PurchaseOrderDetailDto>> Approve(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<PurchaseOrderDetailDto>> Approve(
+        Guid id,
+        [FromBody] ApprovePurchaseOrderRequest? request,
+        CancellationToken cancellationToken)
     {
-        var item = await _orders.ApproveAsync(id, cancellationToken);
+        var item = await _orders.ApproveAsync(id, request, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
 

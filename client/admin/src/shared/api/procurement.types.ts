@@ -137,7 +137,7 @@ export type LastPurchasePriceHint = Pick<
 
 export type Supplier = Req<
   SupplierDto,
-  'id' | 'supplierCode' | 'supplierName' | 'paymentTerms' | 'status'
+  'id' | 'supplierCode' | 'supplierName' | 'paymentTerms' | 'status' | 'isPlaceholder'
 >;
 
 export type PurchaseOrderListItem = Req<
@@ -223,7 +223,14 @@ export type GoodsReceiptItem = Req<
   | 'quantity'
   | 'unitCost'
   | 'lineTotal'
->;
+> & {
+  purchaseOrderItemId?: string;
+  manufactureDate?: string;
+  discountType?: number;
+  discountValue?: number;
+  discountAmount?: number;
+  inventoryUnitCost?: number;
+};
 
 export type GoodsReceiptDetail = Omit<
   Req<
@@ -236,11 +243,27 @@ export type GoodsReceiptDetail = Omit<
     | 'warehouseName'
     | 'status'
     | 'receiptDate'
+    | 'subtotalGross'
+    | 'lineDiscountTotal'
+    | 'merchandiseNet'
+    | 'orderDiscountValue'
+    | 'orderDiscountAmount'
+    | 'taxRatePercent'
+    | 'taxAmount'
+    | 'totalAmount'
   >,
   'items'
 > & {
   items: GoodsReceiptItem[];
   itemCount?: number;
+  purchaseOrderId?: string;
+  poNumber?: string;
+  notes?: string;
+  orderDiscountType?: number;
+  vatTreatmentId?: string;
+  vatTreatmentCode?: string;
+  vatTreatmentName?: string;
+  vatIsNotSubject?: boolean;
 };
 
 export interface PurchaseOrderListFilters {

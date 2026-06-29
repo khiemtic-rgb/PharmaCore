@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  AutoComplete,
   Button,
   Card,
   Descriptions,
   Drawer,
-  Input,
   Popconfirm,
   Select,
   Space,
@@ -18,7 +16,6 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   EyeOutlined,
   ReloadOutlined,
-  SearchOutlined,
   ShoppingCartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -37,7 +34,13 @@ import {
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
 import { CustomerDraftOrderStatusBar } from '@/modules/sales/CustomerDraftOrderStatusBar';
-import { filterBarStyle, sectionGapStyle, TabularMoney } from '@/modules/sales/sales-ui-styles';
+import { sectionGapStyle, TabularMoney } from '@/modules/sales/sales-ui-styles';
+import {
+  buildCustomerSearchSuggestions,
+  buildDocumentSearchSuggestions,
+  matchesSalesListDualSearch,
+} from '@/modules/sales/sales-list-customer-search';
+import { SalesListDualSearchBar, SalesListDualSearchWrap } from '@/modules/sales/SalesListDualSearchBar';
 import { formatDisplayMoney } from '@/shared/utils/money';
 
 const ACTIVE_STATUSES: number[] = [
@@ -63,8 +66,8 @@ export function CustomerDraftOrderListPage() {
   const canWrite = useHasPermission('sales.write');
   const [items, setItems] = useState<CustomerDraftOrderListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [documentQuery, setDocumentQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<number | undefined>();
   const [activeOnly, setActiveOnly] = useState(false);
   const [actionableOnly, setActionableOnly] = useState(
@@ -109,47 +112,35 @@ export function CustomerDraftOrderListPage() {
     return () => window.clearInterval(timer);
   }, [items, load]);
 
-  const searchSuggestions = useMemo(() => {
-    const q = searchInput.trim().toLowerCase();
-    const seen = new Set<string>();
-    return items
-      .filter((row) => {
-        if (!q) return false;
-        return (
-          row.draftNumber.toLowerCase().includes(q) ||
-          row.customerName.toLowerCase().includes(q)
-        );
-      })
-      .slice(0, 15)
-      .map((row) => {
-        const value = row.draftNumber;
-        if (seen.has(value)) return null;
-        seen.add(value);
-        return {
-          value,
-          label: `${row.draftNumber} — ${row.customerName}`,
-        };
-      })
-      .filter((opt): opt is { value: string; label: string } => opt !== null);
-  }, [items, searchInput]);
+  const customerSuggestions = useMemo(
+    () => buildCustomerSearchSuggestions(items, customerQuery),
+    [items, customerQuery],
+  );
+
+  const documentSuggestions = useMemo(
+    () => buildDocumentSearchSuggestions(items.map((row) => row.draftNumber), documentQuery),
+    [items, documentQuery],
+  );
 
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return items.filter((row) => {
       if (actionableOnly && !isActionableStatus(row.status)) return false;
       if (activeOnly && !isActiveDraftStatus(row.status)) return false;
       if (statusFilter != null && row.status !== statusFilter) return false;
-      if (!q) return true;
-      return (
-        row.draftNumber.toLowerCase().includes(q) ||
-        row.customerName.toLowerCase().includes(q)
+      return matchesSalesListDualSearch(
+        { customerQuery, documentQuery },
+        {
+          customerName: row.customerName,
+          customerPhone: row.customerPhone,
+          documentNumbers: [row.draftNumber],
+        },
       );
     });
-  }, [items, search, statusFilter, activeOnly, actionableOnly]);
+  }, [items, customerQuery, documentQuery, statusFilter, activeOnly, actionableOnly]);
 
-  const applySearch = (value?: string) => {
-    setSearchInput(value ?? searchInput);
-    setSearch((value ?? searchInput).trim());
+  const clearSearch = () => {
+    setCustomerQuery('');
+    setDocumentQuery('');
   };
 
   const openDetailById = useCallback(async (draftOrderId: string) => {
@@ -297,27 +288,23 @@ export function CustomerDraftOrderListPage() {
         description="Quy trình: Nháp → Gửi khách → Khách đã xác nhận (tuỳ chọn) → Nạp POS (thanh toán + in hóa đơn)."
       />
 
-      <Space wrap style={filterBarStyle}>
-        <AutoComplete
-          style={{ width: 280 }}
-          options={searchSuggestions}
-          value={searchInput}
-          onSelect={(value) => applySearch(String(value))}
-          onChange={(value) => {
-            setSearchInput(value);
-            if (!value) setSearch('');
+      <SalesListDualSearchWrap>
+        <SalesListDualSearchBar
+          customerValue={customerQuery}
+          documentValue={documentQuery}
+          onCustomerChange={setCustomerQuery}
+          onDocumentChange={setDocumentQuery}
+          onApply={(values) => {
+            setCustomerQuery(values.customer);
+            setDocumentQuery(values.document);
           }}
-        >
-          <Input
-            allowClear
-            placeholder="Số đơn tạm, tên khách"
-            prefix={<SearchOutlined />}
-            onPressEnter={() => applySearch()}
-          />
-        </AutoComplete>
-        <Button type="primary" icon={<SearchOutlined />} onClick={() => applySearch()}>
-          Lọc
-        </Button>
+          onClear={clearSearch}
+          customerSuggestions={customerSuggestions}
+          documentSuggestions={documentSuggestions}
+          documentPlaceholder="Số đơn tạm"
+          liveFilter
+          showApplyButton={false}
+        />
         <Select
           allowClear
           placeholder="Trạng thái"
@@ -334,8 +321,7 @@ export function CustomerDraftOrderListPage() {
         />
         <Button
           onClick={() => {
-            setSearch('');
-            setSearchInput('');
+            clearSearch();
             setStatusFilter(undefined);
             setActiveOnly(false);
             setActionableOnly(false);
@@ -367,7 +353,7 @@ export function CustomerDraftOrderListPage() {
         <Button type="primary" ghost icon={<ReloadOutlined />} onClick={() => void load()} loading={loading}>
           Tải lại
         </Button>
-      </Space>
+      </SalesListDualSearchWrap>
 
       {pendingCount > 0 ? (
         <Alert

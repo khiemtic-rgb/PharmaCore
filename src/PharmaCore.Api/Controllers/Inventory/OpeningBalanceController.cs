@@ -21,10 +21,16 @@ public sealed class OpeningBalanceController : ControllerBase
 
     [HttpGet("batches")]
     [Authorize(Policy = InventoryPolicies.Read)]
-    public async Task<ActionResult<IReadOnlyList<OpeningBalanceBatchListItemDto>>> ListBatches(
+    public async Task<ActionResult<PagedOpeningBalanceBatchesResult>> ListBatches(
         [FromQuery] Guid? warehouseId,
-        CancellationToken cancellationToken) =>
-        Ok(await _inventory.GetOpeningBalanceBatchesAsync(warehouseId, cancellationToken));
+        [FromQuery] Guid? productId,
+        [FromQuery] string? search,
+        [FromQuery] string? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken cancellationToken = default) =>
+        Ok(await _inventory.GetOpeningBalanceBatchesAsync(
+            warehouseId, productId, search, status, page, pageSize, cancellationToken));
 
     [HttpPost]
     [Authorize(Policy = InventoryPolicies.Write)]

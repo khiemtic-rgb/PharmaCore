@@ -6752,7 +6752,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ApprovePurchaseOrderRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -10563,6 +10567,10 @@ export interface components {
             minStockQty?: number | null;
             onlyUnset?: boolean;
         };
+        ApprovePurchaseOrderRequest: {
+            /** Format: uuid */
+            supplierId?: string | null;
+        };
         AuditLogListItemDto: {
             /** Format: uuid */
             id?: string;
@@ -10788,6 +10796,10 @@ export interface components {
             quantity?: number;
             /** Format: double */
             unitCost?: number;
+            /** Format: int32 */
+            discountType?: number | null;
+            /** Format: double */
+            discountValue?: number | null;
         };
         CreateGoodsReceiptRequest: {
             /** Format: uuid */
@@ -10799,6 +10811,12 @@ export interface components {
             /** Format: date */
             receiptDate?: string | null;
             notes?: string | null;
+            /** Format: uuid */
+            vatTreatmentId?: string;
+            /** Format: int32 */
+            orderDiscountType?: number | null;
+            /** Format: double */
+            orderDiscountValue?: number | null;
             items?: components["schemas"]["CreateGoodsReceiptItemRequest"][] | null;
         };
         CreateMedicationReminderRequest: {
@@ -11131,6 +11149,9 @@ export interface components {
             appVerified?: boolean | null;
             /** Format: date-time */
             appLastLoginAt?: string | null;
+            allowCredit?: boolean;
+            /** Format: double */
+            creditLimit?: number | null;
         };
         CustomerDraftOrderDto: {
             /** Format: uuid */
@@ -11272,6 +11293,11 @@ export interface components {
             fullName?: string | null;
             phone?: string | null;
             email?: string | null;
+            allowCredit?: boolean;
+            /** Format: double */
+            creditLimit?: number | null;
+            /** Format: double */
+            currentOutstanding?: number;
         };
         CustomerLoginResponse: {
             accessToken?: string | null;
@@ -11626,6 +11652,29 @@ export interface components {
             /** Format: date-time */
             receiptDate?: string;
             notes?: string | null;
+            /** Format: double */
+            subtotalGross?: number;
+            /** Format: double */
+            lineDiscountTotal?: number;
+            /** Format: double */
+            merchandiseNet?: number;
+            /** Format: int32 */
+            orderDiscountType?: number | null;
+            /** Format: double */
+            orderDiscountValue?: number;
+            /** Format: double */
+            orderDiscountAmount?: number;
+            /** Format: uuid */
+            vatTreatmentId?: string | null;
+            vatTreatmentCode?: string | null;
+            vatTreatmentName?: string | null;
+            vatIsNotSubject?: boolean;
+            /** Format: int32 */
+            taxRatePercent?: number;
+            /** Format: double */
+            taxAmount?: number;
+            /** Format: double */
+            totalAmount?: number;
             items?: components["schemas"]["GoodsReceiptItemDto"][] | null;
             /** Format: date-time */
             deletedAt?: string | null;
@@ -11651,8 +11700,16 @@ export interface components {
             quantity?: number;
             /** Format: double */
             unitCost?: number;
+            /** Format: int32 */
+            discountType?: number | null;
+            /** Format: double */
+            discountValue?: number;
+            /** Format: double */
+            discountAmount?: number;
             /** Format: double */
             lineTotal?: number;
+            /** Format: double */
+            inventoryUnitCost?: number;
         };
         GoodsReceiptListItemDto: {
             /** Format: uuid */
@@ -12667,6 +12724,10 @@ export interface components {
             /** Format: double */
             totalAmount?: number;
             /** Format: double */
+            amountPaid?: number;
+            /** Format: double */
+            outstanding?: number;
+            /** Format: double */
             totalRefunded?: number;
             notes?: string | null;
             items?: components["schemas"]["SalesOrderItemDto"][] | null;
@@ -12732,6 +12793,10 @@ export interface components {
             orderDate?: string;
             /** Format: double */
             totalAmount?: number;
+            /** Format: double */
+            amountPaid?: number;
+            /** Format: double */
+            outstanding?: number;
             /** Format: int32 */
             itemCount?: number;
             /** Format: double */
@@ -12982,6 +13047,7 @@ export interface components {
             paymentTerms?: number;
             /** Format: int32 */
             status?: number;
+            isPlaceholder?: boolean;
         };
         SupplierPayablesAgingBucketsDto: {
             /** Format: double */
@@ -13198,6 +13264,9 @@ export interface components {
             gender?: number | null;
             /** Format: int32 */
             status?: number;
+            allowCredit?: boolean;
+            /** Format: double */
+            creditLimit?: number | null;
         };
         UpdateCustomerReservationStaffNotesRequest: {
             staffNotes?: string | null;
@@ -13279,6 +13348,8 @@ export interface components {
             unitPrice?: number;
         };
         UpdatePurchaseOrderRequest: {
+            /** Format: uuid */
+            supplierId?: string | null;
             /** Format: date */
             expectedDate?: string | null;
             notes?: string | null;

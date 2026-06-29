@@ -28,8 +28,13 @@ public interface IInventoryService
         CreateOpeningBalanceRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<OpeningBalanceBatchListItemDto>> GetOpeningBalanceBatchesAsync(
+    Task<PagedOpeningBalanceBatchesResult> GetOpeningBalanceBatchesAsync(
         Guid? warehouseId,
+        Guid? productId,
+        string? search,
+        string? status,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken = default);
 
     Task VoidOpeningBalanceBatchAsync(Guid batchId, CancellationToken cancellationToken = default);

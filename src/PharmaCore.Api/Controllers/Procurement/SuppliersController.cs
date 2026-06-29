@@ -11,8 +11,13 @@ namespace PharmaCore.Api.Controllers.Procurement;
 public sealed class SuppliersController : ControllerBase
 {
     private readonly ISupplierService _suppliers;
+    private readonly ISupplierImportService _import;
 
-    public SuppliersController(ISupplierService suppliers) => _suppliers = suppliers;
+    public SuppliersController(ISupplierService suppliers, ISupplierImportService import)
+    {
+        _suppliers = suppliers;
+        _import = import;
+    }
 
     [HttpGet]
     [Authorize(Policy = ProcurementPolicies.Read)]
@@ -27,6 +32,21 @@ public sealed class SuppliersController : ControllerBase
     {
         var item = await _suppliers.GetAsync(id, cancellationToken);
         return item is null ? NotFound() : Ok(item);
+    }
+
+    [HttpPost("import")]
+    [Authorize(Policy = ProcurementPolicies.Write)]
+    public async Task<ActionResult<SupplierImportResultDto>> Import(
+        [FromBody] IReadOnlyList<SupplierImportRowRequest> rows,
+        CancellationToken cancellationToken)
+    {
+        if (rows.Count == 0)
+            return BadRequest(new { message = "Không có dòng dữ liệu để import." });
+
+        if (rows.Count > 2000)
+            return BadRequest(new { message = "Tối đa 2000 dòng mỗi lần import." });
+
+        return Ok(await _import.ImportSuppliersAsync(rows, cancellationToken));
     }
 
     [HttpPost]

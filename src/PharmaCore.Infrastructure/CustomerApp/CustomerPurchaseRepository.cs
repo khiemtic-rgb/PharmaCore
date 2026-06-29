@@ -23,6 +23,8 @@ internal sealed class CustomerPurchaseRepository
                 o.status AS Status,
                 o.order_date AS OrderDate,
                 o.total_amount AS TotalAmount,
+                o.amount_paid AS AmountPaid,
+                o.outstanding AS Outstanding,
                 (SELECT COUNT(*)::int FROM sales_order_items i WHERE i.sales_order_id = o.id) AS ItemCount,
                 COALESCE((
                     SELECT SUM(ri.refund_amount)
@@ -54,6 +56,8 @@ internal sealed class CustomerPurchaseRepository
             row.Status,
             ToOffset(row.OrderDate),
             row.TotalAmount,
+            row.AmountPaid,
+            row.Outstanding,
             row.ItemCount,
             row.TotalRefunded)).ToList();
     }
@@ -73,6 +77,8 @@ internal sealed class CustomerPurchaseRepository
                 o.subtotal AS Subtotal,
                 o.discount_amount AS DiscountAmount,
                 o.total_amount AS TotalAmount,
+                o.amount_paid AS AmountPaid,
+                o.outstanding AS Outstanding,
                 o.notes AS Notes,
                 COALESCE((
                     SELECT SUM(ri.refund_amount)
@@ -164,6 +170,8 @@ internal sealed class CustomerPurchaseRepository
             header.Subtotal,
             header.DiscountAmount,
             header.TotalAmount,
+            header.AmountPaid,
+            header.Outstanding,
             header.TotalRefunded,
             header.Notes,
             header.LoyaltyPointsEarned,
@@ -185,6 +193,8 @@ internal sealed class CustomerPurchaseRepository
         public short Status { get; init; }
         public DateTime OrderDate { get; init; }
         public decimal TotalAmount { get; init; }
+        public decimal AmountPaid { get; init; }
+        public decimal Outstanding { get; init; }
         public int ItemCount { get; init; }
         public decimal TotalRefunded { get; init; }
     }
@@ -198,6 +208,8 @@ internal sealed class CustomerPurchaseRepository
         public decimal Subtotal { get; init; }
         public decimal DiscountAmount { get; init; }
         public decimal TotalAmount { get; init; }
+        public decimal AmountPaid { get; init; }
+        public decimal Outstanding { get; init; }
         public decimal TotalRefunded { get; init; }
         public string? Notes { get; init; }
         public int? LoyaltyPointsEarned { get; init; }

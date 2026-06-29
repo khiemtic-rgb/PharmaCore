@@ -8258,6 +8258,15 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovePurchaseOrderRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -13366,6 +13375,17 @@
         },
         "additionalProperties": false
       },
+      "ApprovePurchaseOrderRequest": {
+        "type": "object",
+        "properties": {
+          "supplierId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AuditLogListItemDto": {
         "type": "object",
         "properties": {
@@ -14049,6 +14069,16 @@
           "unitCost": {
             "type": "number",
             "format": "double"
+          },
+          "discountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14076,6 +14106,20 @@
           },
           "notes": {
             "type": "string",
+            "nullable": true
+          },
+          "vatTreatmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderDiscountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "orderDiscountValue": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           },
           "items": {
@@ -15084,6 +15128,14 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "allowCredit": {
+            "type": "boolean"
+          },
+          "creditLimit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -15461,6 +15513,18 @@
           "email": {
             "type": "string",
             "nullable": true
+          },
+          "allowCredit": {
+            "type": "boolean"
+          },
+          "creditLimit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currentOutstanding": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -16421,6 +16485,59 @@
             "type": "string",
             "nullable": true
           },
+          "subtotalGross": {
+            "type": "number",
+            "format": "double"
+          },
+          "lineDiscountTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "merchandiseNet": {
+            "type": "number",
+            "format": "double"
+          },
+          "orderDiscountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "orderDiscountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "orderDiscountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "vatTreatmentId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "vatTreatmentCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatTreatmentName": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatIsNotSubject": {
+            "type": "boolean"
+          },
+          "taxRatePercent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
           "items": {
             "type": "array",
             "items": {
@@ -16489,7 +16606,24 @@
             "type": "number",
             "format": "double"
           },
+          "discountType": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "discountValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
           "lineTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "inventoryUnitCost": {
             "type": "number",
             "format": "double"
           }
@@ -19410,6 +19544,14 @@
             "type": "number",
             "format": "double"
           },
+          "amountPaid": {
+            "type": "number",
+            "format": "double"
+          },
+          "outstanding": {
+            "type": "number",
+            "format": "double"
+          },
           "totalRefunded": {
             "type": "number",
             "format": "double"
@@ -19586,6 +19728,14 @@
             "format": "date-time"
           },
           "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "amountPaid": {
+            "type": "number",
+            "format": "double"
+          },
+          "outstanding": {
             "type": "number",
             "format": "double"
           },
@@ -20259,6 +20409,9 @@
           "status": {
             "type": "integer",
             "format": "int32"
+          },
+          "isPlaceholder": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -20890,6 +21043,14 @@
           "status": {
             "type": "integer",
             "format": "int32"
+          },
+          "allowCredit": {
+            "type": "boolean"
+          },
+          "creditLimit": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -21147,6 +21308,11 @@
       "UpdatePurchaseOrderRequest": {
         "type": "object",
         "properties": {
+          "supplierId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
           "expectedDate": {
             "type": "string",
             "format": "date",

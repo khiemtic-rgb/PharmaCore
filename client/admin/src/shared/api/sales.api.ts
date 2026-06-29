@@ -24,6 +24,10 @@ import type {
   SalesShiftListItem,
   SalesShiftSummary,
   SalesPaymentLine,
+  CustomerPaymentListFilters,
+  CustomerPaymentListItem,
+  CustomerReceivablesDetail,
+  CustomerReceivablesRow,
 } from '@/shared/api/sales.types';
 
 function normalizeSalesOrderListItem(row: Record<string, unknown>): SalesOrderListItem {
@@ -37,6 +41,8 @@ function normalizeSalesOrderListItem(row: Record<string, unknown>): SalesOrderLi
     status: Number(row.status ?? row.Status ?? 1),
     orderDate: String(row.orderDate ?? row.OrderDate ?? ''),
     totalAmount: Number(row.totalAmount ?? row.TotalAmount ?? 0),
+    amountPaid: Number(row.amountPaid ?? row.AmountPaid ?? row.totalAmount ?? row.TotalAmount ?? 0),
+    outstanding: Number(row.outstanding ?? row.Outstanding ?? 0),
     itemCount: Number(row.itemCount ?? row.ItemCount ?? 0),
     totalRefunded: Number(row.totalRefunded ?? row.TotalRefunded ?? 0),
     salesShiftId: optionalGuid(row.salesShiftId ?? row.SalesShiftId),
@@ -147,6 +153,8 @@ function normalizeSalesOrderDetail(
     orderDiscountType: (data.orderDiscountType ?? data.OrderDiscountType) as number | undefined,
     orderDiscountValue: Number(data.orderDiscountValue ?? data.OrderDiscountValue ?? 0),
     totalRefunded: Number(data.totalRefunded ?? data.TotalRefunded ?? 0),
+    amountPaid: Number(data.amountPaid ?? data.AmountPaid ?? data.totalAmount ?? data.TotalAmount ?? 0),
+    outstanding: Number(data.outstanding ?? data.Outstanding ?? 0),
     notes: (data.notes ?? data.Notes) as string | undefined,
     salesShiftId: optionalGuid(data.salesShiftId ?? data.SalesShiftId),
     shiftNumber: (data.shiftNumber ?? data.ShiftNumber) as string | undefined,
@@ -164,8 +172,8 @@ function normalizeSalesOrderDetail(
     loyaltyPointsRedeemed: Number(data.loyaltyPointsRedeemed ?? data.LoyaltyPointsRedeemed ?? 0),
     loyaltyDiscountAmount: Number(data.loyaltyDiscountAmount ?? data.LoyaltyDiscountAmount ?? 0),
     voucherDiscountAmount: Number(data.voucherDiscountAmount ?? data.VoucherDiscountAmount ?? 0),
-    voucherCode: (data.voucherCode ?? data.VoucherCode) as string | null | undefined,
-    voucherName: (data.voucherName ?? data.VoucherName) as string | null | undefined,
+    voucherCode: (data.voucherCode ?? data.VoucherCode ?? undefined) as string | undefined,
+    voucherName: (data.voucherName ?? data.VoucherName ?? undefined) as string | undefined,
   };
 }
 
@@ -230,6 +238,12 @@ export async function searchCustomers(search?: string): Promise<CustomerListItem
     fullName: String(row.fullName ?? row.FullName ?? ''),
     phone: String(row.phone ?? row.Phone ?? ''),
     email: (row.email ?? row.Email) as string | undefined,
+    allowCredit: Boolean(row.allowCredit ?? row.AllowCredit),
+    creditLimit:
+      row.creditLimit != null || row.CreditLimit != null
+        ? Number(row.creditLimit ?? row.CreditLimit)
+        : undefined,
+    currentOutstanding: Number(row.currentOutstanding ?? row.CurrentOutstanding ?? 0),
   }));
 }
 
@@ -355,6 +369,8 @@ export async function fetchSalesOrders(
 ): Promise<SalesOrderPagedListResult> {
   const params: Record<string, string | number | undefined> = {};
   if (filters?.search) params.search = filters.search;
+  if (filters?.customerSearch?.trim()) params.customerSearch = filters.customerSearch.trim();
+  if (filters?.documentSearch?.trim()) params.documentSearch = filters.documentSearch.trim();
   if (filters?.status != null) params.status = filters.status;
   if (filters?.page != null) params.page = filters.page;
   if (filters?.pageSize != null) params.pageSize = filters.pageSize;
@@ -524,11 +540,20 @@ export async function fetchSalesReturn(id: string): Promise<SalesReturnDetail> {
 }
 
 export async function fetchSalesReturns(
-  search?: string,
-  limit = 50,
+  filters?: {
+    search?: string;
+    customerSearch?: string;
+    documentSearch?: string;
+    limit?: number;
+  },
 ): Promise<SalesReturnListItem[]> {
   const { data } = await http.get<Record<string, unknown>[]>('/sales/returns', {
-    params: { limit, ...(search?.trim() ? { search: search.trim() } : {}) },
+    params: {
+      limit: filters?.limit ?? 50,
+      ...(filters?.search?.trim() ? { search: filters.search.trim() } : {}),
+      ...(filters?.customerSearch?.trim() ? { customerSearch: filters.customerSearch.trim() } : {}),
+      ...(filters?.documentSearch?.trim() ? { documentSearch: filters.documentSearch.trim() } : {}),
+    },
   });
   return data.map((row) => normalizeSalesReturnListItem(row));
 }
@@ -669,4 +694,149 @@ export async function closeSalesShift(
 ): Promise<SalesShiftDetail> {
   const { data } = await http.post<Record<string, unknown>>(`/sales/shifts/${id}/close`, payload);
   return normalizeSalesShiftDetail(data);
+}
+
+function normalizeReceivablesAging(row: Record<string, unknown>) {
+  const aging = (row.aging ?? row.Aging ?? {}) as Record<string, unknown>;
+  return {
+    current: Number(aging.current ?? aging.Current ?? 0),
+    days31To60: Number(aging.days31To60 ?? aging.Days31To60 ?? 0),
+    days61To90: Number(aging.days61To90 ?? aging.Days61To90 ?? 0),
+    over90: Number(aging.over90 ?? aging.Over90 ?? 0),
+  };
+}
+
+function normalizeReceivablesRow(row: Record<string, unknown>): CustomerReceivablesRow {
+  return {
+    customerId: String(row.customerId ?? row.CustomerId),
+    customerCode: String(row.customerCode ?? row.CustomerCode ?? ''),
+    customerName: String(row.customerName ?? row.CustomerName ?? ''),
+    customerPhone: (row.customerPhone ?? row.CustomerPhone) as string | null | undefined,
+    totalReceivable: Number(row.totalReceivable ?? row.TotalReceivable ?? 0),
+    unappliedCredit: Number(row.unappliedCredit ?? row.UnappliedCredit ?? 0),
+    aging: normalizeReceivablesAging(row),
+    openDocumentCount: Number(row.openDocumentCount ?? row.OpenDocumentCount ?? 0),
+  };
+}
+
+export async function fetchCustomerReceivables(): Promise<CustomerReceivablesRow[]> {
+  const { data } = await http.get<Record<string, unknown>[]>('/sales/customer-receivables');
+  return data.map((row) => normalizeReceivablesRow(row));
+}
+
+export async function fetchCustomerReceivablesDetail(customerId: string): Promise<CustomerReceivablesDetail> {
+  const { data } = await http.get<Record<string, unknown>>(`/sales/customer-receivables/${customerId}`);
+  const lines = ((data.lines ?? data.Lines ?? []) as Record<string, unknown>[]).map((line) => ({
+    salesOrderId: String(line.salesOrderId ?? line.SalesOrderId),
+    orderNumber: String(line.orderNumber ?? line.OrderNumber ?? ''),
+    orderDate: String(line.orderDate ?? line.OrderDate ?? ''),
+    orderTotal: Number(line.orderTotal ?? line.OrderTotal ?? 0),
+    paidAmount: Number(line.paidAmount ?? line.PaidAmount ?? 0),
+    outstanding: Number(line.outstanding ?? line.Outstanding ?? 0),
+    daysOutstanding: Number(line.daysOutstanding ?? line.DaysOutstanding ?? 0),
+  }));
+  return {
+    ...normalizeReceivablesRow(data),
+    lines,
+  };
+}
+
+function normalizeCustomerPayment(row: Record<string, unknown>): CustomerPaymentListItem {
+  return {
+    id: String(row.id ?? row.Id),
+    paymentNumber: String(row.paymentNumber ?? row.PaymentNumber ?? ''),
+    customerId: String(row.customerId ?? row.CustomerId),
+    customerName: String(row.customerName ?? row.CustomerName ?? ''),
+    amount: Number(row.amount ?? row.Amount ?? 0),
+    paymentMethod: Number(row.paymentMethod ?? row.PaymentMethod ?? 1),
+    status: Number(row.status ?? row.Status ?? 1),
+    paymentDate: String(row.paymentDate ?? row.PaymentDate ?? ''),
+    postedAt: (row.postedAt ?? row.PostedAt) as string | undefined,
+    salesOrderId: (row.salesOrderId ?? row.SalesOrderId) as string | undefined,
+    orderNumber: (row.orderNumber ?? row.OrderNumber) as string | undefined,
+    notes: (row.notes ?? row.Notes) as string | undefined,
+  };
+}
+
+function customerPaymentListParams(filters?: CustomerPaymentListFilters) {
+  if (!filters) return undefined;
+  const params: Record<string, string | number> = {};
+  if (filters.search?.trim()) params.search = filters.search.trim();
+  if (filters.customerSearch?.trim()) params.customerSearch = filters.customerSearch.trim();
+  if (filters.documentSearch?.trim()) params.documentSearch = filters.documentSearch.trim();
+  if (filters.customerId) params.customerId = filters.customerId;
+  if (filters.status != null) params.status = filters.status;
+  if (filters.dateFrom) params.dateFrom = filters.dateFrom;
+  if (filters.dateTo) params.dateTo = filters.dateTo;
+  return Object.keys(params).length > 0 ? params : undefined;
+}
+
+function customerPaymentPayload(payload: {
+  customerId: string;
+  salesOrderId?: string;
+  amount: number;
+  paymentMethod: number;
+  notes?: string;
+  paymentDate?: string;
+}) {
+  return {
+    customerId: payload.customerId,
+    salesOrderId: payload.salesOrderId ?? null,
+    amount: payload.amount,
+    paymentMethod: payload.paymentMethod,
+    notes: payload.notes?.trim() ? payload.notes.trim() : null,
+    paymentDate: payload.paymentDate || null,
+  };
+}
+
+export async function fetchCustomerPayments(
+  filters?: CustomerPaymentListFilters,
+): Promise<CustomerPaymentListItem[]> {
+  const { data } = await http.get<unknown>('/sales/customer-payments', {
+    params: customerPaymentListParams(filters),
+  });
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map((row) => normalizeCustomerPayment(row as Record<string, unknown>));
+}
+
+export async function fetchCustomerPayment(id: string): Promise<CustomerPaymentListItem> {
+  const { data } = await http.get<Record<string, unknown>>(`/sales/customer-payments/${id}`);
+  return normalizeCustomerPayment(data);
+}
+
+export async function createCustomerPayment(payload: {
+  customerId: string;
+  salesOrderId?: string;
+  amount: number;
+  paymentMethod: number;
+  notes?: string;
+  paymentDate?: string;
+}): Promise<CustomerPaymentListItem> {
+  const { data } = await http.post<Record<string, unknown>>('/sales/customer-payments', customerPaymentPayload(payload));
+  return normalizeCustomerPayment(data);
+}
+
+export async function updateCustomerPayment(
+  id: string,
+  payload: {
+    customerId: string;
+    salesOrderId?: string;
+    amount: number;
+    paymentMethod: number;
+    notes?: string;
+    paymentDate?: string;
+  },
+): Promise<CustomerPaymentListItem> {
+  const { data } = await http.put<Record<string, unknown>>(`/sales/customer-payments/${id}`, customerPaymentPayload(payload));
+  return normalizeCustomerPayment(data);
+}
+
+export async function postCustomerPayment(id: string): Promise<CustomerPaymentListItem> {
+  const { data } = await http.post<Record<string, unknown>>(`/sales/customer-payments/${id}/post`);
+  return normalizeCustomerPayment(data);
+}
+
+export async function cancelCustomerPayment(id: string): Promise<CustomerPaymentListItem> {
+  const { data } = await http.post<Record<string, unknown>>(`/sales/customer-payments/${id}/cancel`);
+  return normalizeCustomerPayment(data);
 }

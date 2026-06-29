@@ -28,6 +28,8 @@ export interface CustomerDetail {
   hasAppAccount: boolean;
   appVerified?: boolean;
   appLastLoginAt?: string;
+  allowCredit?: boolean;
+  creditLimit?: number | null;
 }
 
 export interface CustomerOrderListItem {
@@ -114,6 +116,8 @@ export interface CreateCustomerPayload {
 export interface UpdateCustomerPayload extends CreateCustomerPayload {
   customerCode: string;
   status: number;
+  allowCredit?: boolean;
+  creditLimit?: number | null;
 }
 
 export const CUSTOMER_GENDER_OPTIONS = [

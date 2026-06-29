@@ -12,6 +12,7 @@ import type {
   OpeningBalanceLine,
   OpeningBalanceResult,
   OpeningBalanceImportResult,
+  PagedOpeningBalanceBatches,
   LowStockProduct,
   LowStockSettings,
   CategoryLowStockSetting,
@@ -248,11 +249,31 @@ function normalizeOpeningBalanceBatch(row: Record<string, unknown>): OpeningBala
   };
 }
 
-export async function fetchOpeningBalanceBatches(warehouseId?: string): Promise<OpeningBalanceBatch[]> {
-  const { data } = await http.get<Record<string, unknown>[]>('/inventory/opening-balance/batches', {
-    params: warehouseId ? { warehouseId } : undefined,
+export async function fetchOpeningBalanceBatches(params?: {
+  warehouseId?: string;
+  productId?: string;
+  search?: string;
+  status?: 'all' | 'voidable' | 'locked';
+  page?: number;
+  pageSize?: number;
+}): Promise<PagedOpeningBalanceBatches> {
+  const { data } = await http.get<Record<string, unknown>>('/inventory/opening-balance/batches', {
+    params: {
+      ...params,
+      status: params?.status && params.status !== 'all' ? params.status : undefined,
+    },
   });
-  return data.map((row) => normalizeOpeningBalanceBatch(row));
+  const items = ((data.items ?? data.Items ?? []) as Record<string, unknown>[]).map((row) =>
+    normalizeOpeningBalanceBatch(row),
+  );
+  return {
+    items,
+    total: Number(data.total ?? data.Total ?? items.length),
+    page: Number(data.page ?? data.Page ?? 1),
+    pageSize: Number(data.pageSize ?? data.PageSize ?? items.length),
+    summaryTotal: Number(data.summaryTotal ?? data.SummaryTotal ?? 0),
+    summaryVoidableCount: Number(data.summaryVoidableCount ?? data.SummaryVoidableCount ?? 0),
+  };
 }
 
 export async function voidOpeningBalanceBatch(batchId: string): Promise<void> {
@@ -446,19 +467,19 @@ export async function fetchLowStockProducts(params?: {
   return data.map((row) => normalizeLowStockProduct(row));
 }
 
-export async function importOpeningBalance(payload: {
-  warehouseId: string;
-  notes?: string;
-  rows: Array<{
-    rowNumber: number;
-    productKey: string;
-    batchNumber: string;
-    expiryDate?: string;
-    quantity: number;
-    unitCost: number;
-  }>;
-}): Promise<OpeningBalanceImportResult> {
-  const { data } = await http.post<Record<string, unknown>>('/inventory/opening-balance/import', payload);
+const OPENING_BALANCE_IMPORT_BATCH_SIZE = 1500;
+const OPENING_BALANCE_IMPORT_TIMEOUT_MS = 180_000;
+
+type OpeningBalanceImportRow = {
+  rowNumber: number;
+  productKey: string;
+  batchNumber: string;
+  expiryDate?: string;
+  quantity: number;
+  unitCost: number;
+};
+
+function normalizeOpeningBalanceImportResult(data: Record<string, unknown>): OpeningBalanceImportResult {
   const errors = ((data.errors ?? data.Errors ?? []) as Record<string, unknown>[]).map((row) => ({
     rowNumber: Number(row.rowNumber ?? row.RowNumber ?? 0),
     message: String(row.message ?? row.Message ?? ''),
@@ -468,6 +489,53 @@ export async function importOpeningBalance(payload: {
     batchIds: ((data.batchIds ?? data.BatchIds ?? []) as unknown[]).map(String),
     errors,
   };
+}
+
+export async function importOpeningBalance(payload: {
+  warehouseId: string;
+  notes?: string;
+  rows: OpeningBalanceImportRow[];
+}): Promise<OpeningBalanceImportResult> {
+  const { data } = await http.post<Record<string, unknown>>(
+    '/inventory/opening-balance/import',
+    payload,
+    { timeout: OPENING_BALANCE_IMPORT_TIMEOUT_MS },
+  );
+  return normalizeOpeningBalanceImportResult(data);
+}
+
+export async function importOpeningBalanceBatched(
+  warehouseId: string,
+  notes: string | undefined,
+  rows: OpeningBalanceImportRow[],
+  onBatchProgress?: (current: number, total: number) => void,
+): Promise<OpeningBalanceImportResult> {
+  if (rows.length === 0) {
+    return { linesProcessed: 0, batchIds: [], errors: [] };
+  }
+
+  const batches: OpeningBalanceImportRow[][] = [];
+  for (let i = 0; i < rows.length; i += OPENING_BALANCE_IMPORT_BATCH_SIZE) {
+    batches.push(rows.slice(i, i + OPENING_BALANCE_IMPORT_BATCH_SIZE));
+  }
+
+  let linesProcessed = 0;
+  const batchIds: string[] = [];
+  const errors: OpeningBalanceImportResult['errors'] = [];
+
+  for (let i = 0; i < batches.length; i++) {
+    onBatchProgress?.(i + 1, batches.length);
+    const result = await importOpeningBalance({
+      warehouseId,
+      notes: i === 0 ? notes : undefined,
+      rows: batches[i],
+    });
+    linesProcessed += result.linesProcessed;
+    batchIds.push(...result.batchIds);
+    errors.push(...result.errors);
+  }
+
+  return { linesProcessed, batchIds, errors };
 }
 
 function normalizeCategoryLowStock(row: Record<string, unknown>): CategoryLowStockSetting {

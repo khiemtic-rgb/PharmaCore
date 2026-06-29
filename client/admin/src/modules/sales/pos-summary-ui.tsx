@@ -37,11 +37,17 @@ type SummaryMoneyProps = {
   value: string;
   danger?: boolean;
   strong?: boolean;
+  total?: boolean;
 };
 
-export function PosSummaryMoney({ value, danger, strong }: SummaryMoneyProps) {
+export function PosSummaryMoney({ value, danger, strong, total }: SummaryMoneyProps) {
   return (
-    <Typography.Text type={danger ? 'danger' : undefined} strong={strong} style={amountBoxStyle}>
+    <Typography.Text
+      type={danger ? 'danger' : undefined}
+      strong={strong || total}
+      className={total ? 'pos-summary-money pos-summary-money--total' : 'pos-summary-money'}
+      style={amountBoxStyle}
+    >
       {value}
     </Typography.Text>
   );
@@ -49,18 +55,33 @@ export function PosSummaryMoney({ value, danger, strong }: SummaryMoneyProps) {
 
 type SummaryRowProps = SummaryMoneyProps & {
   label: ReactNode;
+  total?: boolean;
 };
 
-export function PosSummaryRow({ label, value, danger, strong }: SummaryRowProps) {
+export function PosSummaryRow({ label, value, danger, strong, total }: SummaryRowProps) {
   return (
-    <div style={summaryRowStyle}>
-      {typeof label === 'string' ? <Typography.Text strong={strong}>{label}</Typography.Text> : label}
-      <PosSummaryMoney value={value} danger={danger} strong={strong} />
+    <div className={total ? 'pos-summary-row pos-summary-row--total' : 'pos-summary-row'} style={summaryRowStyle}>
+      {typeof label === 'string' ? (
+        <Typography.Text strong={strong || total}>{label}</Typography.Text>
+      ) : (
+        label
+      )}
+      <PosSummaryMoney value={value} danger={danger} strong={strong || total} total={total} />
     </div>
   );
 }
 
-export function PosSummaryPanel({ children }: { children: ReactNode }) {
+export function PosSummaryPanel({
+  children,
+  variant = 'default',
+}: {
+  children: ReactNode;
+  variant?: 'default' | 'sidebar';
+}) {
+  if (variant === 'sidebar') {
+    return <div className="pos-summary-panel pos-summary-panel--sidebar">{children}</div>;
+  }
+
   return (
     <div
       style={{

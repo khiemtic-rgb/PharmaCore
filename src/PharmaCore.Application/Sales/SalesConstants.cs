@@ -36,6 +36,8 @@ public static class SalesPaymentMethods
     public const short Card = 2;
     public const short Transfer = 3;
     public const short EWallet = 4;
+    /// <summary>Ghi nợ trên đơn — chỉ dùng khi báo cáo; tiền thật là 1–4.</summary>
+    public const short Credit = 5;
 }
 
 public static class SalesReturnStatuses
@@ -47,4 +49,11 @@ public static class SalesShiftStatuses
 {
     public const short Open = 1;
     public const short Closed = 2;
+}
+
+public static class CustomerPaymentStatuses
+{
+    public const short Draft = 1;
+    public const short Posted = 2;
+    public const short Cancelled = 3;
 }

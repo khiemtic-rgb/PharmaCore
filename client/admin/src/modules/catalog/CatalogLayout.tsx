@@ -6,7 +6,6 @@ import {
   CloudSyncOutlined,
   ExperimentOutlined,
   FolderOutlined,
-  ImportOutlined,
   TagOutlined,
 } from '@ant-design/icons';
 import {
@@ -24,7 +23,6 @@ const allTabs: ProductNavTab[] = [
     path: '/catalog/products',
     icon: <AppstoreOutlined />,
   },
-  { key: 'import', label: 'Import Excel', path: '/catalog/import', icon: <ImportOutlined /> },
   { key: 'categories', label: 'Danh mục SP', path: '/catalog/categories', icon: <FolderOutlined /> },
   {
     key: 'brands',
@@ -60,7 +58,10 @@ export function CatalogLayout() {
     }
   }, [location.pathname, navigate]);
 
-  const activeKey = tabs.find((t) => location.pathname.startsWith(t.path))?.key ?? 'products';
+  const activeKey =
+    location.pathname.startsWith('/catalog/import')
+      ? 'products'
+      : tabs.find((t) => location.pathname.startsWith(t.path))?.key ?? 'products';
 
   return (
     <div>

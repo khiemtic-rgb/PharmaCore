@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -12,6 +12,7 @@ import {
   Tag,
   message,
 } from 'antd';
+import type { FormListFieldData } from 'antd/es/form/FormList';
 import type { ColumnsType } from 'antd/es/table';
 import { isAxiosError } from 'axios';
 import { PlusOutlined, ReloadOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
@@ -19,31 +20,215 @@ import {
   completeTransfer,
   createTransfer,
   fetchStockBatches,
+  fetchStockProducts,
   fetchTransfer,
   fetchTransfers,
   fetchWarehouses,
 } from '@/shared/api/inventory.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import type { StockBatch, TransferDetail, TransferListItem, Warehouse } from '@/shared/api/inventory.types';
+import type { TransferDetail, TransferListItem, Warehouse } from '@/shared/api/inventory.types';
 import { formatDisplayDate } from '@/shared/utils/date';
+import { formatDisplayQuantity } from '@/shared/utils/money';
 import { TRANSFER_STATUS_LABELS } from '@/shared/api/inventory.types';
 
 interface TransferLineForm {
-  batchId: string;
+  productId?: string;
+  batchId?: string;
   quantity: number;
+}
+
+function stockProductLabel(code: string, name: string, unitName?: string | null, totalQty?: number) {
+  const base = unitName ? `${code} — ${name} · ${unitName}` : `${code} — ${name}`;
+  return totalQty != null ? `${base} (tồn ${formatDisplayQuantity(totalQty)})` : base;
+}
+
+function batchOptionLabel(batchNumber: string, expiryDate: string | undefined, quantityAvailable: number) {
+  const hsd = expiryDate ? ` · HSD ${formatDisplayDate(expiryDate)}` : '';
+  return `${batchNumber}${hsd} · tồn ${formatDisplayQuantity(quantityAvailable)}`;
+}
+
+function TransferLineRow({
+  field,
+  fromWarehouseId,
+  remove,
+}: {
+  field: FormListFieldData;
+  fromWarehouseId?: string;
+  remove: () => void;
+}) {
+  const form = Form.useFormInstance();
+  const productId = Form.useWatch(['items', field.name, 'productId'], form) as string | undefined;
+  const [productOptions, setProductOptions] = useState<{ value: string; label: string }[]>([]);
+  const [batchOptions, setBatchOptions] = useState<{ value: string; label: string }[]>([]);
+  const [productLoading, setProductLoading] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const productSearchTimer = useRef<number | undefined>(undefined);
+
+  const loadBatches = useCallback(
+    async (nextProductId: string, preferredBatchId?: string) => {
+      if (!fromWarehouseId) {
+        setBatchOptions([]);
+        form.setFieldValue(['items', field.name, 'batchId'], undefined);
+        return;
+      }
+      setBatchLoading(true);
+      try {
+        const result = await fetchStockBatches({
+          warehouseId: fromWarehouseId,
+          productId: nextProductId,
+          page: 1,
+          pageSize: 50,
+        });
+        const options = result.items
+          .filter((b) => b.quantityAvailable > 0)
+          .map((b) => ({
+            value: b.id,
+            label: batchOptionLabel(b.batchNumber, b.expiryDate, b.quantityAvailable),
+          }));
+        setBatchOptions(options);
+        const batchId =
+          preferredBatchId && options.some((o) => o.value === preferredBatchId)
+            ? preferredBatchId
+            : options[0]?.value;
+        form.setFieldValue(['items', field.name, 'batchId'], batchId);
+      } catch {
+        setBatchOptions([]);
+        form.setFieldValue(['items', field.name, 'batchId'], undefined);
+      } finally {
+        setBatchLoading(false);
+      }
+    },
+    [field.name, form, fromWarehouseId],
+  );
+
+  const searchProducts = useCallback(
+    (query: string) => {
+      if (!fromWarehouseId) {
+        setProductOptions([]);
+        return;
+      }
+      window.clearTimeout(productSearchTimer.current);
+      productSearchTimer.current = window.setTimeout(() => {
+        void (async () => {
+          setProductLoading(true);
+          try {
+            const result = await fetchStockProducts({
+              warehouseId: fromWarehouseId,
+              search: query.trim() || undefined,
+              page: 1,
+              pageSize: 20,
+            });
+            setProductOptions(
+              result.items.map((p) => ({
+                value: p.productId,
+                label: stockProductLabel(p.productCode, p.productName, p.saleUnitName, p.totalQuantity),
+              })),
+            );
+          } catch {
+            setProductOptions([]);
+          } finally {
+            setProductLoading(false);
+          }
+        })();
+      }, 300);
+    },
+    [fromWarehouseId],
+  );
+
+  useEffect(() => {
+    searchProducts('');
+    return () => window.clearTimeout(productSearchTimer.current);
+  }, [fromWarehouseId, searchProducts]);
+
+  useEffect(() => {
+    if (!fromWarehouseId || !productId) {
+      setBatchOptions([]);
+      if (!productId) {
+        form.setFieldValue(['items', field.name, 'batchId'], undefined);
+      }
+      return;
+    }
+    void loadBatches(productId);
+  }, [fromWarehouseId, productId, loadBatches, field.name, form]);
+
+  return (
+    <Space align="start" style={{ display: 'flex', marginBottom: 8 }}>
+      <Form.Item
+        {...field}
+        name={[field.name, 'productId']}
+        rules={[{ required: true, message: 'Chọn SP' }]}
+        style={{ width: 240, marginBottom: 0 }}
+      >
+        <Select
+          showSearch
+          filterOption={false}
+          placeholder="Sản phẩm"
+          disabled={!fromWarehouseId}
+          loading={productLoading}
+          options={productOptions}
+          onSearch={searchProducts}
+          onDropdownVisibleChange={(open) => {
+            if (open) searchProducts('');
+          }}
+          notFoundContent={fromWarehouseId ? 'Không có SP tồn' : 'Chọn kho xuất trước'}
+        />
+      </Form.Item>
+      <Form.Item
+        {...field}
+        name={[field.name, 'batchId']}
+        rules={[{ required: true, message: 'Chọn lô' }]}
+        style={{ width: 220, marginBottom: 0 }}
+      >
+        <Select
+          placeholder="Lô hàng"
+          disabled={!productId || batchOptions.length === 0}
+          loading={batchLoading}
+          options={batchOptions}
+          notFoundContent={productId ? 'Không có lô tồn' : 'Chọn SP trước'}
+        />
+      </Form.Item>
+      <Form.Item
+        {...field}
+        name={[field.name, 'quantity']}
+        rules={[{ required: true, message: 'SL' }]}
+        style={{ width: 90, marginBottom: 0 }}
+      >
+        <InputNumber min={0.001} style={{ width: '100%' }} />
+      </Form.Item>
+      <Button type="text" danger onClick={remove}>
+        Xóa
+      </Button>
+    </Space>
+  );
 }
 
 export function TransferListPage() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<TransferListItem[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [sourceBatches, setSourceBatches] = useState<StockBatch[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<TransferDetail | null>(null);
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const fromWarehouseId = Form.useWatch('fromWarehouseId', form);
+  const prevFromWarehouseRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!drawerOpen) {
+      prevFromWarehouseRef.current = undefined;
+      return;
+    }
+    if (prevFromWarehouseRef.current && prevFromWarehouseRef.current !== fromWarehouseId) {
+      const lines = form.getFieldValue('items') as TransferLineForm[] | undefined;
+      if (lines?.length) {
+        form.setFieldsValue({
+          items: lines.map((line) => ({ quantity: line.quantity ?? 1 })),
+        });
+      }
+    }
+    prevFromWarehouseRef.current = fromWarehouseId;
+  }, [drawerOpen, fromWarehouseId, form]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -61,16 +246,6 @@ export function TransferListPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    if (!fromWarehouseId) {
-      setSourceBatches([]);
-      return;
-    }
-    fetchStockBatches({ warehouseId: fromWarehouseId, page: 1, pageSize: 100 })
-      .then((r) => setSourceBatches(r.items))
-      .catch(() => setSourceBatches([]));
-  }, [fromWarehouseId]);
 
   const openCreate = () => {
     form.resetFields();
@@ -95,10 +270,12 @@ export function TransferListPage() {
         fromWarehouseId: values.fromWarehouseId,
         toWarehouseId: values.toWarehouseId,
         notes: values.notes,
-        items: (values.items as TransferLineForm[]).map((i) => ({
-          batchId: i.batchId,
-          quantity: i.quantity,
-        })),
+        items: (values.items as TransferLineForm[])
+          .filter((i) => i.batchId)
+          .map((i) => ({
+            batchId: i.batchId!,
+            quantity: i.quantity,
+          })),
       });
       message.success(`Đã tạo phiếu ${created.transferNumber}`);
       setDrawerOpen(false);
@@ -195,7 +372,7 @@ export function TransferListPage() {
 
       <Drawer
         title="Tạo phiếu điều chuyển"
-        width={560}
+        width={680}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         extra={
@@ -227,33 +404,12 @@ export function TransferListPage() {
             {(fields, { add, remove }) => (
               <>
                 {fields.map((field) => (
-                  <Space key={field.key} align="start" style={{ display: 'flex', marginBottom: 8 }}>
-                    <Form.Item
-                      {...field}
-                      name={[field.name, 'batchId']}
-                      rules={[{ required: true, message: 'Chọn lô' }]}
-                      style={{ width: 280, marginBottom: 0 }}
-                    >
-                      <Select
-                        placeholder="Lô hàng"
-                        options={sourceBatches.map((b) => ({
-                          value: b.id,
-                          label: `${b.productCode} / ${b.batchNumber} (tồn ${b.quantityAvailable})`,
-                        }))}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      {...field}
-                      name={[field.name, 'quantity']}
-                      rules={[{ required: true, message: 'SL' }]}
-                      style={{ width: 100, marginBottom: 0 }}
-                    >
-                      <InputNumber min={0.001} style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Button type="text" danger onClick={() => remove(field.name)}>
-                      Xóa
-                    </Button>
-                  </Space>
+                  <TransferLineRow
+                    key={field.key}
+                    field={field}
+                    fromWarehouseId={fromWarehouseId}
+                    remove={() => remove(field.name)}
+                  />
                 ))}
                 <Button type="dashed" onClick={() => add({ quantity: 1 })} block>
                   Thêm dòng

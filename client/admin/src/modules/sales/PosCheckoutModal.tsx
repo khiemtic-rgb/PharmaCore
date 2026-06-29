@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Alert, Button, Form, InputNumber, Modal, Select, Space, Switch, Typography, message } from 'antd';
+import { Alert, Button, Form, InputNumber, Modal, Select, Space, Switch, Tag, Tooltip, Typography, message } from 'antd';
 
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { MinusCircleOutlined, PlusOutlined, UserAddOutlined } from '@ant-design/icons';
 
-import type { PosCheckoutConfirm, PosCheckoutPaymentLine, PosCustomerLoyalty, PosCustomerVoucher } from '@/shared/api/sales.types';
+import type {
+  CustomerListItem,
+  PosCheckoutConfirm,
+  PosCheckoutPaymentLine,
+  PosCustomerLoyalty,
+  PosCustomerVoucher,
+} from '@/shared/api/sales.types';
 
 import { SALES_PAYMENT_METHOD_LABELS } from '@/shared/api/sales.types';
 
@@ -25,6 +31,7 @@ import { PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 
 
 const PAYMENT_METHOD_CASH = 1;
+const PAYMENT_METHOD_CREDIT = 5;
 
 
 
@@ -41,6 +48,20 @@ type Props = {
   lineDiscountTotal: number;
 
   orderDiscountAmount: number;
+
+  customerId?: string;
+
+  customers?: CustomerListItem[];
+
+  onCustomerChange?: (customerId: string | undefined) => void;
+
+  onQuickAddCustomer?: () => void;
+
+  customerAllowCredit?: boolean;
+
+  customerCreditLimit?: number | null;
+
+  customerCurrentOutstanding?: number;
 
   customerLoyalty?: PosCustomerLoyalty | null;
 
@@ -82,9 +103,25 @@ function defaultPayments(total: number): PosCheckoutPaymentLine[] {
 
 
 
-function sumAmounts(rows: PosCheckoutPaymentLine[]): number {
+function sumCashPayments(rows: PosCheckoutPaymentLine[]): number {
 
-  return rows.reduce((sum, row) => sum + Number(row?.amount ?? 0), 0);
+  return rows
+
+    .filter((row) => Number(row.paymentMethod) !== PAYMENT_METHOD_CREDIT)
+
+    .reduce((sum, row) => sum + Number(row?.amount ?? 0), 0);
+
+}
+
+
+
+function sumCreditPaymentRows(rows: PosCheckoutPaymentLine[]): number {
+
+  return rows
+
+    .filter((row) => Number(row.paymentMethod) === PAYMENT_METHOD_CREDIT)
+
+    .reduce((sum, row) => sum + Number(row?.amount ?? 0), 0);
 
 }
 
@@ -120,27 +157,53 @@ function rebalanceFirstRow(rows: PosCheckoutPaymentLine[], totalAmount: number):
 
 
 
+function computeAppliedPayment(rows: PosCheckoutPaymentLine[], payableTotal: number): number {
+
+  if (rows.length === 0) return 0;
+
+  if (isSingleCashPayment(rows)) {
+
+    return Math.min(Number(rows[0]?.amount ?? 0), payableTotal);
+
+  }
+
+  return Math.min(sumCashPayments(rows), payableTotal);
+
+}
+
+
+
 function normalizePaymentsForApi(
 
   rows: PosCheckoutPaymentLine[],
 
-  totalAmount: number,
+  payableTotal: number,
 
 ): PosCheckoutPaymentLine[] {
 
+  if (rows.length === 0) return [];
+
   if (isSingleCashPayment(rows)) {
 
-    return [{ paymentMethod: PAYMENT_METHOD_CASH, amount: totalAmount }];
+    const applied = computeAppliedPayment(rows, payableTotal);
+
+    if (applied <= 0.009) return [];
+
+    return [{ paymentMethod: PAYMENT_METHOD_CASH, amount: applied }];
 
   }
 
-  return rows.map((row) => ({
+  return rows
 
-    paymentMethod: Number(row.paymentMethod),
+    .map((row) => ({
 
-    amount: Number(row.amount ?? 0),
+      paymentMethod: Number(row.paymentMethod),
 
-  }));
+      amount: Number(row.amount ?? 0),
+
+    }))
+
+    .filter((row) => row.amount > 0.009 && row.paymentMethod !== PAYMENT_METHOD_CREDIT);
 
 }
 
@@ -154,19 +217,43 @@ function roundMoney(v: number): number {
 
 
 
-function paymentsAreValid(rows: PosCheckoutPaymentLine[], totalAmount: number): boolean {
+function paymentsAreValid(
+
+  rows: PosCheckoutPaymentLine[],
+
+  payableTotal: number,
+
+  options: { customerId?: string; allowCredit: boolean },
+
+): boolean {
+
+  if (payableTotal < 0.01) return true;
 
   if (rows.length === 0) return false;
 
-  const total = roundMoney(totalAmount);
+  const cashPaid = computeAppliedPayment(rows, payableTotal);
 
-  if (isSingleCashPayment(rows)) {
+  const creditRows = roundMoney(sumCreditPaymentRows(rows));
 
-    return Number(rows[0]?.amount ?? 0) >= total - 0.009;
+  if (cashPaid > payableTotal + 0.009) return false;
+
+  if (creditRows > 0.009) {
+
+    if (Math.abs(cashPaid + creditRows - payableTotal) > 0.01) return false;
+
+    return Boolean(options.customerId && options.allowCredit);
 
   }
 
-  return Math.abs(sumAmounts(rows) - total) < 0.01;
+  if (Math.abs(cashPaid - payableTotal) < 0.01) return true;
+
+  if (cashPaid < payableTotal - 0.009) {
+
+    return Boolean(options.customerId && options.allowCredit);
+
+  }
+
+  return false;
 
 }
 
@@ -193,6 +280,20 @@ export function PosCheckoutModal({
   lineDiscountTotal,
 
   orderDiscountAmount,
+
+  customerId,
+
+  customers = [],
+
+  onCustomerChange,
+
+  onQuickAddCustomer,
+
+  customerAllowCredit = false,
+
+  customerCreditLimit,
+
+  customerCurrentOutstanding = 0,
 
   customerLoyalty,
 
@@ -311,11 +412,41 @@ export function PosCheckoutModal({
 
     if (isFreeOrder) return 0;
 
-    if (singleCash) return Math.min(cashTendered, payableTotal);
+    return computeAppliedPayment(payments, payableTotal);
 
-    return sumAmounts(payments);
+  }, [isFreeOrder, payableTotal, payments]);
 
-  }, [cashTendered, isFreeOrder, payableTotal, payments, singleCash]);
+
+
+  const explicitCredit = useMemo(
+
+    () => roundMoney(sumCreditPaymentRows(payments)),
+
+    [payments],
+
+  );
+
+
+
+  const creditAmount = useMemo(() => {
+
+    if (isFreeOrder) return 0;
+
+    const implicitCredit = roundMoney(Math.max(0, payableTotal - paidTotal));
+
+    return explicitCredit > 0.009 ? explicitCredit : implicitCredit;
+
+  }, [explicitCredit, isFreeOrder, paidTotal, payableTotal]);
+
+
+
+  const selectedCustomer = useMemo(
+
+    () => customers.find((c) => c.id === customerId),
+
+    [customers, customerId],
+
+  );
 
 
 
@@ -323,9 +454,47 @@ export function PosCheckoutModal({
 
     if (isFreeOrder) return true;
 
-    return paymentsAreValid(payments, payableTotal);
+    if (creditAmount > 0.009) {
 
-  }, [isFreeOrder, payableTotal, payments]);
+      if (!customerId) return false;
+
+      if (!customerAllowCredit) return false;
+
+      if (customerCreditLimit != null && customerCreditLimit > 0) {
+
+        if (customerCurrentOutstanding + creditAmount > customerCreditLimit + 0.009) return false;
+
+      }
+
+    }
+
+    return paymentsAreValid(payments, payableTotal, {
+
+      customerId,
+
+      allowCredit: customerAllowCredit,
+
+    });
+
+  }, [
+
+    creditAmount,
+
+    customerAllowCredit,
+
+    customerCreditLimit,
+
+    customerCurrentOutstanding,
+
+    customerId,
+
+    isFreeOrder,
+
+    payableTotal,
+
+    payments,
+
+  ]);
 
 
 
@@ -393,7 +562,11 @@ export function PosCheckoutModal({
 
     setPayments((prev) => {
 
-      const allocated = singleCash ? payableTotal : sumAmounts(prev);
+      const allocated = singleCash
+
+        ? payableTotal
+
+        : roundMoney(sumCashPayments(prev) + sumCreditPaymentRows(prev));
 
       const remaining = Math.max(0, payableTotal - allocated);
 
@@ -473,9 +646,13 @@ export function PosCheckoutModal({
 
       const rows = payments.length > 0 ? payments : defaultPayments(payableTotal);
 
-      if (rows.length > 1 && !paymentsAreValid(rows, payableTotal)) {
+      if (!paymentsAreValid(rows, payableTotal, { customerId, allowCredit: customerAllowCredit })) {
 
-        const err = 'Tổng thanh toán chưa khớp số tiền khách phải trả';
+        const err = creditAmount > 0.009
+
+          ? 'Kiểm tra khách hàng và số tiền ghi nợ'
+
+          : 'Tổng thanh toán chưa khớp số tiền khách phải trả';
 
         setSubmitError(err);
 
@@ -523,15 +700,73 @@ export function PosCheckoutModal({
 
     if (isFreeOrder || paymentOk) return null;
 
-    if (singleCash) {
+    if (creditAmount > 0.009) {
 
-      return `Khách cần đưa ít nhất ${formatDisplayMoney(payableTotal)} (hiện ${formatDisplayMoney(cashTendered)}).`;
+      if (!customerId) return 'Chọn khách hàng để ghi nợ.';
+
+      if (!customerAllowCredit) return 'Khách hàng chưa được phép ghi nợ.';
+
+      if (
+
+        customerCreditLimit != null &&
+
+        customerCreditLimit > 0 &&
+
+        customerCurrentOutstanding + creditAmount > customerCreditLimit + 0.009
+
+      ) {
+
+        return `Vượt hạn mức nợ (${formatDisplayMoney(customerCreditLimit)}). Đang nợ ${formatDisplayMoney(customerCurrentOutstanding)}.`;
+
+      }
 
     }
 
-    return `Tổng phân bổ phải bằng ${formatDisplayMoney(payableTotal)} (hiện ${formatDisplayMoney(paidTotal)}).`;
+    if (singleCash && cashTendered > payableTotal + 0.009) {
 
-  }, [cashTendered, isFreeOrder, paidTotal, payableTotal, paymentOk, singleCash]);
+      return null;
+
+    }
+
+    if (singleCash && cashTendered < payableTotal - 0.009 && !customerAllowCredit) {
+
+      return `Khách cần trả ${formatDisplayMoney(payableTotal)} hoặc chọn KH được phép ghi nợ.`;
+
+    }
+
+    if (!singleCash && paidTotal > payableTotal + 0.009) {
+
+      return `Tổng thu vượt ${formatDisplayMoney(payableTotal)}.`;
+
+    }
+
+    return `Tổng phân bổ + ghi nợ phải bằng ${formatDisplayMoney(payableTotal)} (hiện thu ${formatDisplayMoney(paidTotal)}).`;
+
+  }, [
+
+    cashTendered,
+
+    creditAmount,
+
+    customerAllowCredit,
+
+    customerCreditLimit,
+
+    customerCurrentOutstanding,
+
+    customerId,
+
+    isFreeOrder,
+
+    paidTotal,
+
+    payableTotal,
+
+    paymentOk,
+
+    singleCash,
+
+  ]);
 
 
 
@@ -650,6 +885,106 @@ export function PosCheckoutModal({
         <PosSummaryRow label="Khách phải trả" value={formatDisplayMoney(payableTotal)} strong />
 
       </Space>
+
+
+
+      <div style={{ marginBottom: 16 }}>
+
+        <Typography.Text strong>Khách hàng</Typography.Text>
+
+        <Space.Compact block style={{ width: '100%', marginTop: 8 }}>
+
+          <Select
+
+            allowClear
+
+            showSearch
+
+            optionFilterProp="label"
+
+            placeholder="Chọn khách (bắt buộc khi ghi nợ)"
+
+            style={{ width: onQuickAddCustomer ? 'calc(100% - 32px)' : '100%' }}
+
+            value={customerId}
+
+            disabled={busy || !onCustomerChange}
+
+            options={customers.map((c) => ({
+
+              value: c.id,
+
+              label: `${c.customerCode} — ${c.fullName}${c.phone ? ` · ${c.phone}` : ''}`,
+
+            }))}
+
+            onChange={(value) => onCustomerChange?.(value)}
+
+          />
+
+          {onQuickAddCustomer ? (
+
+            <Tooltip title="Thêm khách nhanh">
+
+              <Button icon={<UserAddOutlined />} disabled={busy} onClick={onQuickAddCustomer} />
+
+            </Tooltip>
+
+          ) : null}
+
+        </Space.Compact>
+
+        {selectedCustomer ? (
+
+          <Space size={[8, 4]} wrap style={{ marginTop: 8 }}>
+
+            <Typography.Text type="secondary">
+
+              {selectedCustomer.customerCode} · {selectedCustomer.fullName}
+
+              {selectedCustomer.phone ? ` · ${selectedCustomer.phone}` : ''}
+
+            </Typography.Text>
+
+            {selectedCustomer.allowCredit ? (
+
+              <Tag color="gold">Được ghi nợ</Tag>
+
+            ) : (
+
+              <Tag>Không ghi nợ</Tag>
+
+            )}
+
+            {(selectedCustomer.currentOutstanding ?? 0) > 0.009 ? (
+
+              <Tag color="orange">
+
+                Đang nợ {formatDisplayMoney(selectedCustomer.currentOutstanding)}
+
+              </Tag>
+
+            ) : null}
+
+          </Space>
+
+        ) : creditAmount > 0.009 ? (
+
+          <Alert
+
+            type="warning"
+
+            showIcon
+
+            style={{ marginTop: 8 }}
+
+            message="Chọn khách hàng để ghi nợ — có thể chọn ngay tại đây, không cần quay lại màn POS."
+
+          />
+
+        ) : null}
+
+      </div>
 
 
 
@@ -971,13 +1306,31 @@ export function PosCheckoutModal({
 
             <Typography.Text>
 
-              Đã phân bổ:{' '}
+              Đã thu:{' '}
 
               <Typography.Text type={paymentOk ? 'success' : 'danger'} strong>
 
                 {formatDisplayMoney(paidTotal)}
 
               </Typography.Text>
+
+              {creditAmount > 0.009 ? (
+
+                <>
+
+                  {' '}
+
+                  · Ghi nợ:{' '}
+
+                  <Typography.Text strong style={{ color: '#d48806' }}>
+
+                    {formatDisplayMoney(creditAmount)}
+
+                  </Typography.Text>
+
+                </>
+
+              ) : null}
 
               <Typography.Text type="secondary"> / {formatDisplayMoney(payableTotal)}</Typography.Text>
 

@@ -318,11 +318,11 @@ export function CustomerDraftOrderDrawer({
         />
 
         <Typography.Text type="secondary">
-          Tạm tính: <strong>{estimatedTotal.toLocaleString('vi-VN')}đ</strong>
+          Tổng tiền hàng: <strong>{estimatedTotal.toLocaleString('vi-VN')}đ</strong>
         </Typography.Text>
 
         <Button type="primary" icon={<PlusOutlined />} loading={saving} onClick={() => void onSaveDraft()}>
-          Lưu nháp
+          Lưu tạm
         </Button>
       </Space>
     </Drawer>

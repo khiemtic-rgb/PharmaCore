@@ -6,10 +6,10 @@ import {
   App,
   AutoComplete,
   Button,
-  Card,
   InputNumber,
   Select,
   Space,
+  Spin,
   Switch,
   Table,
   Tooltip,
@@ -319,6 +319,8 @@ export function PosPage() {
       customerCode: customer.customerCode,
       fullName: customer.fullName,
       phone: customer.phone,
+      allowCredit: customer.allowCredit,
+      creditLimit: customer.creditLimit ?? undefined,
     };
     setCustomers((prev) => {
       if (prev.some((row) => row.id === customer.id)) {
@@ -881,6 +883,7 @@ export function PosPage() {
   const columns: ColumnsType<CartLine> = [
     {
       title: 'Sản phẩm',
+      ellipsis: true,
       render: (_, row) => {
         const suggestedBatch = formatSuggestedBatch(row.batchHints);
         const stockWarning =
@@ -889,12 +892,14 @@ export function PosPage() {
             ? outOfStockWarningText(row.unitName)
             : null);
         const body = (
-          <div style={{ lineHeight: 1.45 }}>
+          <div style={{ lineHeight: 1.45, minWidth: 0 }}>
             <Typography.Text type="secondary" style={{ fontSize: 11, lineHeight: 1.35 }}>
-              Mã SP: {row.productCode} | ĐVT lẻ: {row.unitName}
+              Mã SP: {row.productCode}
             </Typography.Text>
             <div>
-              <Typography.Text strong>{row.productName}</Typography.Text>
+              <Typography.Text strong ellipsis={{ tooltip: row.productName }}>
+                {row.productName}
+              </Typography.Text>
               <Typography.Text
                 style={{ marginLeft: 6, fontSize: '0.88em', color: '#0d7377', fontWeight: 500 }}
               >
@@ -915,17 +920,27 @@ export function PosPage() {
         );
       },
     },
+    {
+      title: 'ĐVT',
+      dataIndex: 'unitName',
+      width: 52,
+      align: 'center',
+      className: 'pos-cart-col-uom',
+      render: (value: string) => (
+        <Typography.Text style={{ fontSize: 12 }}>{value}</Typography.Text>
+      ),
+    },
     ...(showsBatchLabelField(batchMode)
       ? ([
           {
             title: 'Lô',
-            width: 150,
+            width: 128,
             render: (_, row) => (
               <Select
                 showSearch
                 allowClear={batchMode !== 'label_required'}
                 placeholder="Chọn lô"
-                style={{ width: 140 }}
+                style={{ width: 120 }}
                 disabled={!canWrite || cartLocked}
                 value={row.batchLabel || undefined}
                 options={(row.batchHints ?? []).map((hint) => ({
@@ -945,8 +960,9 @@ export function PosPage() {
     {
       title: 'SL',
       dataIndex: 'quantity',
-      width: 88,
+      width: 80,
       align: 'right',
+      className: 'pos-cart-col-qty',
       render: (_v: number, row) => (
         <PosCartQuantityInput
           value={row.quantity}
@@ -978,8 +994,9 @@ export function PosPage() {
     {
       title: 'Đơn giá',
       dataIndex: 'unitPrice',
-      width: 100,
+      width: 92,
       align: 'right',
+      className: 'pos-cart-col-money',
       render: (v: number) => (
         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDisplayMoney(v)}</span>
       ),
@@ -988,13 +1005,14 @@ export function PosPage() {
       ? ([
           {
             title: 'CK',
-            width: 124,
+            width: 112,
+            className: 'pos-cart-col-discount',
             render: (_, row) => (
               <Space.Compact>
                 <Select
                   allowClear
                   placeholder="%"
-                  style={{ width: 52 }}
+                  style={{ width: 48 }}
                   disabled={!canWrite || cartLocked}
                   value={row.discountType}
                   onChange={(discountType) =>
@@ -1012,8 +1030,8 @@ export function PosPage() {
                   disabled={!canWrite || cartLocked || !row.discountType}
                   value={row.discountValue}
                   {...(row.discountType === SALES_DISCOUNT_TYPES.Fixed
-                    ? { ...moneyInputNumberPropsAllowZeroSuffix, style: { ...moneyInputNumberStyle, width: 72 } }
-                    : { min: 0, max: 100, style: { ...moneyInputNumberStyle, width: 56 } })}
+                    ? { ...moneyInputNumberPropsAllowZeroSuffix, style: { ...moneyInputNumberStyle, width: 64 } }
+                    : { min: 0, max: 100, style: { ...moneyInputNumberStyle, width: 52 } })}
                   onChange={(discountValue) =>
                     setCart((prev) =>
                       prev.map((l) =>
@@ -1029,15 +1047,16 @@ export function PosPage() {
       : []),
     {
       title: 'Thành tiền',
-      width: 136,
+      width: 100,
       align: 'right',
+      className: 'pos-cart-col-money',
       render: (_, row) => (
         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatDisplayMoney(lineNet(row))}</span>
       ),
     },
     {
       title: '',
-      width: 44,
+      width: 36,
       align: 'center',
       render: (_, row) => (
         <Button
@@ -1084,12 +1103,13 @@ export function PosPage() {
   const warehouseName = warehouses.find((w) => w.id === warehouseId)?.warehouseName;
 
   return (
-    <Card title="Bán hàng (POS)" loading={draftLoading}>
+    <Spin spinning={draftLoading} wrapperClassName="pos-page-spin">
+      <div className="pos-page">
+      <div className="pos-page__alerts">
       {editingDraftId && editingDraftNumber && (
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
           message={`Đang sửa đơn tạm ${editingDraftNumber}`}
           description="Thêm/bớt sản phẩm rồi bấm Cập nhật tạm, hoặc Thanh toán để hoàn tất."
           action={
@@ -1103,7 +1123,6 @@ export function PosPage() {
         <Alert
           type="warning"
           showIcon
-          style={{ marginBottom: 16 }}
           message={`Kho ${warehouseName ?? ''} đang kiểm kê (${activeCountSession.adjustmentNumber})`}
           description="Theo quy trình chuẩn: hạn chế bán/nhập xuất trong lúc đếm để tránh lệch tồn. Hoàn tất kiểm kê trước khi chốt số."
           action={
@@ -1120,7 +1139,6 @@ export function PosPage() {
         <Alert
           type="warning"
           showIcon
-          style={{ marginBottom: 16 }}
           message="Chưa mở ca cho kho này"
           description="Cần mở ca và nhập quỹ đầu ca trước khi thanh toán đơn bán."
           action={
@@ -1134,7 +1152,6 @@ export function PosPage() {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
           message={`Ca ${openShift.shiftNumber} · Quỹ đầu ${formatDisplayMoney(openShift.openingCash)}`}
           description={`Mở lúc ${dayjs(openShift.openedAt).format('DD-MM-YYYY HH:mm')} — Thu ròng ca: ${formatDisplayMoney(openShift.summary.netTotal)}`}
         />
@@ -1143,7 +1160,6 @@ export function PosPage() {
         <Alert
           type="warning"
           showIcon
-          style={{ marginBottom: 16 }}
           message="Khách có đơn tạm chờ lấy"
           description={
             <Space direction="vertical" size={4}>
@@ -1174,63 +1190,67 @@ export function PosPage() {
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16 }}
           message="Chế độ gửi đơn qua app khách"
           description="Soạn giỏ → bấm Gửi khách hàng. Khách xem/xác nhận trên app; thanh toán tại quầy khi khách đến lấy."
         />
       ) : null}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
-        <Select
-          style={{ width: 180, flex: '0 0 auto' }}
-          placeholder="Kho bán"
-          value={warehouseId}
-          disabled={!!editingDraftId}
-          onChange={(id) => {
-            if (editingDraftId) return;
-            setWarehouseId(id);
-            resetCart();
-          }}
-          options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
-        />
-        <Space.Compact block style={{ flex: '1 1 340px', minWidth: 320, maxWidth: 520 }}>
-          <Select
-            allowClear={!customerAppDraftMode}
-            showSearch
-            optionFilterProp="label"
-            style={{ width: 'calc(100% - 32px)' }}
-            placeholder={customerAppDraftMode ? 'Chọn khách hàng' : 'Khách hàng (tùy chọn)'}
-            value={customerId}
-            onChange={setCustomerId}
-            options={customers.map((c) => ({
-              value: c.id,
-              label: `${c.customerCode} — ${c.fullName}`,
-            }))}
-          />
-          {canWrite && !editingDraftId ? (
-            <Tooltip title="Thêm khách nhanh">
-              <Button icon={<UserAddOutlined />} onClick={() => setQuickCustomerOpen(true)} />
-            </Tooltip>
-          ) : null}
-        </Space.Compact>
-        {!editingDraftId ? (
-          <Space align="center" size={8} style={{ flex: '0 0 auto' }}>
-            <Switch
-              checked={customerAppDraftMode}
-              disabled={!canWrite}
-              onChange={(checked) => {
-                setCustomerAppDraftMode(checked);
-                if (checked && !customerId) {
-                  message.info('Chọn khách hàng để gửi đơn qua app');
-                }
+      </div>
+      <div className="pos-page__toolbar">
+        <div className="pos-page__toolbar-cart">
+          <div className="pos-page__toolbar-row">
+            <Select
+              className="pos-page__warehouse-select"
+              placeholder="Kho bán"
+              value={warehouseId}
+              disabled={!!editingDraftId}
+              onChange={(id) => {
+                if (editingDraftId) return;
+                setWarehouseId(id);
+                resetCart();
               }}
+              options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
             />
-            <Typography.Text>Gửi đơn qua app khách</Typography.Text>
-          </Space>
-        ) : null}
-        <div style={{ display: 'flex', flex: '1 1 420px', gap: 8, minWidth: 320, alignItems: 'flex-start' }}>
-          <Space direction="vertical" size={2} style={{ flex: 1, minWidth: 0 }}>
+            <Space.Compact block className="pos-page__customer-select">
+              <Select
+                allowClear={!customerAppDraftMode}
+                showSearch
+                optionFilterProp="label"
+                style={{ width: 'calc(100% - 32px)' }}
+                placeholder={customerAppDraftMode ? 'Chọn khách hàng' : 'Khách hàng (tùy chọn)'}
+                value={customerId}
+                onChange={setCustomerId}
+                options={customers.map((c) => ({
+                  value: c.id,
+                  label: `${c.customerCode} — ${c.fullName}`,
+                }))}
+              />
+              {canWrite && !editingDraftId ? (
+                <Tooltip title="Thêm khách nhanh">
+                  <Button icon={<UserAddOutlined />} onClick={() => setQuickCustomerOpen(true)} />
+                </Tooltip>
+              ) : null}
+            </Space.Compact>
+            {!editingDraftId ? (
+              <Space align="center" size={8} className="pos-page__app-draft-toggle">
+                <Switch
+                  checked={customerAppDraftMode}
+                  disabled={!canWrite}
+                  onChange={(checked) => {
+                    setCustomerAppDraftMode(checked);
+                    if (checked && !customerId) {
+                      message.info('Chọn khách hàng để gửi đơn qua app');
+                    }
+                  }}
+                />
+                <Typography.Text className="pos-page__app-draft-toggle-label">
+                  Gửi đơn qua app khách
+                </Typography.Text>
+              </Space>
+            ) : null}
+          </div>
+          <div className="pos-page__toolbar-row pos-page__toolbar-row--scan">
             <AutoComplete
-              style={{ width: '100%' }}
+              className="pos-page__barcode-field"
               placeholder="Quét mã vạch hoặc gõ mã / tên SP"
               value={barcode}
               options={productSearchOptions}
@@ -1242,101 +1262,24 @@ export function PosPage() {
               disabled={!canWrite || !warehouseId || cartLocked}
               notFoundContent="Không có sản phẩm phù hợp"
             />
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {showsBatchLabelField(batchMode)
-                ? 'Quét SP hoặc quét nhãn lô sau khi thêm dòng · Demo SP: '
-                : 'Demo: '}
-              <Typography.Text code>8934567890012</Typography.Text>
-              {showsBatchLabelField(batchMode) ? '' : ' (Paracetamol 500mg)'}
-            </Typography.Text>
-          </Space>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => void addByBarcode()}
-            disabled={!canWrite || !warehouseId || cartLocked}
-          >
-            Thêm
-          </Button>
-        </div>
-      </div>
-
-      <Table rowKey="key" size="small" pagination={false} dataSource={cart} columns={columns} scroll={{ x: 880 }} />
-
-      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-        <PosSummaryPanel>
-          <PosSummaryRow label="Tạm tính" value={formatDisplayMoney(pricing.subtotalGross)} />
-          {pricing.lineDiscountTotal > 0 && (
-            <PosSummaryRow
-              label="Chiết khấu từng SP"
-              value={`−${formatDisplayMoney(pricing.lineDiscountTotal)}`}
-              danger
-            />
-          )}
-          {canDiscount && (
-            <PosSummaryOrderDiscountRow
-              maxPercent={maxPercent}
-              discountType={orderDiscount.discountType}
-              discountValue={orderDiscount.discountValue}
-              disabled={!canWrite || cart.length === 0}
-              onTypeChange={(discountType) =>
-                setOrderDiscount((prev) => ({
-                  ...prev,
-                  discountType,
-                  discountValue: discountType ? prev.discountValue ?? 0 : undefined,
-                }))
-              }
-              onValueChange={(discountValue) =>
-                setOrderDiscount((prev) => ({ ...prev, discountValue }))
-              }
-            />
-          )}
-          {pricing.totalDiscountAmount > 0 && (
-            <PosSummaryRow
-              label="Tổng CK"
-              value={`−${formatDisplayMoney(pricing.totalDiscountAmount)}`}
-              danger
-            />
-          )}
-          <PosSummaryDivider />
-          <PosSummaryRow
-            label="Khách phải trả"
-            value={formatDisplayMoney(pricing.totalAmount)}
-            strong
-          />
-        </PosSummaryPanel>
-        <Space direction="vertical" align="end">
-          {customerAppDraftMode && activeCustomerDraft && customerId && !editingDraftId ? (
-            <CustomerDraftOrderStatusBar draft={activeCustomerDraft} />
-          ) : null}
-          <Space>
-            {customerAppDraftMode && !editingDraftId ? (
-              <Tooltip title={!customerId ? 'Chọn khách hàng trước khi gửi app' : undefined}>
-                <span>
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
-                    disabled={!canWrite || !customerId || cart.length === 0 || draftLoading}
-                    loading={saving}
-                    onClick={() => void sendCustomerDraftToApp()}
-                  >
-                    Gửi khách hàng
-                  </Button>
-                </span>
-              </Tooltip>
-            ) : (
-              <Button
-                icon={<SaveOutlined />}
-                disabled={!canWrite || cart.length === 0 || draftLoading}
-                loading={saving}
-                onClick={() => void saveDraft()}
-              >
-                {editingDraftId ? 'Cập nhật nháp' : 'Lưu nháp'}
-              </Button>
-            )}
             <Button
-              type={customerAppDraftMode && !editingDraftId ? 'default' : 'primary'}
+              className="pos-page__add-btn"
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => void addByBarcode()}
+              disabled={!canWrite || !warehouseId || cartLocked}
+            >
+              Thêm
+            </Button>
+          </div>
+        </div>
+        <div className="pos-page__toolbar-aside">
+          <div className="pos-page__toolbar-actions">
+            <Button
+              block
               size="large"
+              className="pos-page__pay-btn"
+              type={customerAppDraftMode && !editingDraftId ? 'default' : 'primary'}
               icon={<CreditCardOutlined />}
               disabled={!canWrite || cart.length === 0 || !openShift || cart.some((l) => l.quantity <= 0)}
               loading={checkoutValidating}
@@ -1344,8 +1287,103 @@ export function PosPage() {
             >
               Thanh toán
             </Button>
-          </Space>
-        </Space>
+            {customerAppDraftMode && !editingDraftId ? (
+              <Tooltip title={!customerId ? 'Chọn khách hàng trước khi gửi app' : undefined}>
+                <span className="pos-page__toolbar-action-slot">
+                  <Button
+                    block
+                    className="pos-page__draft-btn"
+                    type="primary"
+                    icon={<SendOutlined />}
+                    disabled={!canWrite || !customerId || cart.length === 0 || draftLoading}
+                    loading={saving}
+                    onClick={() => void sendCustomerDraftToApp()}
+                  >
+                    Gửi KH
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button
+                block
+                className="pos-page__draft-btn"
+                icon={<SaveOutlined />}
+                disabled={!canWrite || cart.length === 0 || draftLoading}
+                loading={saving}
+                onClick={() => void saveDraft()}
+              >
+                {editingDraftId ? 'Cập nhật tạm' : 'Lưu tạm'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="pos-page__body">
+        <div className="pos-page__cart">
+          <Table
+            rowKey="key"
+            size="small"
+            pagination={false}
+            dataSource={cart}
+            columns={columns}
+            scroll={{ y: 'calc(100vh - 210px)' }}
+            tableLayout="fixed"
+            className="pos-cart-table"
+          />
+        </div>
+
+        <aside className="pos-page__aside">
+          {customerAppDraftMode && activeCustomerDraft && customerId && !editingDraftId ? (
+            <CustomerDraftOrderStatusBar draft={activeCustomerDraft} />
+          ) : null}
+
+          <div className="pos-page__aside-panel">
+            <div className="pos-page__aside-summary-box">
+              <PosSummaryPanel variant="sidebar">
+                <PosSummaryRow label="Tổng tiền hàng" value={formatDisplayMoney(pricing.subtotalGross)} />
+                {pricing.lineDiscountTotal > 0 && (
+                  <PosSummaryRow
+                    label="Chiết khấu từng SP"
+                    value={`−${formatDisplayMoney(pricing.lineDiscountTotal)}`}
+                    danger
+                  />
+                )}
+                {canDiscount && (
+                  <PosSummaryOrderDiscountRow
+                    maxPercent={maxPercent}
+                    discountType={orderDiscount.discountType}
+                    discountValue={orderDiscount.discountValue}
+                    disabled={!canWrite || cart.length === 0}
+                    onTypeChange={(discountType) =>
+                      setOrderDiscount((prev) => ({
+                        ...prev,
+                        discountType,
+                        discountValue: discountType ? prev.discountValue ?? 0 : undefined,
+                      }))
+                    }
+                    onValueChange={(discountValue) =>
+                      setOrderDiscount((prev) => ({ ...prev, discountValue }))
+                    }
+                  />
+                )}
+                {pricing.totalDiscountAmount > 0 && (
+                  <PosSummaryRow
+                    label="Tổng CK"
+                    value={`−${formatDisplayMoney(pricing.totalDiscountAmount)}`}
+                    danger
+                  />
+                )}
+                <PosSummaryDivider />
+                <PosSummaryRow
+                  label="Khách phải trả"
+                  value={formatDisplayMoney(pricing.totalAmount)}
+                  total
+                />
+              </PosSummaryPanel>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <PosCheckoutModal
@@ -1355,6 +1393,13 @@ export function PosPage() {
         subtotalGross={pricing.subtotalGross}
         lineDiscountTotal={pricing.lineDiscountTotal}
         orderDiscountAmount={pricing.orderDiscountAmount}
+        customerId={customerId}
+        customers={customers}
+        onCustomerChange={setCustomerId}
+        onQuickAddCustomer={canWrite && !editingDraftId ? () => setQuickCustomerOpen(true) : undefined}
+        customerAllowCredit={customers.find((c) => c.id === customerId)?.allowCredit}
+        customerCreditLimit={customers.find((c) => c.id === customerId)?.creditLimit}
+        customerCurrentOutstanding={customers.find((c) => c.id === customerId)?.currentOutstanding}
         customerLoyalty={customerLoyalty}
         customerVouchers={customerVouchers}
         onCancel={() => setCheckoutOpen(false)}
@@ -1363,7 +1408,7 @@ export function PosPage() {
 
       {lastCompletedOrder && (
         <Alert
-          style={{ marginTop: 16 }}
+          style={{ marginTop: 12 }}
           type="success"
           showIcon
           closable
@@ -1400,6 +1445,7 @@ export function PosPage() {
         onClose={() => setQuickCustomerOpen(false)}
         onSaved={handleQuickCustomerSaved}
       />
-    </Card>
+      </div>
+    </Spin>
   );
 }

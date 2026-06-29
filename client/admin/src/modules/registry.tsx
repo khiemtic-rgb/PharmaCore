@@ -12,13 +12,17 @@ import {
 
 export type ModuleKey = 'dashboard' | 'catalog' | 'inventory' | 'procurement' | 'sales' | 'customer' | 'reports' | 'system';
 
-/** Module hiển thị trên thanh ngang header (ERP Nhà thuốc) */
+/**
+ * Module trên header — cùng thứ tự sidebar, theo luồng triển khai / vận hành:
+ * Danh mục → Mua hàng → Kho → Bán hàng → Khách hàng → Báo cáo
+ */
 export const HEADER_MODULE_KEYS: ModuleKey[] = [
   'dashboard',
   'catalog',
-  'inventory',
   'procurement',
+  'inventory',
   'sales',
+  'customer',
   'reports',
 ];
 
@@ -30,16 +34,16 @@ export interface ModuleMenuItem {
   enabled: boolean;
 }
 
-/** Bật module khi API backend sẵn sàng */
+/** Bật module khi API backend sẵn sàng — thứ tự = luồng go-live rồi vận hành hàng ngày */
 export const moduleRegistry: ModuleMenuItem[] = [
   { key: 'dashboard', label: 'Tổng quan', path: '/', icon: <DashboardOutlined />, enabled: true },
   { key: 'catalog', label: 'Danh mục', path: '/catalog/products', icon: <MedicineBoxOutlined />, enabled: true },
-  { key: 'inventory', label: 'Kho hàng', path: '/inventory', icon: <InboxOutlined />, enabled: true },
-  { key: 'procurement', label: 'Mua hàng', path: '/procurement', icon: <ShoppingOutlined />, enabled: true },
-  { key: 'sales', label: 'Bán hàng', path: '/sales', icon: <ShopOutlined />, enabled: true },
+  { key: 'procurement', label: 'Mua hàng', path: '/procurement/suppliers', icon: <ShoppingOutlined />, enabled: true },
+  { key: 'inventory', label: 'Kho hàng', path: '/inventory/opening-balance', icon: <InboxOutlined />, enabled: true },
+  { key: 'sales', label: 'Bán hàng', path: '/sales/pos', icon: <ShopOutlined />, enabled: true },
   { key: 'customer', label: 'Khách hàng', path: '/customer', icon: <TeamOutlined />, enabled: true },
   { key: 'reports', label: 'Báo cáo', path: '/reports', icon: <BarChartOutlined />, enabled: true },
-  { key: 'system', label: 'Hệ thống', path: '/system', icon: <SettingOutlined />, enabled: true },
+  { key: 'system', label: 'Hệ thống', path: '/system/branches', icon: <SettingOutlined />, enabled: true },
 ];
 
 export function buildMenuItems() {

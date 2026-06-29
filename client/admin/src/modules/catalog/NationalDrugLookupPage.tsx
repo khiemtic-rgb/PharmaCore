@@ -9,6 +9,7 @@ import {
   Input,
   Row,
   Space,
+  Spin,
   Table,
   Tag,
   Typography,
@@ -242,11 +243,11 @@ export function NationalDrugLookupPage() {
             {!detail ? (
               <Typography.Text type="secondary">Chọn một dòng trong bảng để xem chi tiết.</Typography.Text>
             ) : (
+              <Spin spinning={detailLoading}>
               <Descriptions
                 size="small"
                 column={1}
                 bordered
-                loading={detailLoading}
                 styles={{ label: { width: 130 } }}
               >
                 <Descriptions.Item label="Mã QG">{detail.drugId}</Descriptions.Item>
@@ -267,6 +268,7 @@ export function NationalDrugLookupPage() {
                   {detail.registrationExpiryDate ? formatDisplayDate(detail.registrationExpiryDate) : '—'}
                 </Descriptions.Item>
               </Descriptions>
+              </Spin>
             )}
           </Card>
         </Col>

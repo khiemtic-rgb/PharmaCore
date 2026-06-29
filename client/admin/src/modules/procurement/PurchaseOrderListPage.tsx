@@ -42,6 +42,8 @@ import type {
 } from '@/shared/api/procurement.types';
 import { PO_STATUS_LABELS, PO_STATUS_TAG, canEditPurchaseOrder } from '@/shared/api/procurement.types';
 import { PurchaseOrderEditDrawer } from '@/modules/procurement/PurchaseOrderEditDrawer';
+import { PoApproveSupplierModal } from '@/modules/procurement/PoApproveSupplierModal';
+import { isPlaceholderSupplier } from '@/modules/procurement/grn-pricing';
 import { PoReadonlyTaxSummaryFooter, PROCUREMENT_MONEY_COL_WIDTH } from '@/modules/procurement/GrnPoTaxSummary';
 import { PurchaseOrderFormHeader } from '@/modules/procurement/PurchaseOrderFormHeader';
 import { PurchaseOrderLinesEditor } from '@/modules/procurement/PurchaseOrderLinesEditor';
@@ -95,6 +97,9 @@ export function PurchaseOrderListPage() {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [editPoOpen, setEditPoOpen] = useState(false);
+  const [approvePoId, setApprovePoId] = useState<string | null>(null);
+  const [approvePoNumber, setApprovePoNumber] = useState('');
+  const [approving, setApproving] = useState(false);
   const supplierId = Form.useWatch('supplierId', form);
 
   const loadMasterData = useCallback(async () => {
@@ -150,7 +155,9 @@ export function PurchaseOrderListPage() {
 
   const openCreate = () => {
     form.resetFields();
+    const placeholder = suppliers.find((s) => isPlaceholderSupplier(s));
     form.setFieldsValue({
+      supplierId: placeholder?.id,
       items: [{ orderedQty: 1, unitPrice: 0 }],
       vatTreatmentId: defaultVatTreatmentId(vatTreatments),
     });
@@ -195,8 +202,7 @@ export function PurchaseOrderListPage() {
           unitPrice: i.unitPrice,
         })),
       });
-      const approved = await approvePurchaseOrder(created.id);
-      message.success(`Đã tạo ${approved.poNumber}`);
+      message.success(`Đã lưu PO nháp ${created.poNumber}`);
       setDrawerOpen(false);
       void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
@@ -210,12 +216,35 @@ export function PurchaseOrderListPage() {
 
   const handleApprove = async (id: string) => {
     try {
+      const po = detail?.id === id ? detail : await fetchPurchaseOrder(id);
+      const supplier = suppliers.find((s) => s.id === po.supplierId);
+      if (supplier && isPlaceholderSupplier(supplier)) {
+        setApprovePoId(id);
+        setApprovePoNumber(po.poNumber);
+        return;
+      }
       const updated = await approvePurchaseOrder(id);
       message.success(`Đã duyệt ${updated.poNumber}`);
       if (detail?.id === id) setDetail(updated);
       void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không duyệt được đơn'));
+    }
+  };
+
+  const confirmApproveWithSupplier = async (supplierId: string) => {
+    if (!approvePoId) return;
+    setApproving(true);
+    try {
+      const updated = await approvePurchaseOrder(approvePoId, { supplierId });
+      message.success(`Đã duyệt ${updated.poNumber}`);
+      if (detail?.id === approvePoId) setDetail(updated);
+      setApprovePoId(null);
+      void loadOrders(filters, searchInput, page, pageSize);
+    } catch (error) {
+      message.error(apiErrorMessage(error, 'Không duyệt được đơn'));
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -431,7 +460,7 @@ export function PurchaseOrderListPage() {
         styles={{ body: { paddingTop: 12, display: 'flex', flexDirection: 'column' } }}
         extra={
           <Button type="primary" icon={<SaveOutlined />} onClick={() => void handleCreate()} loading={saving}>
-            Tạo đơn
+            Lưu nháp
           </Button>
         }
       >
@@ -556,6 +585,15 @@ export function PurchaseOrderListPage() {
           setPoDetailCache((cache) => ({ ...cache, [po.id]: po }));
           void loadOrders(filters, searchInput, page, pageSize);
         }}
+      />
+
+      <PoApproveSupplierModal
+        open={!!approvePoId}
+        poNumber={approvePoNumber}
+        suppliers={suppliers}
+        loading={approving}
+        onCancel={() => setApprovePoId(null)}
+        onConfirm={(supplierId) => void confirmApproveWithSupplier(supplierId)}
       />
     </Card>
   );

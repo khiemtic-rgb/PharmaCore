@@ -68,7 +68,11 @@ $files = @(
     "043_warehouse_min_stock.sql",
     "044_active_ingredients_tenant.sql",
     "045_scale_branch_readiness.sql",
-    "046_chat_branch_scope.sql"
+    "046_chat_branch_scope.sql",
+    "047_procurement_placeholder_grn_discount.sql",
+    "048_sales_customer_credit.sql",
+    "049_customer_payments.sql",
+    "050_fix_return_ar_adjustments.sql"
 )
 
 Write-Host "=== PharmaCore Migrations ===" -ForegroundColor Cyan

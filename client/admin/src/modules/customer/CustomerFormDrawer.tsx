@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Drawer, Form, Input, Select, Space, message } from 'antd';
+import { Button, Drawer, Form, Input, InputNumber, Select, Space, Switch, message } from 'antd';
 import { CloseOutlined, SaveOutlined } from '@ant-design/icons';
 import {
   createCustomer,
@@ -22,6 +22,8 @@ interface CustomerFormValues {
   dateOfBirth?: string;
   gender?: number;
   status?: number;
+  allowCredit?: boolean;
+  creditLimit?: number | null;
 }
 
 interface CustomerFormDrawerProps {
@@ -63,6 +65,8 @@ export function CustomerFormDrawer({
         dateOfBirth: editing.dateOfBirth,
         gender: editing.gender,
         status: editing.status,
+        allowCredit: editing.allowCredit,
+        creditLimit: editing.creditLimit,
       });
       return;
     }
@@ -94,6 +98,8 @@ export function CustomerFormDrawer({
             dateOfBirth: values.dateOfBirth || undefined,
             gender: values.gender,
             status: values.status ?? 1,
+            allowCredit: values.allowCredit ?? false,
+            creditLimit: values.allowCredit ? values.creditLimit ?? null : null,
           })
         : await createCustomer({
             fullName: values.fullName.trim(),
@@ -182,9 +188,27 @@ export function CustomerFormDrawer({
           </>
         ) : null}
         {editing ? (
-          <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
-            <Select options={CUSTOMER_STATUS_OPTIONS} />
-          </Form.Item>
+          <>
+            <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
+              <Select options={CUSTOMER_STATUS_OPTIONS} />
+            </Form.Item>
+            <Form.Item name="allowCredit" label="Cho phép ghi nợ" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.allowCredit !== cur.allowCredit}>
+              {({ getFieldValue }) =>
+                getFieldValue('allowCredit') ? (
+                  <Form.Item
+                    name="creditLimit"
+                    label="Hạn mức nợ"
+                    extra="Để trống = không giới hạn"
+                  >
+                    <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+                  </Form.Item>
+                ) : null
+              }
+            </Form.Item>
+          </>
         ) : null}
       </Form>
     </Drawer>

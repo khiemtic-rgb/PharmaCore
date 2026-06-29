@@ -53,19 +53,37 @@ internal sealed class SalesRepository
         param.Add("TenantId", TenantId);
         if (!string.IsNullOrWhiteSpace(search))
         {
-            conditions.Add("(c.full_name ILIKE @Search OR c.phone ILIKE @Search OR c.customer_code ILIKE @Search)");
+            conditions.Add("""
+                (
+                    c.full_name ILIKE @Search
+                    OR c.phone ILIKE @Search
+                    OR c.customer_code ILIKE @Search
+                    OR (@SearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @SearchDigitsPattern)
+                )
+                """);
             param.Add("Search", $"%{search.Trim()}%");
+            AddPhoneDigitSearchParams(param, search, "Search");
         }
 
         var sql = $"""
             SELECT
                 c.id AS Id, c.customer_code AS CustomerCode, c.full_name AS FullName,
-                c.phone AS Phone, c.email AS Email
+                c.phone AS Phone, c.email AS Email,
+                c.allow_credit AS AllowCredit, c.credit_limit AS CreditLimit,
+                COALESCE((
+                    SELECT SUM(so.outstanding)
+                    FROM sales_orders so
+                    WHERE so.customer_id = c.id
+                      AND so.tenant_id = c.tenant_id
+                      AND so.status = @Completed
+                      AND so.outstanding > 0
+                ), 0) AS CurrentOutstanding
             FROM customers c
             WHERE {string.Join(" AND ", conditions)}
             ORDER BY c.full_name
             LIMIT 50
             """;
+        param.Add("Completed", SalesOrderStatuses.Completed);
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         return (await conn.QueryAsync<CustomerListItemDto>(sql, param)).ToList();
     }
@@ -497,15 +515,7 @@ internal sealed class SalesRepository
         var statusFilter = filter.Status is short status
             ? "AND o.status = @Status"
             : string.Empty;
-        var searchFilter = string.IsNullOrWhiteSpace(filter.Search)
-            ? string.Empty
-            : """
-              AND (
-                  o.order_number ILIKE @SearchPattern
-                  OR w.warehouse_name ILIKE @SearchPattern
-                  OR COALESCE(c.full_name, '') ILIKE @SearchPattern
-              )
-              """;
+        var searchFilter = BuildSalesOrderSearchFilter(filter);
 
         var where = $"""
             o.tenant_id = @TenantId
@@ -526,6 +536,8 @@ internal sealed class SalesRepository
                 w.warehouse_name AS WarehouseName, o.customer_id AS CustomerId,
                 c.full_name AS CustomerName, o.status AS Status, o.order_date AS OrderDate,
                 o.total_amount AS TotalAmount,
+                o.amount_paid AS AmountPaid,
+                o.outstanding AS Outstanding,
                 (SELECT COUNT(*)::int FROM sales_order_items i WHERE i.sales_order_id = o.id) AS ItemCount,
                 COALESCE((
                     SELECT SUM(ri.refund_amount)
@@ -544,13 +556,23 @@ internal sealed class SalesRepository
             LIMIT @PageSize OFFSET @Offset
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var customerSearch = filter.CustomerSearch?.Trim();
+        var customerSearchDigits = ExtractPhoneDigits(customerSearch);
+        var legacySearch = filter.Search?.Trim();
+        var legacySearchDigits = ExtractPhoneDigits(legacySearch);
         var args = new
         {
             TenantId,
             AllowedWarehouseIds = allowedWarehouseIds,
             ReturnCompleted = SalesReturnStatuses.Completed,
             Status = filter.Status,
-            SearchPattern = string.IsNullOrWhiteSpace(filter.Search) ? null : $"%{filter.Search.Trim()}%",
+            SearchPattern = string.IsNullOrWhiteSpace(legacySearch) ? null : $"%{legacySearch}%",
+            SearchDigits = legacySearchDigits,
+            SearchDigitsPattern = BuildPhoneDigitsPattern(legacySearchDigits),
+            CustomerSearchPattern = string.IsNullOrWhiteSpace(customerSearch) ? null : $"%{customerSearch}%",
+            CustomerSearchDigits = customerSearchDigits,
+            CustomerSearchDigitsPattern = BuildPhoneDigitsPattern(customerSearchDigits),
+            DocumentSearchPattern = string.IsNullOrWhiteSpace(filter.DocumentSearch) ? null : $"%{filter.DocumentSearch.Trim()}%",
             PageSize = pageSize,
             Offset = offset,
         };
@@ -570,6 +592,7 @@ internal sealed class SalesRepository
                 w.warehouse_name AS WarehouseName, o.customer_id AS CustomerId,
                 c.full_name AS CustomerName, o.status AS Status, o.order_date AS OrderDate,
                 o.subtotal AS Subtotal, o.discount_amount AS DiscountAmount, o.total_amount AS TotalAmount,
+                o.amount_paid AS AmountPaid, o.outstanding AS Outstanding,
                 o.order_discount_type AS OrderDiscountType, o.order_discount_value AS OrderDiscountValue,
                 o.notes AS Notes,
                 COALESCE((
@@ -680,7 +703,8 @@ internal sealed class SalesRepository
             header.Id, header.OrderNumber, header.WarehouseId, header.WarehouseName,
             header.CustomerId, header.CustomerName, header.Status, header.OrderDate,
             header.Subtotal, header.DiscountAmount, lineDiscountTotal,
-            header.OrderDiscountType, header.OrderDiscountValue, header.TotalAmount, totalRefunded,
+            header.OrderDiscountType, header.OrderDiscountValue, header.TotalAmount,
+            header.AmountPaid, header.Outstanding, totalRefunded,
             header.Notes, items, payments, refundPayments,
             header.SalesShiftId, header.ShiftNumber, header.LoyaltyPointsEarned,
             header.LoyaltyPointsRedeemed, header.LoyaltyDiscountAmount,
@@ -748,17 +772,19 @@ internal sealed class SalesRepository
             tx,
             cancellationToken);
 
-        var payments = NormalizePayments(request.Payments, redeem.FinalTotal);
+        var paymentResolution = await NormalizeAndValidatePaymentsAsync(
+            conn, tx, request.CustomerId, request.Payments, redeem.FinalTotal, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, request.WarehouseId, pricing.Lines, cancellationToken);
 
         var orderId = await InsertSaleHeaderAsync(
             conn, tx, orderNumber, branchId, request.WarehouseId, request.CustomerId, employeeId,
             SalesOrderStatuses.Completed, request.PriceType, pricing.SubtotalGross, pricing.OrderDiscountAmount,
-            request.OrderDiscountType, request.OrderDiscountValue ?? 0, redeem.FinalTotal, request.Notes,
+            request.OrderDiscountType, request.OrderDiscountValue ?? 0, redeem.FinalTotal,
+            paymentResolution.AmountPaid, paymentResolution.Outstanding, request.Notes,
             shiftId, voucher.VoucherId, voucher.DiscountAmount, redeem.PointsRedeemed, redeem.DiscountAmount);
 
         await InsertCompletedLinesAsync(conn, tx, orderId, request.WarehouseId, linePlans, cancellationToken);
-        await InsertPaymentsAsync(conn, tx, orderId, payments);
+        await InsertPaymentsAsync(conn, tx, orderId, paymentResolution.CashPayments);
 
         if (voucher.VoucherId is Guid voucherId && voucher.CustomerVoucherId is Guid customerVoucherId)
         {
@@ -786,7 +812,7 @@ internal sealed class SalesRepository
             request.CustomerId,
             orderId,
             orderNumber,
-            redeem.FinalTotal,
+            paymentResolution.AmountPaid,
             conn,
             tx,
             cancellationToken);
@@ -837,7 +863,7 @@ internal sealed class SalesRepository
         var orderId = await InsertSaleHeaderAsync(
             conn, tx, orderNumber, branchId, request.WarehouseId, request.CustomerId, employeeId,
             SalesOrderStatuses.Draft, request.PriceType, pricing.SubtotalGross, pricing.OrderDiscountAmount,
-            request.OrderDiscountType, request.OrderDiscountValue ?? 0, pricing.TotalAmount, request.Notes);
+            request.OrderDiscountType, request.OrderDiscountValue ?? 0, pricing.TotalAmount, 0, 0, request.Notes);
 
         foreach (var line in pricing.Lines)
         {
@@ -988,7 +1014,8 @@ internal sealed class SalesRepository
             tx,
             cancellationToken);
 
-        var paymentList = NormalizePayments(request?.Payments, redeem.FinalTotal);
+        var paymentResolution = await NormalizeAndValidatePaymentsAsync(
+            conn, tx, customerId, request?.Payments, redeem.FinalTotal, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
 
         await conn.ExecuteAsync("""
@@ -996,6 +1023,7 @@ internal sealed class SalesRepository
                 status = @Completed, customer_id = @CustomerId, subtotal = @Subtotal,
                 discount_amount = @OrderDiscountAmount, order_discount_type = @OrderDiscountType,
                 order_discount_value = @OrderDiscountValue, total_amount = @TotalAmount,
+                amount_paid = @AmountPaid, outstanding = @Outstanding,
                 voucher_id = @VoucherId,
                 voucher_discount_amount = @VoucherDiscountAmount,
                 loyalty_points_redeemed = @LoyaltyPointsRedeemed,
@@ -1013,6 +1041,8 @@ internal sealed class SalesRepository
             OrderDiscountType = orderDiscount.DiscountType,
             OrderDiscountValue = orderDiscount.DiscountValue ?? 0,
             TotalAmount = redeem.FinalTotal,
+            AmountPaid = paymentResolution.AmountPaid,
+            Outstanding = paymentResolution.Outstanding,
             VoucherId = voucher.VoucherId,
             VoucherDiscountAmount = voucher.DiscountAmount,
             LoyaltyPointsRedeemed = redeem.PointsRedeemed,
@@ -1022,7 +1052,7 @@ internal sealed class SalesRepository
         }, tx);
 
         await InsertCompletedLinesAsync(conn, tx, id, header.WarehouseId, linePlans, cancellationToken);
-        await InsertPaymentsAsync(conn, tx, id, paymentList);
+        await InsertPaymentsAsync(conn, tx, id, paymentResolution.CashPayments);
 
         var orderNumber = await conn.QuerySingleAsync<string>(
             "SELECT order_number FROM sales_orders WHERE id = @Id",
@@ -1054,7 +1084,7 @@ internal sealed class SalesRepository
             customerId,
             id,
             orderNumber,
-            redeem.FinalTotal,
+            paymentResolution.AmountPaid,
             conn,
             tx,
             cancellationToken);
@@ -1112,8 +1142,10 @@ internal sealed class SalesRepository
 
         const string orderSql = """
             SELECT id AS Id, warehouse_id AS WarehouseId, status AS Status,
-                   discount_amount AS OrderDiscountAmount
+                   discount_amount AS OrderDiscountAmount,
+                   total_amount AS TotalAmount, amount_paid AS AmountPaid, outstanding AS Outstanding
             FROM sales_orders WHERE id = @Id AND tenant_id = @TenantId
+            FOR UPDATE
             """;
         var order = await conn.QuerySingleOrDefaultAsync<ReturnOrderRow>(orderSql, new { Id = salesOrderId, TenantId }, tx)
             ?? throw new InvalidOperationException("Đơn bán không tồn tại.");
@@ -1218,8 +1250,11 @@ internal sealed class SalesRepository
                 baseReturnQty, unitCost, null, cancellationToken);
         }
 
-        var refundPayments = NormalizePayments(request.Payments, totalRefund);
+        var refundPayments = BuildReturnCashPayments(request.Payments, totalRefund, order.Outstanding, order.AmountPaid);
         await InsertReturnPaymentsAsync(conn, tx, returnId, refundPayments);
+
+        await ApplySaleReturnFinancialAdjustmentAsync(
+            conn, tx, salesOrderId, TenantId, totalRefund, order.Outstanding, order.AmountPaid);
 
         var allReturned = await conn.QuerySingleAsync<bool>("""
             SELECT NOT EXISTS (
@@ -1307,9 +1342,12 @@ internal sealed class SalesRepository
     public async Task<IReadOnlyList<SalesReturnListItemDto>> GetSaleReturnsAsync(
         int limit,
         string? search,
+        string? customerSearch,
+        string? documentSearch,
         CancellationToken cancellationToken)
     {
-        const string sql = """
+        var searchFilter = BuildSalesReturnSearchFilter(search, customerSearch, documentSearch);
+        var sql = $"""
             SELECT
                 r.id AS Id, r.return_number AS ReturnNumber, r.sales_order_id AS SalesOrderId,
                 o.order_number AS OrderNumber, r.return_date AS ReturnDate, r.status AS Status,
@@ -1317,6 +1355,7 @@ internal sealed class SalesRepository
                 r.sales_shift_id AS SalesShiftId, sh.shift_number AS ShiftNumber
             FROM sales_returns r
             INNER JOIN sales_orders o ON o.id = r.sales_order_id
+            LEFT JOIN customers c ON c.id = o.customer_id
             LEFT JOIN sales_shifts sh ON sh.id = r.sales_shift_id
             LEFT JOIN (
                 SELECT sales_return_id, SUM(refund_amount) AS total_refund
@@ -1324,22 +1363,28 @@ internal sealed class SalesRepository
                 GROUP BY sales_return_id
             ) t ON t.sales_return_id = r.id
             WHERE r.tenant_id = @TenantId
-              AND (
-                  @Search IS NULL
-                  OR r.return_number ILIKE @SearchPattern
-                  OR o.order_number ILIKE @SearchPattern
-              )
+              {searchFilter}
             ORDER BY r.return_date DESC
             LIMIT @Limit
             """;
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         var pattern = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%";
+        var customerPattern = string.IsNullOrWhiteSpace(customerSearch) ? null : $"%{customerSearch.Trim()}%";
+        var documentPattern = string.IsNullOrWhiteSpace(documentSearch) ? null : $"%{documentSearch.Trim()}%";
+        var searchDigits = ExtractPhoneDigits(search);
+        var customerSearchDigits = ExtractPhoneDigits(customerSearch);
         var rows = await conn.QueryAsync<ReturnListRow>(sql, new
         {
             TenantId,
             Search = pattern is null ? null : search!.Trim(),
             SearchPattern = pattern,
+            SearchDigits = searchDigits,
+            SearchDigitsPattern = BuildPhoneDigitsPattern(searchDigits),
+            CustomerSearchPattern = customerPattern,
+            CustomerSearchDigits = customerSearchDigits,
+            CustomerSearchDigitsPattern = BuildPhoneDigitsPattern(customerSearchDigits),
+            DocumentSearchPattern = documentPattern,
             Limit = Math.Clamp(limit, 1, 200),
         });
         return rows.Select(r => new SalesReturnListItemDto(
@@ -1761,6 +1806,107 @@ internal sealed class SalesRepository
         return result;
     }
 
+    private sealed record SalePaymentResolution(
+        List<CreateSalePaymentRequest> CashPayments,
+        decimal AmountPaid,
+        decimal Outstanding);
+
+    private async Task<SalePaymentResolution> NormalizeAndValidatePaymentsAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid? customerId,
+        IReadOnlyList<CreateSalePaymentRequest>? payments,
+        decimal totalAmount,
+        CancellationToken cancellationToken)
+    {
+        if (totalAmount <= 0.01m)
+            return new SalePaymentResolution([new CreateSalePaymentRequest(SalesPaymentMethods.Cash, 0)], 0, 0);
+
+        // payments omitted = thu đủ (POS/API mặc định). payments: [] = ghi nợ cả đơn (POS cash 0).
+        if (payments is null)
+        {
+            return new SalePaymentResolution(
+                [new CreateSalePaymentRequest(SalesPaymentMethods.Cash, totalAmount)],
+                totalAmount,
+                0);
+        }
+
+        var list = payments
+            .Where(p => p.Amount > 0.01m && p.PaymentMethod != SalesPaymentMethods.Credit)
+            .ToList();
+
+        var paid = list.Sum(p => p.Amount);
+        if (paid > totalAmount + 0.01m)
+            throw new InvalidOperationException("Số tiền thu vượt tổng đơn.");
+
+        var outstanding = Math.Round(Math.Max(0, totalAmount - paid), 2, MidpointRounding.AwayFromZero);
+        if (outstanding > 0.01m)
+        {
+            await ValidateCustomerCreditAsync(conn, tx, customerId, outstanding, cancellationToken);
+            return new SalePaymentResolution(list, Math.Round(paid, 2, MidpointRounding.AwayFromZero), outstanding);
+        }
+
+        if (list.Count == 0)
+            list.Add(new CreateSalePaymentRequest(SalesPaymentMethods.Cash, totalAmount));
+        else if (Math.Abs(paid - totalAmount) > 0.01m)
+            throw new InvalidOperationException("Tổng thanh toán phải bằng tổng đơn.");
+
+        return new SalePaymentResolution(list, totalAmount, 0);
+    }
+
+    private async Task ValidateCustomerCreditAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid? customerId,
+        decimal newOutstanding,
+        CancellationToken cancellationToken)
+    {
+        if (customerId is not Guid customer)
+            throw new InvalidOperationException("Chọn khách hàng để ghi nợ.");
+
+        var credit = await conn.QuerySingleOrDefaultAsync<CustomerCreditRow>(
+            """
+            SELECT allow_credit AS AllowCredit, credit_limit AS CreditLimit
+            FROM customers
+            WHERE id = @CustomerId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """,
+            new { CustomerId = customer, TenantId },
+            tx);
+
+        if (credit is null)
+            throw new InvalidOperationException("Khách hàng không tồn tại.");
+
+        if (!credit.AllowCredit)
+            throw new InvalidOperationException("Khách hàng chưa được phép ghi nợ.");
+
+        if (credit.CreditLimit is > 0)
+        {
+            var currentOutstanding = await conn.ExecuteScalarAsync<decimal>(
+                """
+                SELECT COALESCE(SUM(outstanding), 0)
+                FROM sales_orders
+                WHERE tenant_id = @TenantId
+                  AND customer_id = @CustomerId
+                  AND status = @Completed
+                  AND outstanding > 0
+                """,
+                new
+                {
+                    TenantId,
+                    CustomerId = customer,
+                    Completed = SalesOrderStatuses.Completed,
+                },
+                tx);
+
+            if (currentOutstanding + newOutstanding > credit.CreditLimit + 0.01m)
+            {
+                throw new InvalidOperationException(
+                    $"Vượt hạn mức nợ ({credit.CreditLimit:N0} đ). " +
+                    $"Đang nợ {currentOutstanding:N0} đ, thêm {newOutstanding:N0} đ.");
+            }
+        }
+    }
+
     private static List<CreateSalePaymentRequest> NormalizePayments(
         IReadOnlyList<CreateSalePaymentRequest>? payments,
         decimal totalAmount)
@@ -1956,6 +2102,8 @@ internal sealed class SalesRepository
         short? orderDiscountType,
         decimal orderDiscountValue,
         decimal totalAmount,
+        decimal amountPaid,
+        decimal outstanding,
         string? notes,
         Guid? salesShiftId = null,
         Guid? voucherId = null,
@@ -1967,13 +2115,13 @@ internal sealed class SalesRepository
             INSERT INTO sales_orders (
                 tenant_id, order_number, branch_id, warehouse_id, customer_id, employee_id,
                 status, price_type, subtotal, discount_amount, order_discount_type, order_discount_value,
-                total_amount, notes, sales_shift_id, voucher_id, voucher_discount_amount,
+                total_amount, amount_paid, outstanding, notes, sales_shift_id, voucher_id, voucher_discount_amount,
                 loyalty_points_redeemed, loyalty_discount_amount
             )
             VALUES (
                 @TenantId, @OrderNumber, @BranchId, @WarehouseId, @CustomerId, @EmployeeId,
                 @Status, @PriceType, @Subtotal, @OrderDiscountAmount, @OrderDiscountType, @OrderDiscountValue,
-                @TotalAmount, @Notes, @SalesShiftId, @VoucherId, @VoucherDiscountAmount,
+                @TotalAmount, @AmountPaid, @Outstanding, @Notes, @SalesShiftId, @VoucherId, @VoucherDiscountAmount,
                 @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount
             )
             RETURNING id
@@ -1993,6 +2141,8 @@ internal sealed class SalesRepository
             OrderDiscountType = orderDiscountType,
             OrderDiscountValue = orderDiscountValue,
             TotalAmount = totalAmount,
+            AmountPaid = amountPaid,
+            Outstanding = outstanding,
             Notes = notes,
             SalesShiftId = salesShiftId,
             VoucherId = voucherId,
@@ -2090,6 +2240,67 @@ internal sealed class SalesRepository
         }
     }
 
+    private static decimal SplitReturnRefund(
+        decimal totalRefund,
+        decimal outstanding,
+        decimal amountPaid,
+        out decimal debtReduced,
+        out decimal paidReduced)
+    {
+        var remaining = totalRefund;
+        debtReduced = Math.Min(remaining, Math.Max(0, outstanding));
+        remaining -= debtReduced;
+        paidReduced = Math.Min(remaining, Math.Max(0, amountPaid));
+        return paidReduced;
+    }
+
+    private static List<CreateSalePaymentRequest> BuildReturnCashPayments(
+        IReadOnlyList<CreateSalePaymentRequest>? payments,
+        decimal totalRefund,
+        decimal outstanding,
+        decimal amountPaid)
+    {
+        var cashRefund = SplitReturnRefund(totalRefund, outstanding, amountPaid, out _, out _);
+        if (cashRefund <= 0.01m)
+            return [new CreateSalePaymentRequest(SalesPaymentMethods.Cash, 0)];
+
+        var method = payments?.FirstOrDefault(p => p.PaymentMethod != SalesPaymentMethods.Credit)?.PaymentMethod
+            ?? SalesPaymentMethods.Cash;
+        return
+        [
+            new CreateSalePaymentRequest(
+                method,
+                Math.Round(cashRefund, 2, MidpointRounding.AwayFromZero)),
+        ];
+    }
+
+    private static async Task ApplySaleReturnFinancialAdjustmentAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid orderId,
+        Guid tenantId,
+        decimal totalRefund,
+        decimal outstanding,
+        decimal amountPaid)
+    {
+        SplitReturnRefund(totalRefund, outstanding, amountPaid, out var debtReduced, out var paidReduced);
+        const string sql = """
+            UPDATE sales_orders SET
+                total_amount = GREATEST(0, total_amount - @TotalRefund),
+                outstanding = GREATEST(0, outstanding - @DebtReduced),
+                amount_paid = GREATEST(0, amount_paid - @PaidReduced)
+            WHERE id = @OrderId AND tenant_id = @TenantId
+            """;
+        await conn.ExecuteAsync(sql, new
+        {
+            OrderId = orderId,
+            TenantId = tenantId,
+            TotalRefund = totalRefund,
+            DebtReduced = debtReduced,
+            PaidReduced = paidReduced,
+        }, tx);
+    }
+
     private static async Task InsertReturnPaymentsAsync(
         IDbConnection conn,
         IDbTransaction tx,
@@ -2171,6 +2382,9 @@ internal sealed class SalesRepository
         public Guid WarehouseId { get; init; }
         public short Status { get; init; }
         public decimal OrderDiscountAmount { get; init; }
+        public decimal TotalAmount { get; init; }
+        public decimal AmountPaid { get; init; }
+        public decimal Outstanding { get; init; }
     }
 
     private sealed class ReturnableItemRow
@@ -2287,6 +2501,12 @@ internal sealed class SalesRepository
         public decimal ConversionFactor { get; init; }
     }
 
+    private sealed class CustomerCreditRow
+    {
+        public bool AllowCredit { get; init; }
+        public decimal? CreditLimit { get; init; }
+    }
+
     private sealed class SalesOrderHeaderRow
     {
         public Guid Id { get; init; }
@@ -2302,6 +2522,8 @@ internal sealed class SalesRepository
         public short? OrderDiscountType { get; init; }
         public decimal OrderDiscountValue { get; init; }
         public decimal TotalAmount { get; init; }
+        public decimal AmountPaid { get; init; }
+        public decimal Outstanding { get; init; }
         public decimal TotalRefunded { get; init; }
         public string? Notes { get; init; }
         public Guid? SalesShiftId { get; init; }
@@ -2321,5 +2543,559 @@ internal sealed class SalesRepository
         public decimal Quantity { get; init; }
         public short? DiscountType { get; init; }
         public decimal? DiscountValue { get; init; }
+    }
+
+    public async Task<bool> CustomerExistsAsync(Guid customerId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT EXISTS(
+                SELECT 1 FROM customers
+                WHERE id = @CustomerId AND tenant_id = @TenantId AND deleted_at IS NULL
+            )
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleAsync<bool>(sql, new { CustomerId = customerId, TenantId });
+    }
+
+    public async Task<SalesOrderPaymentLink?> GetSalesOrderPaymentLinkAsync(Guid id, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                so.id AS Id,
+                so.customer_id AS CustomerId,
+                so.warehouse_id AS WarehouseId,
+                so.status AS Status,
+                so.outstanding AS Outstanding
+            FROM sales_orders so
+            WHERE so.id = @Id AND so.tenant_id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<SalesOrderPaymentLink>(sql, new { Id = id, TenantId });
+    }
+
+    public async Task<IReadOnlyList<CustomerPaymentListItemDto>> GetCustomerPaymentsAsync(
+        CustomerPaymentListFilter filter,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var conditions = new List<string>
+        {
+            "cp.tenant_id = @TenantId",
+            "cp.deleted_at IS NULL",
+        };
+        var parameters = new DynamicParameters();
+        parameters.Add("TenantId", TenantId);
+
+        if (!string.IsNullOrWhiteSpace(filter.Search)
+            && string.IsNullOrWhiteSpace(filter.CustomerSearch)
+            && string.IsNullOrWhiteSpace(filter.DocumentSearch))
+        {
+            conditions.Add("""
+                (
+                    cp.payment_number ILIKE @Search
+                    OR c.full_name ILIKE @Search
+                    OR c.customer_code ILIKE @Search
+                    OR c.phone ILIKE @Search
+                    OR COALESCE(so.order_number, '') ILIKE @Search
+                    OR (@SearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @SearchDigitsPattern)
+                )
+                """);
+            parameters.Add("Search", $"%{filter.Search.Trim()}%");
+            AddPhoneDigitSearchParams(parameters, filter.Search, "Search");
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.CustomerSearch))
+        {
+            conditions.Add("""
+                (
+                    c.full_name ILIKE @CustomerSearch
+                    OR c.customer_code ILIKE @CustomerSearch
+                    OR c.phone ILIKE @CustomerSearch
+                    OR (@CustomerSearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @CustomerSearchDigitsPattern)
+                )
+                """);
+            parameters.Add("CustomerSearch", $"%{filter.CustomerSearch.Trim()}%");
+            AddPhoneDigitSearchParams(parameters, filter.CustomerSearch, "CustomerSearch");
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.DocumentSearch))
+        {
+            conditions.Add("(cp.payment_number ILIKE @DocumentSearch OR COALESCE(so.order_number, '') ILIKE @DocumentSearch)");
+            parameters.Add("DocumentSearch", $"%{filter.DocumentSearch.Trim()}%");
+        }
+
+        if (filter.CustomerId is Guid customerId)
+        {
+            conditions.Add("cp.customer_id = @CustomerId");
+            parameters.Add("CustomerId", customerId);
+        }
+
+        if (filter.Status is short status)
+        {
+            conditions.Add("cp.status = @Status");
+            parameters.Add("Status", status);
+        }
+
+        if (filter.DateFrom is DateOnly dateFrom)
+        {
+            conditions.Add("cp.payment_date >= @DateFrom");
+            parameters.Add("DateFrom", dateFrom.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        }
+
+        if (filter.DateTo is DateOnly dateTo)
+        {
+            conditions.Add("cp.payment_date < @DateTo");
+            parameters.Add("DateTo", dateTo.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        }
+
+        if (allowedWarehouseIds is { Length: > 0 })
+        {
+            conditions.Add("""
+                (
+                    cp.sales_order_id IS NULL
+                    OR EXISTS (
+                        SELECT 1 FROM sales_orders so_w
+                        WHERE so_w.id = cp.sales_order_id
+                          AND so_w.tenant_id = cp.tenant_id
+                          AND so_w.warehouse_id = ANY(@AllowedWarehouseIds)
+                    )
+                )
+                """);
+            parameters.Add("AllowedWarehouseIds", allowedWarehouseIds);
+        }
+
+        var where = string.Join(" AND ", conditions);
+        var sql = $"""
+            SELECT
+                cp.id AS Id, cp.payment_number AS PaymentNumber, cp.customer_id AS CustomerId,
+                c.full_name AS CustomerName, cp.amount AS Amount, cp.payment_method AS PaymentMethod,
+                cp.status AS Status, cp.payment_date AS PaymentDate, cp.posted_at AS PostedAt,
+                cp.sales_order_id AS SalesOrderId, so.order_number AS OrderNumber, cp.notes AS Notes
+            FROM customer_payments cp
+            INNER JOIN customers c ON c.id = cp.customer_id
+            LEFT JOIN sales_orders so ON so.id = cp.sales_order_id
+            WHERE {where}
+            ORDER BY cp.payment_date DESC, cp.created_at DESC
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<CustomerPaymentListItemDto>(sql, parameters)).ToList();
+    }
+
+    public async Task<CustomerPaymentListItemDto?> GetCustomerPaymentAsync(Guid id, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                cp.id AS Id, cp.payment_number AS PaymentNumber, cp.customer_id AS CustomerId,
+                c.full_name AS CustomerName, cp.amount AS Amount, cp.payment_method AS PaymentMethod,
+                cp.status AS Status, cp.payment_date AS PaymentDate, cp.posted_at AS PostedAt,
+                cp.sales_order_id AS SalesOrderId, so.order_number AS OrderNumber, cp.notes AS Notes
+            FROM customer_payments cp
+            INNER JOIN customers c ON c.id = cp.customer_id
+            LEFT JOIN sales_orders so ON so.id = cp.sales_order_id
+            WHERE cp.id = @Id AND cp.tenant_id = @TenantId AND cp.deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<CustomerPaymentListItemDto>(sql, new { Id = id, TenantId });
+    }
+
+    public async Task<Guid> CreateCustomerPaymentAsync(
+        CreateCustomerPaymentRequest request,
+        Guid createdBy,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+        var paymentNumber = await NextCustomerPaymentNumberAsync(conn, tx, cancellationToken);
+        var paymentDate = (request.PaymentDate ?? DateOnly.FromDateTime(DateTime.UtcNow))
+            .ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        const string sql = """
+            INSERT INTO customer_payments (
+                tenant_id, customer_id, sales_order_id,
+                payment_number, amount, payment_method, payment_date, notes, status, created_by
+            )
+            VALUES (
+                @TenantId, @CustomerId, @SalesOrderId,
+                @PaymentNumber, @Amount, @PaymentMethod, @PaymentDate, @Notes, @Status, @CreatedBy
+            )
+            RETURNING id
+            """;
+        var id = await conn.QuerySingleAsync<Guid>(sql, new
+        {
+            TenantId,
+            request.CustomerId,
+            request.SalesOrderId,
+            PaymentNumber = paymentNumber,
+            request.Amount,
+            request.PaymentMethod,
+            PaymentDate = paymentDate,
+            request.Notes,
+            Status = CustomerPaymentStatuses.Draft,
+            CreatedBy = createdBy,
+        }, tx);
+        await tx.CommitAsync(cancellationToken);
+        return id;
+    }
+
+    public async Task<bool> UpdateCustomerPaymentAsync(
+        Guid id,
+        UpdateCustomerPaymentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var paymentDate = request.PaymentDate?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        const string sql = """
+            UPDATE customer_payments SET
+                customer_id = @CustomerId,
+                sales_order_id = @SalesOrderId,
+                amount = @Amount,
+                payment_method = @PaymentMethod,
+                payment_date = COALESCE(@PaymentDate, payment_date),
+                notes = @Notes
+            WHERE id = @Id AND tenant_id = @TenantId AND status = @Draft AND deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.ExecuteAsync(sql, new
+        {
+            Id = id,
+            TenantId,
+            request.CustomerId,
+            request.SalesOrderId,
+            request.Amount,
+            request.PaymentMethod,
+            PaymentDate = paymentDate,
+            request.Notes,
+            Draft = CustomerPaymentStatuses.Draft,
+        });
+        return rows > 0;
+    }
+
+    public async Task<bool> PostCustomerPaymentAsync(Guid id, Guid postedBy, CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        const string loadSql = """
+            SELECT id AS Id, customer_id AS CustomerId, sales_order_id AS SalesOrderId,
+                   amount AS Amount, payment_method AS PaymentMethod, status AS Status
+            FROM customer_payments
+            WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL
+            FOR UPDATE
+            """;
+        var payment = await conn.QuerySingleOrDefaultAsync<CustomerPaymentPostRow>(
+            loadSql, new { Id = id, TenantId }, tx);
+        if (payment is null || payment.Status != CustomerPaymentStatuses.Draft)
+            return false;
+
+        var remaining = payment.Amount;
+        if (payment.SalesOrderId is Guid orderId)
+        {
+            await ApplyCustomerCollectionToOrderAsync(
+                conn, tx, orderId, payment.CustomerId, remaining, payment.PaymentMethod, cancellationToken);
+        }
+        else
+        {
+            const string ordersSql = """
+                SELECT id AS Id, outstanding AS Outstanding
+                FROM sales_orders
+                WHERE tenant_id = @TenantId
+                  AND customer_id = @CustomerId
+                  AND status = @Completed
+                  AND outstanding > 0.009
+                ORDER BY order_date, order_number
+                FOR UPDATE
+                """;
+            var orders = (await conn.QueryAsync<OrderOutstandingRow>(
+                ordersSql,
+                new { TenantId, payment.CustomerId, Completed = SalesOrderStatuses.Completed },
+                tx)).ToList();
+
+            foreach (var order in orders)
+            {
+                if (remaining <= 0.009m)
+                    break;
+
+                var apply = Math.Min(remaining, order.Outstanding);
+                await ApplyCustomerCollectionToOrderAsync(
+                    conn, tx, order.Id, payment.CustomerId, apply, payment.PaymentMethod, cancellationToken);
+                remaining -= apply;
+            }
+
+            if (remaining > 0.009m)
+                throw new InvalidOperationException("Số tiền thu vượt tổng còn nợ của khách hàng.");
+        }
+
+        const string postSql = """
+            UPDATE customer_payments SET
+                status = @Posted,
+                posted_at = NOW(),
+                posted_by = @PostedBy
+            WHERE id = @Id AND tenant_id = @TenantId AND status = @Draft AND deleted_at IS NULL
+            """;
+        var rows = await conn.ExecuteAsync(postSql, new
+        {
+            Id = id,
+            TenantId,
+            Draft = CustomerPaymentStatuses.Draft,
+            Posted = CustomerPaymentStatuses.Posted,
+            PostedBy = postedBy,
+        }, tx);
+
+        await tx.CommitAsync(cancellationToken);
+        return rows > 0;
+    }
+
+    public async Task<bool> CancelCustomerPaymentAsync(Guid id, Guid cancelledBy, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE customer_payments SET
+                status = @Cancelled,
+                cancelled_at = NOW(),
+                cancelled_by = @CancelledBy
+            WHERE id = @Id AND tenant_id = @TenantId AND status = @Draft AND deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.ExecuteAsync(sql, new
+        {
+            Id = id,
+            TenantId,
+            Draft = CustomerPaymentStatuses.Draft,
+            Cancelled = CustomerPaymentStatuses.Cancelled,
+            CancelledBy = cancelledBy,
+        });
+        return rows > 0;
+    }
+
+    public async Task<IReadOnlyList<SalesOrderReceivableSourceRow>> GetSalesOrderReceivableSourceRowsAsync(
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND so.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
+            SELECT
+                c.id AS CustomerId,
+                c.customer_code AS CustomerCode,
+                c.full_name AS CustomerName,
+                c.phone AS CustomerPhone,
+                so.id AS SalesOrderId,
+                so.order_number AS OrderNumber,
+                so.order_date AS OrderDate,
+                so.total_amount AS OrderTotal,
+                so.amount_paid AS AmountPaid,
+                so.outstanding AS Outstanding
+            FROM sales_orders so
+            INNER JOIN customers c ON c.id = so.customer_id
+            WHERE so.tenant_id = @TenantId
+              AND so.status = @Completed
+              AND so.outstanding > 0.009
+              AND so.customer_id IS NOT NULL
+              AND c.deleted_at IS NULL
+              {warehouseFilter}
+            ORDER BY c.full_name, so.order_date, so.order_number
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<SalesOrderReceivableSourceRow>(sql, new
+        {
+            TenantId,
+            Completed = SalesOrderStatuses.Completed,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        })).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, decimal>> GetUnlinkedCustomerPaymentTotalsAsync(
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND so.id IS NOT NULL AND so.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var sql = $"""
+            SELECT cp.customer_id AS CustomerId, COALESCE(SUM(cp.amount), 0) AS TotalPaid
+            FROM customer_payments cp
+            LEFT JOIN sales_orders so ON so.id = cp.sales_order_id AND so.tenant_id = cp.tenant_id
+            WHERE cp.tenant_id = @TenantId
+              AND cp.status = @PaymentPosted
+              AND cp.sales_order_id IS NULL
+              {warehouseFilter}
+            GROUP BY cp.customer_id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.QueryAsync<(Guid CustomerId, decimal TotalPaid)>(sql, new
+        {
+            TenantId,
+            PaymentPosted = CustomerPaymentStatuses.Posted,
+            AllowedWarehouseIds = allowedWarehouseIds,
+        });
+        return rows.ToDictionary(x => x.CustomerId, x => x.TotalPaid);
+    }
+
+    private async Task ApplyCustomerCollectionToOrderAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid orderId,
+        Guid customerId,
+        decimal amount,
+        short paymentMethod,
+        CancellationToken cancellationToken)
+    {
+        if (amount <= 0.009m)
+            return;
+
+        const string lockSql = """
+            SELECT customer_id AS CustomerId, status AS Status, outstanding AS Outstanding
+            FROM sales_orders
+            WHERE id = @OrderId AND tenant_id = @TenantId
+            FOR UPDATE
+            """;
+        var order = await conn.QuerySingleOrDefaultAsync<OrderCollectionRow>(
+            lockSql, new { OrderId = orderId, TenantId }, tx);
+        if (order is null)
+            throw new InvalidOperationException("Đơn bán không tồn tại.");
+        if (order.CustomerId != customerId)
+            throw new InvalidOperationException("Đơn bán không thuộc khách hàng đã chọn.");
+        if (order.Status != SalesOrderStatuses.Completed)
+            throw new InvalidOperationException("Chỉ thu nợ trên đơn bán đã hoàn tất.");
+        if (amount > order.Outstanding + 0.009m)
+            throw new InvalidOperationException("Số tiền thu vượt còn nợ của đơn bán.");
+
+        const string updateSql = """
+            UPDATE sales_orders SET
+                amount_paid = amount_paid + @Amount,
+                outstanding = outstanding - @Amount
+            WHERE id = @OrderId AND tenant_id = @TenantId
+            """;
+        await conn.ExecuteAsync(updateSql, new { OrderId = orderId, TenantId, Amount = amount }, tx);
+
+        const string paymentSql = """
+            INSERT INTO sales_payments (sales_order_id, payment_method, amount)
+            VALUES (@OrderId, @PaymentMethod, @Amount)
+            """;
+        await conn.ExecuteAsync(paymentSql, new
+        {
+            OrderId = orderId,
+            PaymentMethod = paymentMethod,
+            Amount = amount,
+        }, tx);
+    }
+
+    private async Task<string> NextCustomerPaymentNumberAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT COUNT(*)::int + 1 FROM customer_payments WHERE tenant_id = @TenantId
+            """;
+        var seq = await conn.QuerySingleAsync<int>(sql, new { TenantId }, tx);
+        return $"THU-{seq:D6}";
+    }
+
+    private sealed class CustomerPaymentPostRow
+    {
+        public Guid Id { get; init; }
+        public Guid CustomerId { get; init; }
+        public Guid? SalesOrderId { get; init; }
+        public decimal Amount { get; init; }
+        public short PaymentMethod { get; init; }
+        public short Status { get; init; }
+    }
+
+    private sealed class OrderOutstandingRow
+    {
+        public Guid Id { get; init; }
+        public decimal Outstanding { get; init; }
+    }
+
+    private sealed class OrderCollectionRow
+    {
+        public Guid CustomerId { get; init; }
+        public short Status { get; init; }
+        public decimal Outstanding { get; init; }
+    }
+
+    private static string BuildSalesOrderSearchFilter(SalesOrderListFilter filter)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(filter.CustomerSearch))
+        {
+            parts.Add("""
+                (
+                    COALESCE(c.full_name, '') ILIKE @CustomerSearchPattern
+                    OR COALESCE(c.phone, '') ILIKE @CustomerSearchPattern
+                    OR (@CustomerSearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @CustomerSearchDigitsPattern)
+                )
+                """);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.DocumentSearch))
+        {
+            parts.Add("o.order_number ILIKE @DocumentSearchPattern");
+        }
+
+        if (parts.Count == 0 && !string.IsNullOrWhiteSpace(filter.Search))
+        {
+            parts.Add("""
+                (
+                    o.order_number ILIKE @SearchPattern
+                    OR w.warehouse_name ILIKE @SearchPattern
+                    OR COALESCE(c.full_name, '') ILIKE @SearchPattern
+                    OR COALESCE(c.phone, '') ILIKE @SearchPattern
+                    OR (@SearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @SearchDigitsPattern)
+                )
+                """);
+        }
+
+        return parts.Count == 0 ? string.Empty : $"AND {string.Join(" AND ", parts)}";
+    }
+
+    private static string BuildSalesReturnSearchFilter(string? search, string? customerSearch, string? documentSearch)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(customerSearch))
+        {
+            parts.Add("""
+                (
+                    COALESCE(c.full_name, '') ILIKE @CustomerSearchPattern
+                    OR COALESCE(c.phone, '') ILIKE @CustomerSearchPattern
+                    OR (@CustomerSearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @CustomerSearchDigitsPattern)
+                )
+                """);
+        }
+
+        if (!string.IsNullOrWhiteSpace(documentSearch))
+        {
+            parts.Add(
+                "(r.return_number ILIKE @DocumentSearchPattern OR o.order_number ILIKE @DocumentSearchPattern)");
+        }
+
+        if (parts.Count == 0 && !string.IsNullOrWhiteSpace(search))
+        {
+            parts.Add("""
+                (
+                    r.return_number ILIKE @SearchPattern
+                    OR o.order_number ILIKE @SearchPattern
+                    OR COALESCE(c.full_name, '') ILIKE @SearchPattern
+                    OR COALESCE(c.phone, '') ILIKE @SearchPattern
+                    OR (@SearchDigits <> '' AND regexp_replace(COALESCE(c.phone, ''), '\D', '', 'g') ILIKE @SearchDigitsPattern)
+                )
+                """);
+        }
+
+        return parts.Count == 0 ? string.Empty : $"AND {string.Join(" AND ", parts)}";
+    }
+
+    private static string ExtractPhoneDigits(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? string.Empty : new string(value.Where(char.IsDigit).ToArray());
+
+    private static string? BuildPhoneDigitsPattern(string digits) =>
+        string.IsNullOrEmpty(digits) ? null : $"%{digits}%";
+
+    private static void AddPhoneDigitSearchParams(DynamicParameters parameters, string? searchText, string prefix)
+    {
+        var digits = ExtractPhoneDigits(searchText);
+        parameters.Add($"{prefix}Digits", digits);
+        parameters.Add($"{prefix}DigitsPattern", BuildPhoneDigitsPattern(digits));
     }
 }

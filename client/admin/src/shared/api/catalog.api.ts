@@ -659,6 +659,22 @@ export type ProductImportResult = {
   errors: ProductImportError[];
 };
 
+const PRODUCT_IMPORT_BATCH_SIZE = 500;
+const PRODUCT_IMPORT_TIMEOUT_MS = 180_000;
+
+function normalizeProductImportResult(data: Record<string, unknown>): ProductImportResult {
+  const errors = ((data.errors ?? data.Errors ?? []) as Record<string, unknown>[]).map((row) => ({
+    rowNumber: Number(row.rowNumber ?? row.RowNumber ?? 0),
+    message: String(row.message ?? row.Message ?? ''),
+  }));
+  return {
+    created: Number(data.created ?? data.Created ?? 0),
+    skipped: Number(data.skipped ?? data.Skipped ?? 0),
+    failed: Number(data.failed ?? data.Failed ?? 0),
+    errors,
+  };
+}
+
 export async function importProducts(
   rows: Array<{
     rowNumber: number;
@@ -673,16 +689,35 @@ export async function importProducts(
     retailPrice?: number;
     minStockQty?: number;
   }>,
+  onBatchProgress?: (current: number, total: number) => void,
 ): Promise<ProductImportResult> {
-  const { data } = await http.post<Record<string, unknown>>('/catalog/import/products', rows);
-  const errors = ((data.errors ?? data.Errors ?? []) as Record<string, unknown>[]).map((row) => ({
-    rowNumber: Number(row.rowNumber ?? row.RowNumber ?? 0),
-    message: String(row.message ?? row.Message ?? ''),
-  }));
-  return {
-    created: Number(data.created ?? data.Created ?? 0),
-    skipped: Number(data.skipped ?? data.Skipped ?? 0),
-    failed: Number(data.failed ?? data.Failed ?? 0),
-    errors,
-  };
+  if (rows.length === 0) {
+    return { created: 0, skipped: 0, failed: 0, errors: [] };
+  }
+
+  const batches: (typeof rows)[] = [];
+  for (let i = 0; i < rows.length; i += PRODUCT_IMPORT_BATCH_SIZE) {
+    batches.push(rows.slice(i, i + PRODUCT_IMPORT_BATCH_SIZE));
+  }
+
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors: ProductImportError[] = [];
+
+  for (let i = 0; i < batches.length; i++) {
+    onBatchProgress?.(i + 1, batches.length);
+    const { data } = await http.post<Record<string, unknown>>(
+      '/catalog/import/products',
+      batches[i],
+      { timeout: PRODUCT_IMPORT_TIMEOUT_MS },
+    );
+    const batchResult = normalizeProductImportResult(data);
+    created += batchResult.created;
+    skipped += batchResult.skipped;
+    failed += batchResult.failed;
+    errors.push(...batchResult.errors);
+  }
+
+  return { created, skipped, failed, errors };
 }

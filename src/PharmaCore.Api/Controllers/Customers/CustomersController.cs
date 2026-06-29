@@ -14,17 +14,20 @@ public sealed class CustomersController : ControllerBase
 {
     private readonly ICustomerConsentService _consents;
     private readonly ICustomerAdminService _admin;
+    private readonly ICustomerImportService _import;
     private readonly ICustomerLoyaltyService _loyalty;
     private readonly ITenantContext _tenant;
 
     public CustomersController(
         ICustomerConsentService consents,
         ICustomerAdminService admin,
+        ICustomerImportService import,
         ICustomerLoyaltyService loyalty,
         ITenantContext tenant)
     {
         _consents = consents;
         _admin = admin;
+        _import = import;
         _loyalty = loyalty;
         _tenant = tenant;
     }
@@ -51,6 +54,28 @@ public sealed class CustomersController : ControllerBase
     {
         var item = await _admin.GetAsync(customerId, cancellationToken);
         return item is null ? NotFound() : Ok(item);
+    }
+
+    [HttpPost("import")]
+    [Authorize(Policy = SalesPolicies.Write)]
+    public async Task<ActionResult<CustomerImportResultDto>> Import(
+        [FromBody] IReadOnlyList<CustomerImportRowRequest> rows,
+        CancellationToken cancellationToken)
+    {
+        if (rows.Count == 0)
+            return BadRequest(new { message = "Không có dòng dữ liệu để import." });
+
+        if (rows.Count > 2000)
+            return BadRequest(new { message = "Tối đa 2000 dòng mỗi lần import." });
+
+        try
+        {
+            return Ok(await _import.ImportCustomersAsync(rows, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost]

@@ -32,6 +32,9 @@ const AddressesPage = lazy(() =>
 const ReservationsPage = lazy(() =>
   import('@/modules/reservations/ReservationsPage').then((m) => ({ default: m.ReservationsPage })),
 );
+const ReceivablesPage = lazy(() =>
+  import('@/modules/receivables/ReceivablesPage').then((m) => ({ default: m.ReceivablesPage })),
+);
 
 function RouteFallback() {
   return (
@@ -130,6 +133,14 @@ export function AppRouter() {
                 element={
                   <SuspenseRoute>
                     <AddressesPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="receivables"
+                element={
+                  <SuspenseRoute>
+                    <ReceivablesPage />
                   </SuspenseRoute>
                 }
               />

@@ -318,6 +318,7 @@ internal sealed class CustomerDraftOrderService : ICustomerDraftOrderService
             row.DraftNumber,
             row.CustomerId,
             row.CustomerName,
+            row.CustomerPhone,
             row.Status,
             row.TotalAmount,
             row.ItemCount,

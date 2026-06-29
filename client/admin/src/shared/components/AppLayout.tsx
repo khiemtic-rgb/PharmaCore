@@ -1,6 +1,7 @@
-import { useState, type CSSProperties } from 'react';
-import { Layout, Menu, Dropdown, Avatar, Space, Typography, theme } from 'antd';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { Layout, Menu, Dropdown, Avatar, Space, Typography, Button, theme } from 'antd';
 import {
+  AppstoreOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   UserOutlined,
@@ -35,6 +36,14 @@ export function AppLayout() {
       if (m.path === '/') return location.pathname === '/';
       return location.pathname.startsWith(m.path);
     })?.key ?? 'dashboard';
+
+  const isPosRoute = location.pathname.startsWith('/sales/pos');
+
+  useEffect(() => {
+    if (isPosRoute) {
+      setCollapsed(true);
+    }
+  }, [isPosRoute]);
 
   const handleLogout = async () => {
     try {
@@ -105,15 +114,23 @@ export function AppLayout() {
   );
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout
+      className={isPosRoute ? 'app-layout--pos' : undefined}
+      style={{
+        minHeight: '100vh',
+        ...(isPosRoute ? { height: '100vh', overflow: 'hidden' } : {}),
+      }}
+    >
       <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
+        collapsible={!isPosRoute}
+        collapsed={isPosRoute || collapsed}
+        onCollapse={isPosRoute ? undefined : setCollapsed}
         breakpoint="lg"
-        collapsedWidth={64}
+        collapsedWidth={isPosRoute ? 0 : 64}
+        trigger={isPosRoute ? null : undefined}
         theme="dark"
         width={240}
+        style={isPosRoute ? { overflow: 'hidden' } : undefined}
       >
         <div
           style={{
@@ -143,33 +160,58 @@ export function AppLayout() {
           }}
         />
       </Sider>
-      <Layout>
+      <Layout className={isPosRoute ? 'app-layout__main--pos' : undefined}>
         <Header
+          className={isPosRoute ? 'app-layout__header--pos' : undefined}
           style={{
-            padding: '0 16px',
+            padding: isPosRoute ? '0 12px' : '0 16px',
             background: MODULE_PRIMARY_BG,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
-            height: 'auto',
+            height: isPosRoute ? 44 : 'auto',
             lineHeight: 'normal',
+            flexShrink: 0,
           }}
         >
           <Space align="center" style={{ flex: 1, minWidth: 0 }}>
-            <span
-              style={{ cursor: 'pointer', fontSize: 18, flexShrink: 0 }}
-              onClick={() => setCollapsed((c) => !c)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && setCollapsed((c) => !c)}
-            >
-              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            </span>
+            {!isPosRoute ? (
+              <span
+                style={{ cursor: 'pointer', fontSize: 18, flexShrink: 0 }}
+                onClick={() => setCollapsed((c) => !c)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setCollapsed((c) => !c)}
+              >
+                {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              </span>
+            ) : (
+              <Typography.Text strong style={{ flexShrink: 0 }}>
+                POS
+              </Typography.Text>
+            )}
             <Typography.Text type="secondary" style={{ flexShrink: 0 }}>
               ERP Nhà thuốc
             </Typography.Text>
-            {moduleNav}
+            {!isPosRoute ? (
+              moduleNav
+            ) : (
+              <Dropdown
+                menu={{
+                  items: enabledModules.map((m) => ({
+                    key: m.key,
+                    icon: m.icon,
+                    label: m.label,
+                    onClick: () => navigate(m.path),
+                  })),
+                }}
+              >
+                <Button type="text" size="small" icon={<AppstoreOutlined />}>
+                  Chuyển module
+                </Button>
+              </Dropdown>
+            )}
           </Space>
           <Dropdown menu={userMenu} placement="bottomRight">
             <Space style={{ cursor: 'pointer', flexShrink: 0, marginLeft: 12 }}>
@@ -179,7 +221,19 @@ export function AppLayout() {
           </Dropdown>
         </Header>
         <ApiHealthBanner />
-        <Content style={{ margin: 24 }}>
+        <Content
+          className={isPosRoute ? 'app-content--pos' : undefined}
+          style={{
+            margin: isPosRoute ? 0 : 24,
+            padding: isPosRoute ? 0 : undefined,
+            background: isPosRoute ? '#fff' : undefined,
+            minHeight: isPosRoute ? 0 : undefined,
+            flex: isPosRoute ? 1 : undefined,
+            display: isPosRoute ? 'flex' : undefined,
+            flexDirection: isPosRoute ? 'column' : undefined,
+            overflow: isPosRoute ? 'hidden' : undefined,
+          }}
+        >
           <Outlet />
         </Content>
       </Layout>

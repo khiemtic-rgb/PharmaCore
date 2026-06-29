@@ -247,8 +247,10 @@ internal sealed class SalesService : ISalesService
     public Task<IReadOnlyList<SalesReturnListItemDto>> GetSaleReturnsAsync(
         int limit = 50,
         string? search = null,
+        string? customerSearch = null,
+        string? documentSearch = null,
         CancellationToken cancellationToken = default) =>
-        _repository.GetSaleReturnsAsync(limit, search, cancellationToken);
+        _repository.GetSaleReturnsAsync(limit, search, customerSearch, documentSearch, cancellationToken);
 
     public Task<IReadOnlyList<SalesReturnListItemDto>> GetSaleReturnsByOrderAsync(
         Guid salesOrderId,

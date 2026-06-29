@@ -16,6 +16,8 @@ export type ProductFeatureKey =
   | 'procurement.vatAdmin'
   | 'procurement.payables'
   | 'procurement.payments'
+  | 'sales.receivables'
+  | 'sales.customerPayments'
   | 'sales.customerReservations'
   | 'sales.chat'
   | 'sales.vouchers'
@@ -32,6 +34,8 @@ const PHASE_1_FEATURES: Record<ProductFeatureKey, boolean> = {
   'procurement.vatAdmin': true,
   'procurement.payables': true,
   'procurement.payments': true,
+  'sales.receivables': true,
+  'sales.customerPayments': true,
   // Bán hàng — POS, loyalty, voucher, đặt trước & chat app KH
   'sales.customerReservations': true,
   'sales.chat': true,

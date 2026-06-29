@@ -427,6 +427,7 @@ internal sealed class CustomerDraftOrderRepository
                 d.draft_number AS DraftNumber,
                 d.customer_id AS CustomerId,
                 c.full_name AS CustomerName,
+                c.phone AS CustomerPhone,
                 d.status AS Status,
                 d.total_amount AS TotalAmount,
                 (SELECT COUNT(*)::int FROM customer_draft_order_items i WHERE i.draft_order_id = d.id) AS ItemCount,
@@ -562,6 +563,7 @@ internal sealed record DraftOrderListRow
     public string DraftNumber { get; init; } = "";
     public Guid CustomerId { get; init; }
     public string CustomerName { get; init; } = "";
+    public string? CustomerPhone { get; init; }
     public short Status { get; init; }
     public decimal TotalAmount { get; init; }
     public int ItemCount { get; init; }

@@ -266,6 +266,8 @@ function normalizePurchaseListItem(row: Record<string, unknown>) {
     status: Number(row.status ?? row.Status ?? 2),
     orderDate: String(row.orderDate ?? row.OrderDate ?? ''),
     totalAmount: Number(row.totalAmount ?? row.TotalAmount ?? 0),
+    amountPaid: Number(row.amountPaid ?? row.AmountPaid ?? 0),
+    outstanding: Number(row.outstanding ?? row.Outstanding ?? 0),
     itemCount: Number(row.itemCount ?? row.ItemCount ?? 0),
     totalRefunded: Number(row.totalRefunded ?? row.TotalRefunded ?? 0),
   };
@@ -301,6 +303,8 @@ function normalizePurchaseDetail(row: Record<string, unknown>) {
     subtotal: Number(row.subtotal ?? row.Subtotal ?? 0),
     discountAmount: Number(row.discountAmount ?? row.DiscountAmount ?? 0),
     totalAmount: Number(row.totalAmount ?? row.TotalAmount ?? 0),
+    amountPaid: Number(row.amountPaid ?? row.AmountPaid ?? 0),
+    outstanding: Number(row.outstanding ?? row.Outstanding ?? 0),
     totalRefunded: Number(row.totalRefunded ?? row.TotalRefunded ?? 0),
     notes: (row.notes ?? row.Notes) as string | null | undefined,
     loyaltyPointsEarned: (row.loyaltyPointsEarned ?? row.LoyaltyPointsEarned) as number | null | undefined,
@@ -323,6 +327,32 @@ export async function fetchPurchases() {
 
 export async function fetchPurchase(id: string) {
   const { data } = await http.get<Record<string, unknown>>(`/purchases/${id}`);
+  return normalizePurchaseDetail(data);
+}
+
+function normalizeReceivableLine(row: Record<string, unknown>) {
+  return {
+    salesOrderId: String(row.salesOrderId ?? row.SalesOrderId ?? ''),
+    orderNumber: String(row.orderNumber ?? row.OrderNumber ?? ''),
+    orderDate: String(row.orderDate ?? row.OrderDate ?? ''),
+    orderTotal: Number(row.orderTotal ?? row.OrderTotal ?? 0),
+    amountPaid: Number(row.amountPaid ?? row.AmountPaid ?? 0),
+    outstanding: Number(row.outstanding ?? row.Outstanding ?? 0),
+  };
+}
+
+export async function fetchReceivablesSummary() {
+  const { data } = await http.get<Record<string, unknown>>('/receivables');
+  const lines = ((data.lines ?? data.Lines ?? []) as Record<string, unknown>[]).map(normalizeReceivableLine);
+  return {
+    totalReceivable: Number(data.totalReceivable ?? data.TotalReceivable ?? 0),
+    openOrderCount: Number(data.openOrderCount ?? data.OpenOrderCount ?? lines.length),
+    lines,
+  };
+}
+
+export async function fetchReceivableOrder(id: string) {
+  const { data } = await http.get<Record<string, unknown>>(`/receivables/orders/${id}`);
   return normalizePurchaseDetail(data);
 }
 

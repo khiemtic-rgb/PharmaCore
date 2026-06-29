@@ -24,7 +24,11 @@ import type {
 
 type S = ApiSchemas;
 
-export type CustomerListItem = Req<S['CustomerListItemDto'], 'id' | 'customerCode' | 'fullName' | 'phone'>;
+export type CustomerListItem = Req<S['CustomerListItemDto'], 'id' | 'customerCode' | 'fullName' | 'phone'> & {
+  allowCredit?: boolean;
+  creditLimit?: number | null;
+  currentOutstanding?: number;
+};
 
 export type PosBatchHint = Req<PosBatchHintDto, 'batchId' | 'batchNumber' | 'quantityAvailable' | 'isSuggested'>;
 
@@ -81,10 +85,15 @@ export type SalesOrderListItem = Req<
   | 'orderDate'
   | 'totalAmount'
   | 'itemCount'
->;
+> & {
+  amountPaid?: number;
+  outstanding?: number;
+};
 
 export interface SalesOrderListFilters {
   search?: string;
+  customerSearch?: string;
+  documentSearch?: string;
   status?: number;
   page?: number;
   pageSize?: number;
@@ -202,6 +211,8 @@ export type SalesOrderDetail = Omit<
   items: SalesOrderItem[];
   payments?: SalesPaymentLine[];
   refundPayments?: Pick<SalesPaymentLine, 'paymentMethod' | 'amount'>[];
+  amountPaid?: number;
+  outstanding?: number;
   loyaltyPointsEarned?: number | null;
   loyaltyPointsRedeemed?: number;
   loyaltyDiscountAmount?: number;
@@ -222,6 +233,7 @@ export const SALES_PAYMENT_METHOD_LABELS: Record<number, string> = {
   2: 'Thẻ',
   3: 'Chuyển khoản',
   4: 'Ví điện tử',
+  5: 'Ghi nợ',
 };
 
 export interface PosCheckoutPaymentLine {
@@ -279,4 +291,80 @@ export interface CartLine {
 
 export const SALES_RETURN_STATUS_LABELS: Record<number, string> = {
   2: 'Hoàn tất',
+};
+
+export const CUSTOMER_PAYMENT_STATUS_LABELS: Record<number, string> = {
+  1: 'Chờ ghi sổ',
+  2: 'Đã ghi sổ',
+  3: 'Đã hủy',
+};
+
+export const CUSTOMER_PAYMENT_STATUS_TAG: Record<number, string> = {
+  1: 'blue',
+  2: 'green',
+  3: 'red',
+};
+
+export interface CustomerPaymentListFilters {
+  search?: string;
+  customerSearch?: string;
+  documentSearch?: string;
+  customerId?: string;
+  status?: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export type CustomerReceivablesAging = {
+  current: number;
+  days31To60: number;
+  days61To90: number;
+  over90: number;
+};
+
+export type CustomerReceivablesRow = {
+  customerId: string;
+  customerCode: string;
+  customerName: string;
+  customerPhone?: string | null;
+  totalReceivable: number;
+  unappliedCredit: number;
+  aging: CustomerReceivablesAging;
+  openDocumentCount: number;
+};
+
+export type CustomerReceivablesDetailLine = {
+  salesOrderId: string;
+  orderNumber: string;
+  orderDate: string;
+  orderTotal: number;
+  paidAmount: number;
+  outstanding: number;
+  daysOutstanding: number;
+};
+
+export type CustomerReceivablesDetail = {
+  customerId: string;
+  customerCode: string;
+  customerName: string;
+  customerPhone?: string | null;
+  totalReceivable: number;
+  unappliedCredit: number;
+  aging: CustomerReceivablesAging;
+  lines: CustomerReceivablesDetailLine[];
+};
+
+export type CustomerPaymentListItem = {
+  id: string;
+  paymentNumber: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  paymentMethod: number;
+  status: number;
+  paymentDate: string;
+  postedAt?: string;
+  salesOrderId?: string;
+  orderNumber?: string;
+  notes?: string;
 };

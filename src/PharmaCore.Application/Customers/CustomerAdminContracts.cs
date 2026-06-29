@@ -27,7 +27,9 @@ public sealed record CustomerDetailDto(
     DateTimeOffset CreatedAt,
     bool HasAppAccount,
     bool? AppVerified,
-    DateTimeOffset? AppLastLoginAt);
+    DateTimeOffset? AppLastLoginAt,
+    bool AllowCredit = false,
+    decimal? CreditLimit = null);
 
 public sealed record CustomerOrderListItemDto(
     Guid Id,
@@ -58,6 +60,8 @@ public sealed record UpdateCustomerRequest(
     string? Email = null,
     DateOnly? DateOfBirth = null,
     short? Gender = null,
-    short Status = 1);
+    short Status = 1,
+    bool AllowCredit = false,
+    decimal? CreditLimit = null);
 
 public sealed record NextCustomerCodeDto(string CustomerCode);

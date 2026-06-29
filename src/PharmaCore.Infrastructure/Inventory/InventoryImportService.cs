@@ -52,12 +52,14 @@ internal sealed class InventoryImportService : IInventoryImportService
                 continue;
             }
 
+            var unitCost = row.UnitCost < 0 ? 0m : row.UnitCost;
+
             lines.Add(new OpeningBalanceLineRequest(
                 productId.Value,
                 row.BatchNumber.Trim(),
                 row.ExpiryDate,
                 null,
-                row.UnitCost,
+                unitCost,
                 row.Quantity));
         }
 

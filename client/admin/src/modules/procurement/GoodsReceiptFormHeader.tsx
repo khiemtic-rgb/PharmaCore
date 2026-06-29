@@ -3,6 +3,7 @@ import { Button, Form, Input, Select } from 'antd';
 import type { Warehouse } from '@/shared/api/inventory.types';
 import type { PurchaseOrderDetail, PurchaseOrderListItem, Supplier } from '@/shared/api/procurement.types';
 import { canEditPurchaseOrder } from '@/shared/api/procurement.types';
+import { realSuppliers } from '@/modules/procurement/grn-pricing';
 import { PharmaDatePicker } from '@/shared/ui/PharmaDatePicker';
 
 export interface GoodsReceiptFormHeaderProps {
@@ -82,10 +83,12 @@ export function GoodsReceiptFormHeader({
           style={{ marginBottom: 0 }}
         >
           <Select
-            disabled={!!purchaseOrderId}
             showSearch
             optionFilterProp="label"
-            options={suppliers.map((s) => ({ value: s.id, label: s.supplierName }))}
+            options={realSuppliers(suppliers).map((s) => ({
+              value: s.id,
+              label: `${s.supplierCode} — ${s.supplierName}`,
+            }))}
           />
         </Form.Item>
         <Form.Item

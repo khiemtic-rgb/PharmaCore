@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  App,
   AutoComplete,
   Button,
   Card,
@@ -14,19 +15,27 @@ import {
   Tooltip,
   Typography,
   Upload,
-  message,
 } from 'antd';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
-import { DeleteOutlined, DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  InboxOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  UploadOutlined,
+} from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import {
   createOpeningBalance,
   fetchOpeningBalanceBatches,
   fetchStockBatches,
   fetchWarehouses,
-  importOpeningBalance,
+  importOpeningBalanceBatched,
   voidOpeningBalanceBatch,
 } from '@/shared/api/inventory.api';
+import type { OpeningBalanceImportResult } from '@/shared/api/inventory.types';
 import { fetchProducts } from '@/shared/api/catalog.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import type { OpeningBalanceBatch, StockBatch, Warehouse } from '@/shared/api/inventory.types';
@@ -53,6 +62,15 @@ interface LineRow {
   expiryDate?: string;
   unitCost?: number;
   quantity?: number;
+}
+
+interface ExcelImportRow {
+  rowNumber: number;
+  productKey: string;
+  batchNumber: string;
+  expiryDate?: string;
+  quantity: number;
+  unitCost: number;
 }
 
 interface SavedImportLine {
@@ -84,7 +102,21 @@ function renderProductCell(code: string, name: string) {
   );
 }
 
+function mapOpeningBalanceRows(rows: Record<string, string>[]): ExcelImportRow[] {
+  return rows
+    .map((row, index) => ({
+      rowNumber: index + 2,
+      productKey: pickRowValue(row, 'product_key', 'ma_sp', 'mã_sp', 'barcode', 'ma_vach'),
+      batchNumber: pickRowValue(row, 'batch_number', 'so_lo', 'số_lô', 'lot'),
+      expiryDate: parseOptionalDate(pickRowValue(row, 'expiry_date', 'hsd', 'han_dung')),
+      quantity: parseDecimal(pickRowValue(row, 'quantity', 'so_luong', 'số_lượng', 'sl')) ?? 0,
+      unitCost: Math.max(0, parseDecimal(pickRowValue(row, 'unit_cost', 'gia_von', 'giá_vốn', 'cost')) ?? 0),
+    }))
+    .filter((r) => r.productKey && r.batchNumber && r.quantity > 0);
+}
+
 export function OpeningBalancePage() {
+  const { message } = App.useApp();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [warehouseId, setWarehouseId] = useState<string>();
@@ -92,10 +124,20 @@ export function OpeningBalancePage() {
   const [lines, setLines] = useState<LineRow[]>([{ key: '1' }]);
   const [saving, setSaving] = useState(false);
   const [recentImports, setRecentImports] = useState<SavedImport[]>([]);
+  const [excelPreview, setExcelPreview] = useState<ExcelImportRow[]>([]);
+  const [excelFileName, setExcelFileName] = useState<string>();
   const [excelImporting, setExcelImporting] = useState(false);
+  const [excelImportError, setExcelImportError] = useState<string | null>(null);
+  const [excelImportResult, setExcelImportResult] = useState<OpeningBalanceImportResult | null>(null);
+  const [excelImportBatch, setExcelImportBatch] = useState<{ current: number; total: number } | null>(null);
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [openingBatches, setOpeningBatches] = useState<OpeningBalanceBatch[]>([]);
   const [openingLoading, setOpeningLoading] = useState(false);
+  const [openingPage, setOpeningPage] = useState(1);
+  const [openingPageSize, setOpeningPageSize] = useState(50);
+  const [openingTotal, setOpeningTotal] = useState(0);
+  const [openingSummaryTotal, setOpeningSummaryTotal] = useState(0);
+  const [openingSummaryVoidable, setOpeningSummaryVoidable] = useState(0);
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [stockBatches, setStockBatches] = useState<StockBatch[]>([]);
   const [stockLoading, setStockLoading] = useState(false);
@@ -107,15 +149,19 @@ export function OpeningBalancePage() {
 
   const selectedWarehouse = warehouses.find((w) => w.id === warehouseId);
 
-  const loadStock = useCallback(async (whId?: string) => {
-    if (!whId) {
+  const loadStock = useCallback(async () => {
+    if (!warehouseId) {
       setStockBatches([]);
       setStockTotal(0);
       return;
     }
     setStockLoading(true);
     try {
-      const result = await fetchStockBatches({ warehouseId: whId, page: 1, pageSize: 50 });
+      const result = await fetchStockBatches({
+        warehouseId,
+        page: openingPage,
+        pageSize: openingPageSize,
+      });
       setStockBatches(result.items);
       setStockTotal(result.total);
     } catch (error) {
@@ -123,22 +169,36 @@ export function OpeningBalancePage() {
     } finally {
       setStockLoading(false);
     }
-  }, []);
+  }, [warehouseId, openingPage, openingPageSize]);
 
-  const loadOpeningBatches = useCallback(async (whId?: string) => {
-    if (!whId) {
+  const loadOpeningBatches = useCallback(async () => {
+    if (!warehouseId) {
       setOpeningBatches([]);
+      setOpeningTotal(0);
+      setOpeningSummaryTotal(0);
+      setOpeningSummaryVoidable(0);
       return;
     }
     setOpeningLoading(true);
     try {
-      setOpeningBatches(await fetchOpeningBalanceBatches(whId));
+      const result = await fetchOpeningBalanceBatches({
+        warehouseId,
+        productId: productFilterId,
+        search: listSearch || undefined,
+        status: statusFilter,
+        page: openingPage,
+        pageSize: openingPageSize,
+      });
+      setOpeningBatches(result.items);
+      setOpeningTotal(result.total);
+      setOpeningSummaryTotal(result.summaryTotal);
+      setOpeningSummaryVoidable(result.summaryVoidableCount);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không tải được danh sách tồn đầu kỳ'));
     } finally {
       setOpeningLoading(false);
     }
-  }, []);
+  }, [warehouseId, productFilterId, listSearch, statusFilter, openingPage, openingPageSize]);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -162,11 +222,16 @@ export function OpeningBalancePage() {
   }, [loadLookups]);
 
   useEffect(() => {
-    if (warehouseId) {
-      loadOpeningBatches(warehouseId);
-      loadStock(warehouseId);
-    }
-  }, [warehouseId, loadOpeningBatches, loadStock]);
+    setOpeningPage(1);
+  }, [warehouseId]);
+
+  useEffect(() => {
+    void loadOpeningBatches();
+  }, [loadOpeningBatches]);
+
+  useEffect(() => {
+    void loadStock();
+  }, [loadStock]);
 
   const addLine = () => {
     setLines((prev) => [...prev, { key: String(Date.now()) }]);
@@ -185,7 +250,7 @@ export function OpeningBalancePage() {
     try {
       await voidOpeningBalanceBatch(batch.batchId);
       message.success(`Đã xóa lô ${batch.batchNumber}`);
-      await Promise.all([loadOpeningBatches(warehouseId), loadStock(warehouseId)]);
+      await Promise.all([loadOpeningBatches(), loadStock()]);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không xóa được lô tồn đầu kỳ'));
     } finally {
@@ -257,7 +322,7 @@ export function OpeningBalancePage() {
       message.success(`Đã lưu ${result.linesProcessed} dòng tồn đầu kỳ`);
       setLines([{ key: String(Date.now()) }]);
       setNotes('');
-      await Promise.all([loadOpeningBatches(warehouseId), loadStock(warehouseId)]);
+      await Promise.all([loadOpeningBatches(), loadStock()]);
     } catch (error) {
       message.error(apiErrorMessage(error, 'Không nhập được tồn đầu kỳ'));
     } finally {
@@ -512,81 +577,83 @@ export function OpeningBalancePage() {
   ];
 
   const latestImport = recentImports.find((item) => item.id === lastSavedId) ?? recentImports[0];
-  const voidableCount = openingBatches.filter((b) => b.canVoid).length;
-
-  const filteredOpeningBatches = useMemo(() => {
-    const q = listSearch.trim().toLowerCase();
-    return openingBatches.filter((row) => {
-      if (statusFilter === 'voidable' && !row.canVoid) return false;
-      if (statusFilter === 'locked' && row.canVoid) return false;
-      if (productFilterId && row.productId !== productFilterId) return false;
-      if (!q) return true;
-      return (
-        row.productCode.toLowerCase().includes(q) ||
-        row.productName.toLowerCase().includes(q) ||
-        row.batchNumber.toLowerCase().includes(q)
-      );
-    });
-  }, [openingBatches, listSearch, statusFilter, productFilterId]);
 
   const listSearchSuggestions = useMemo(() => {
     const q = listSearchInput.trim().toLowerCase();
-    return openingBatches
-      .filter((row) => {
+    return products
+      .filter((p) => {
         if (!q) return true;
         return (
-          row.productCode.toLowerCase().includes(q) ||
-          row.productName.toLowerCase().includes(q) ||
-          row.batchNumber.toLowerCase().includes(q)
+          p.productCode.toLowerCase().includes(q) ||
+          p.productName.toLowerCase().includes(q) ||
+          (p.primaryBarcode?.toLowerCase().includes(q) ?? false)
         );
       })
       .slice(0, 15)
-      .map((row) => ({
-        value: row.batchNumber,
-        label: `${row.productCode} — ${row.productName} · Lô ${row.batchNumber}`,
+      .map((p) => ({
+        value: p.productCode,
+        label: `${p.productCode} — ${p.productName}`,
       }));
-  }, [openingBatches, listSearchInput]);
+  }, [products, listSearchInput]);
 
   const applyListSearch = (value?: string) => {
     const text = (value ?? listSearchInput).trim();
     setListSearchInput(text);
     setListSearch(text);
+    setOpeningPage(1);
   };
 
-  const handleExcelImport = async (file: File) => {
+  const handleExcelFile = async (file: File) => {
+    try {
+      const rows = await parseSpreadsheetFile(file);
+      const mapped = mapOpeningBalanceRows(rows);
+      if (mapped.length === 0) {
+        message.warning('Không có dòng hợp lệ trong file.');
+        return;
+      }
+      setExcelPreview(mapped);
+      setExcelFileName(file.name);
+      setExcelImportError(null);
+      setExcelImportResult(null);
+      message.success(`Đã đọc ${mapped.length} dòng từ «${file.name}»`);
+    } catch (error) {
+      message.error(apiErrorMessage(error, 'Không đọc được file'));
+    }
+  };
+
+  const runExcelImport = async () => {
     if (!warehouseId) {
       message.warning('Chọn kho trước khi import.');
       return;
     }
+    if (excelPreview.length === 0) return;
+
     setExcelImporting(true);
+    setExcelImportBatch(null);
+    setExcelImportError(null);
+    setExcelImportResult(null);
     try {
-      const rows = await parseSpreadsheetFile(file);
-      const payload = rows
-        .map((row, index) => ({
-          rowNumber: index + 2,
-          productKey: pickRowValue(row, 'product_key', 'ma_sp', 'mã_sp', 'barcode', 'ma_vach'),
-          batchNumber: pickRowValue(row, 'batch_number', 'so_lo', 'số_lô', 'lot'),
-          expiryDate: parseOptionalDate(pickRowValue(row, 'expiry_date', 'hsd', 'han_dung')),
-          quantity: parseDecimal(pickRowValue(row, 'quantity', 'so_luong', 'số_lượng', 'sl')) ?? 0,
-          unitCost: parseDecimal(pickRowValue(row, 'unit_cost', 'gia_von', 'giá_vốn', 'cost')) ?? 0,
-        }))
-        .filter((r) => r.productKey && r.batchNumber && r.quantity > 0);
-
-      if (payload.length === 0) {
-        message.warning('Không có dòng hợp lệ trong file.');
-        return;
-      }
-
-      const result = await importOpeningBalance({ warehouseId, notes, rows: payload });
+      const result = await importOpeningBalanceBatched(
+        warehouseId,
+        notes,
+        excelPreview,
+        (current, total) => setExcelImportBatch({ current, total }),
+      );
+      setExcelImportResult(result);
       message.success(`Import xong: ${result.linesProcessed} lô, ${result.errors.length} lỗi`);
       if (result.errors.length > 0) {
         message.warning(result.errors.slice(0, 3).map((e) => `Dòng ${e.rowNumber}: ${e.message}`).join(' · '));
       }
-      await loadOpeningBatches(warehouseId);
+      setExcelPreview([]);
+      setExcelFileName(undefined);
+      await loadOpeningBatches();
     } catch (error) {
-      message.error(apiErrorMessage(error, 'Import thất bại'));
+      const text = apiErrorMessage(error, 'Import thất bại');
+      setExcelImportError(text);
+      message.error(text);
     } finally {
       setExcelImporting(false);
+      setExcelImportBatch(null);
     }
   };
 
@@ -605,21 +672,82 @@ export function OpeningBalancePage() {
           </Button>
         }
       >
-        <Space wrap>
-          <Upload
-            accept=".xlsx,.xls,.csv"
-            showUploadList={false}
-            disabled={!warehouseId || excelImporting}
-            customRequest={(options: UploadRequestOption) => {
-              const file = options.file as File;
-              void handleExcelImport(file).then(() => options.onSuccess?.({}, file));
-            }}
-          >
-            <Button icon={<UploadOutlined />} loading={excelImporting} disabled={!warehouseId}>
-              Chọn file Excel/CSV
-            </Button>
-          </Upload>
+        <Space direction="vertical" size="small" style={{ width: '100%' }}>
           <Typography.Text type="secondary">
+            Import file <code>ton-dau-CN1.csv</code> / <code>ton-dau-CN2.csv</code>. Cần import danh mục SP trước.
+          </Typography.Text>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: 720 }}>
+            <div style={{ flex: '0 0 260px' }}>
+              <Typography.Text type="secondary">
+                Kho nhập <Typography.Text type="danger">*</Typography.Text>
+              </Typography.Text>
+              <Select
+                style={{ width: '100%', marginTop: 4 }}
+                value={warehouseId}
+                onChange={setWarehouseId}
+                placeholder="Chọn kho chi nhánh"
+                options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
+              />
+            </div>
+          </div>
+          <Space wrap>
+            <Upload
+              accept=".xlsx,.xls,.csv"
+              showUploadList={false}
+              disabled={excelImporting}
+              customRequest={(options: UploadRequestOption) => {
+                const file = options.file as File;
+                void handleExcelFile(file).then(() => options.onSuccess?.({}, file));
+              }}
+            >
+              <Button icon={<UploadOutlined />}>Chọn file Excel/CSV</Button>
+            </Upload>
+            <Button
+              type="primary"
+              icon={<InboxOutlined />}
+              disabled={!warehouseId || excelPreview.length === 0}
+              loading={excelImporting}
+              onClick={() => void runExcelImport()}
+            >
+              Import {excelPreview.length > 0 ? `(${excelPreview.length} dòng)` : ''}
+            </Button>
+          </Space>
+          {excelFileName && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              File: {excelFileName}
+              {excelPreview.length > 0 ? ` · ${excelPreview.length} dòng sẵn sàng import` : ''}
+            </Typography.Text>
+          )}
+          {!warehouseId && excelPreview.length > 0 && (
+            <Alert type="warning" showIcon message="Chọn kho nhập trước khi bấm Import." />
+          )}
+          {excelImporting && !excelImportBatch && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Đang gửi {excelPreview.length} dòng lên server…
+            </Typography.Text>
+          )}
+          {excelImportBatch && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Đang import lô {excelImportBatch.current}/{excelImportBatch.total}…
+            </Typography.Text>
+          )}
+          {excelImportError && <Alert type="error" showIcon message={excelImportError} />}
+          {excelImportResult && (
+            <Alert
+              type={excelImportResult.errors.length > 0 ? 'warning' : 'success'}
+              showIcon
+              message={`Đã nhập: ${excelImportResult.linesProcessed} lô · Lỗi: ${excelImportResult.errors.length}`}
+              description={
+                excelImportResult.errors.length > 0
+                  ? excelImportResult.errors
+                      .slice(0, 5)
+                      .map((e) => `Dòng ${e.rowNumber}: ${e.message}`)
+                      .join(' · ')
+                  : undefined
+              }
+            />
+          )}
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             Cột: product_key (mã SP/barcode), batch_number, quantity, unit_cost, expiry_date
           </Typography.Text>
         </Space>
@@ -707,7 +835,10 @@ export function OpeningBalancePage() {
             placeholder="Lọc sản phẩm"
             style={{ width: 240 }}
             value={productFilterId}
-            onChange={setProductFilterId}
+            onChange={(value) => {
+              setProductFilterId(value);
+              setOpeningPage(1);
+            }}
             options={products.map((p) => ({
               value: p.id,
               label: `${p.productCode} — ${p.productName}`,
@@ -716,7 +847,10 @@ export function OpeningBalancePage() {
           <Select
             style={{ width: 180 }}
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setOpeningPage(1);
+            }}
             options={[
               { value: 'all', label: 'Mọi trạng thái' },
               { value: 'voidable', label: 'Chưa phát sinh' },
@@ -749,13 +883,13 @@ export function OpeningBalancePage() {
             type="primary"
             ghost
             icon={<ReloadOutlined />}
-            onClick={() => loadOpeningBatches(warehouseId)}
+            onClick={() => void loadOpeningBatches()}
             loading={openingLoading}
           >
             Tải lại
           </Button>
         </Space>
-        {openingBatches.length === 0 && !openingLoading && (
+        {openingSummaryTotal === 0 && !openingLoading && (
           <Alert
             type="info"
             showIcon
@@ -773,11 +907,11 @@ export function OpeningBalancePage() {
         )}
         <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
           Chỉ hiển thị lô nhập từ <strong>Tồn đầu kỳ</strong> còn tồn &gt; 0.
-          {openingBatches.length > 0 && (
+          {openingSummaryTotal > 0 && (
             <>
               {' '}
-              {voidableCount} lô <Tag color="green">Chưa phát sinh</Tag> (có thể xóa) ·{' '}
-              {openingBatches.length - voidableCount} lô <Tag color="orange">Đã phát sinh</Tag>
+              {openingSummaryVoidable} lô <Tag color="green">Chưa phát sinh</Tag> (có thể xóa) ·{' '}
+              {openingSummaryTotal - openingSummaryVoidable} lô <Tag color="orange">Đã phát sinh</Tag>
             </>
           )}
         </Typography.Paragraph>
@@ -786,8 +920,19 @@ export function OpeningBalancePage() {
           size="small"
           loading={openingLoading}
           columns={openingBatchColumns}
-          dataSource={filteredOpeningBatches}
-          pagination={false}
+          dataSource={openingBatches}
+          pagination={{
+            current: openingPage,
+            pageSize: openingPageSize,
+            total: openingTotal,
+            showSizeChanger: true,
+            pageSizeOptions: [25, 50, 100],
+            showTotal: (total) => `${total.toLocaleString('vi-VN')} lô`,
+            onChange: (page, pageSize) => {
+              setOpeningPage(page);
+              setOpeningPageSize(pageSize);
+            },
+          }}
           locale={{
             emptyText: warehouseId
               ? listSearch || statusFilter !== 'all' || productFilterId
@@ -807,7 +952,7 @@ export function OpeningBalancePage() {
               type="primary"
               ghost
               icon={<ReloadOutlined />}
-              onClick={() => loadStock(warehouseId)}
+              onClick={() => void loadStock()}
               loading={stockLoading}
             >
               Tải lại
@@ -816,8 +961,8 @@ export function OpeningBalancePage() {
         }
       >
         <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-          Mọi lô còn tồn tại kho (gồm cả tồn demo seed và tồn vừa nhập đầu kỳ).
-          {stockTotal > stockBatches.length && ` Hiển thị ${stockBatches.length}/${stockTotal} lô.`}
+          Mọi lô còn tồn tại kho (gồm cả tồn demo seed và tồn vừa nhập đầu kỳ). Cùng thứ tự HSD → tên SP →
+          số lô và cùng trang với bảng trên để đối chiếu.
         </Typography.Paragraph>
         <Table
           rowKey="id"
@@ -825,7 +970,18 @@ export function OpeningBalancePage() {
           loading={stockLoading}
           columns={stockColumns}
           dataSource={stockBatches}
-          pagination={false}
+          pagination={{
+            current: openingPage,
+            pageSize: openingPageSize,
+            total: stockTotal,
+            showSizeChanger: true,
+            pageSizeOptions: [25, 50, 100],
+            showTotal: (total) => `${total.toLocaleString('vi-VN')} lô`,
+            onChange: (page, pageSize) => {
+              setOpeningPage(page);
+              setOpeningPageSize(pageSize);
+            },
+          }}
           locale={{
             emptyText: warehouseId
               ? 'Kho này chưa có tồn — kiểm tra API đã chạy và đã chạy migration/seed'

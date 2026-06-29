@@ -4,9 +4,9 @@ import { Button, Drawer, Form, Spin, Typography, message } from 'antd';
 import { isAxiosError } from 'axios';
 import { fetchProducts } from '@/shared/api/catalog.api';
 import type { ProductListItem } from '@/shared/api/catalog.types';
-import { fetchPurchaseOrder, fetchVatTreatments, updatePurchaseOrder } from '@/shared/api/procurement.api';
+import { fetchPurchaseOrder, fetchSuppliers, fetchVatTreatments, updatePurchaseOrder } from '@/shared/api/procurement.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import type { ProcurementVatTreatment, PurchaseOrderDetail } from '@/shared/api/procurement.types';
+import type { ProcurementVatTreatment, PurchaseOrderDetail, Supplier } from '@/shared/api/procurement.types';
 import { PurchaseOrderFormHeader } from '@/modules/procurement/PurchaseOrderFormHeader';
 import { PurchaseOrderLinesEditor, type PoLineFormRow } from '@/modules/procurement/PurchaseOrderLinesEditor';
 
@@ -29,6 +29,7 @@ export function PurchaseOrderEditDrawer({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<ProductListItem[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [vatTreatments, setVatTreatments] = useState<ProcurementVatTreatment[]>([]);
   const [header, setHeader] = useState<PurchaseOrderDetail | null>(null);
   const supplierId = Form.useWatch('supplierId', form);
@@ -44,15 +45,17 @@ export function PurchaseOrderEditDrawer({
     setLoading(true);
     void (async () => {
       try {
-        const [po, catalog, vat] = await Promise.all([
+        const [po, catalog, vat, supplierList] = await Promise.all([
           fetchPurchaseOrder(poId),
           fetchProducts({ page: 1, pageSize: 200 }),
           fetchVatTreatments(),
+          fetchSuppliers(true),
         ]);
         if (cancelled) return;
         setHeader(po);
         setProducts(catalog.items);
         setVatTreatments(vat);
+        setSuppliers(supplierList);
         form.setFieldsValue({
           supplierId: po.supplierId,
           warehouseId: po.warehouseId,
@@ -90,6 +93,7 @@ export function PurchaseOrderEditDrawer({
       const values = await form.validateFields();
       setSaving(true);
       const updated = await updatePurchaseOrder(poId, {
+        supplierId: values.supplierId,
         expectedDate: values.expectedDate || undefined,
         notes: values.notes,
         vatTreatmentId: values.vatTreatmentId,
@@ -139,8 +143,10 @@ export function PurchaseOrderEditDrawer({
             form={form}
             mode="edit"
             vatTreatments={vatTreatments}
+            suppliers={suppliers}
             supplierName={header?.supplierName}
             warehouseName={header?.warehouseName}
+            allowSupplierEdit={header?.status === 1}
           />
           <PurchaseOrderLinesEditor
             form={form}
