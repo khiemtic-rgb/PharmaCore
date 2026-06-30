@@ -1,0 +1,49 @@
+# Cập nhật stats-snapshot.json cho trang /vi/thong-ke (chạy tay hoặc theo lịch).
+name: Novixa update stats
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mỗi 6 giờ
+    - cron: '15 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/novixa-update-stats.yml'
+      - 'novixa-site/scripts/fetch-stats-snapshot.mjs'
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: novixa-site/package-lock.json
+
+      - name: Fetch Cloudflare analytics
+        working-directory: novixa-site
+        env:
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npm ci
+          npm run fetch:stats-snapshot
+          test -f public/stats-snapshot.json
+
+      - name: Commit stats snapshot
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(novixa): update stats snapshot [skip ci]'
+          file_pattern: novixa-site/public/stats-snapshot.json
+
+      - name: Trigger Cloudflare deploy
+        if: ${{ secrets.CF_DEPLOY_HOOK != '' }}
+        env:
+          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
+        run: curl -fsS -X POST "$CF_DEPLOY_HOOK"

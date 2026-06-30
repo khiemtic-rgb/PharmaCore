@@ -82,13 +82,8 @@ async function fetchStats() {
   const token = process.env.CLOUDFLARE_API_TOKEN?.trim();
 
   if (!zoneId || !token) {
-    writeSnapshot({
-      ok: false,
-      error:
-        'Chưa có CF_ZONE_ID hoặc CLOUDFLARE_API_TOKEN lúc build. Thêm trên Cloudflare Pages → Variables and secrets → Retry deployment.',
-      generatedAt: new Date().toISOString(),
-    });
     console.warn('fetch-stats-snapshot: skipped (missing CF_ZONE_ID or CLOUDFLARE_API_TOKEN)');
+    process.exitCode = 0;
     return;
   }
 

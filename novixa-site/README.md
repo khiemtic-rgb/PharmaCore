@@ -174,21 +174,22 @@ Xem số liệu: Dashboard → **Web Analytics** → chọn site — lượt xem
 
 Local: đặt token trong `.env` (gitignore) rồi `npm run dev` / `npm run build`.
 
-## Xem thống kê trên web (không cần vào Cloudflare Dashboard)
+## Xem thống kê trên web
 
-Trang riêng: **https://novixa.vn/vi/thong-ke** (không hiện trên menu, có mật khẩu).
+Trang: **https://novixa.vn/vi/thong-ke** — mật khẩu mặc định **`novixa2026`** (đổi trong `src/lib/stats-config.ts`).
 
-**Cấu hình một lần** — Cloudflare Pages → project **pharmacore** → **Settings** → **Variables and secrets** (Production):
+Dữ liệu lấy từ Cloudflare qua **GitHub Actions** (Cloudflare Pages không inject biến env lúc build cho project này).
 
-| Biến | Cách lấy |
-|------|----------|
-| `STATS_VIEW_KEY` | Mật khẩu bạn tự đặt (vd. `novixa2026`) |
-| `CF_ZONE_ID` | Domains → **novixa.vn** → Overview → **Zone ID** |
-| `CLOUDFLARE_API_TOKEN` | API Token quyền **Zone → Analytics → Read** |
+**Thiết lập một lần** — GitHub repo → **Settings** → **Secrets and variables** → **Actions**:
 
-Sau khi thêm → **Deployments** → **Retry deployment**. Mỗi lần deploy, site tự lấy số liệu Cloudflare và lưu vào `/stats-snapshot.json`. Mở `/vi/thong-ke`, nhập mật khẩu.
+| Secret | Giá trị |
+|--------|---------|
+| `CF_ZONE_ID` | Domains → novixa.vn → Overview → **Zone ID** |
+| `CLOUDFLARE_API_TOKEN` | Token quyền Zone Analytics Read (thường đã có) |
 
-**Lưu ý:** Biến dùng lúc **build** (không cần Functions runtime). Bấm **Tải lại** trên trang chỉ đọc lại file đã build; số mới nhất sau mỗi deploy.
+Sau đó: **Actions** → **Novixa update stats** → **Run workflow**. Workflow tự chạy lại mỗi 6 giờ.
+
+Biến trên Cloudflare Pages **không bắt buộc** cho trang thống kê.
 
 ## Bảo mật
 

@@ -2,9 +2,10 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
+import { STATS_VIEW_PASSWORD } from '../../lib/stats-config';
 import '../../styles/global.css';
 
-const statsPassword = import.meta.env.STATS_VIEW_KEY?.trim() ?? '';
+const statsPassword = STATS_VIEW_PASSWORD;
 ---
 
 <BaseLayout
@@ -204,19 +205,20 @@ const statsPassword = import.meta.env.STATS_VIEW_KEY?.trim() ?? '';
 
   async function loadStats(key) {
     showError('');
-    if (!statsPassword) {
-      throw new Error(
-        'Chưa cấu hình STATS_VIEW_KEY lúc build. Cloudflare Pages → Variables and secrets → Retry deployment.',
-      );
-    }
     if (key !== statsPassword) {
       throw new Error('Mật khẩu không đúng.');
     }
 
     const response = await fetch(`/stats-snapshot.json?t=${Date.now()}`);
     const data = await response.json();
-    if (!response.ok || data.ok === false) {
-      throw new Error(data.error ?? 'Không tải được thống kê.');
+    if (!response.ok) {
+      throw new Error('Không tải được file thống kê.');
+    }
+    if (data.ok === false) {
+      throw new Error(
+        data.error ??
+          'Chưa có dữ liệu thống kê. Chạy workflow "Novixa update stats" trên GitHub Actions.',
+      );
     }
     renderStats(data);
     if (loginEl) loginEl.hidden = true;
