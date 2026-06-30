@@ -2,10 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
-import { STATS_VIEW_PASSWORD } from '../../lib/stats-config';
 import '../../styles/global.css';
-
-const statsPassword = STATS_VIEW_PASSWORD;
 ---
 
 <BaseLayout
@@ -86,7 +83,11 @@ const statsPassword = STATS_VIEW_PASSWORD;
   <Footer slot="footer" />
 </BaseLayout>
 
-<script define:vars={{ statsPassword }}>
+<script>
+  import { STATS_VIEW_PASSWORD } from '../../lib/stats-config';
+  import { filterTopPages } from '../../lib/stats-top-pages';
+
+  const statsPassword = STATS_VIEW_PASSWORD;
   const STORAGE_KEY = 'novixa-stats-key';
   const loginEl = document.getElementById('stats-login');
   const panelEl = document.getElementById('stats-panel');
@@ -190,9 +191,7 @@ const statsPassword = STATS_VIEW_PASSWORD;
     renderTable(
       document.getElementById('stats-top-pages'),
       ['Trang', 'Lượt truy cập'],
-      (data.topPages ?? [])
-        .filter((row) => row.path && !row.path.startsWith('/_astro/') && !/\.(png|jpg|svg|ico|css|js|woff2?)$/i.test(row.path))
-        .map((row) => [row.path, fmt.format(row.views)]),
+      filterTopPages(data.topPages ?? []).map((row) => [row.path, fmt.format(row.views)]),
     );
     renderTable(
       document.getElementById('stats-daily'),
@@ -287,7 +286,7 @@ const statsPassword = STATS_VIEW_PASSWORD;
           throw err;
         }
         showSourceNotice(
-          'API live chưa cấu hình trên Cloudflare Pages (STATS_VIEW_KEY, CF_ZONE_ID, CLOUDFLARE_API_TOKEN). Đang dùng bản snapshot — số liệu chỉ mới khi chạy workflow "Novixa update stats" trên GitHub.',
+          'API live chưa sẵn sàng trên Cloudflare Pages — đang dùng bản snapshot. Nếu vừa chạy workflow GitHub mà giờ cập nhật vẫn cũ: đợi Cloudflare deploy xong (vài phút) hoặc Deployments → Retry deployment.',
           'warn',
         );
       }
