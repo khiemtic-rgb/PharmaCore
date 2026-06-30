@@ -209,8 +209,14 @@ const statsPassword = STATS_VIEW_PASSWORD;
       throw new Error('Mật khẩu không đúng.');
     }
 
-    const response = await fetch(`/stats-snapshot.json?t=${Date.now()}`);
-    const data = await response.json();
+    const response = await fetch('/stats-snapshot.json', { cache: 'no-store' });
+    const raw = await response.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error('File thống kê chưa sẵn sàng — chạy workflow Novixa update stats trên GitHub.');
+    }
     if (!response.ok) {
       throw new Error('Không tải được file thống kê.');
     }
