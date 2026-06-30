@@ -37,6 +37,7 @@ const statsPassword = STATS_VIEW_PASSWORD;
           <p class="stats-updated" id="stats-updated"></p>
           <button type="button" class="btn btn-secondary" id="stats-refresh">Tải lại</button>
         </div>
+        <p id="stats-source-notice" class="stats-source-notice" hidden></p>
 
         <div class="stats-cards">
           <article class="card stats-card">
@@ -205,6 +206,19 @@ const statsPassword = STATS_VIEW_PASSWORD;
     );
   }
 
+  function showSourceNotice(message, level = 'warn') {
+    const el = document.getElementById('stats-source-notice');
+    if (!el) return;
+    if (!message) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    el.textContent = message;
+    el.dataset.level = level;
+    el.hidden = false;
+  }
+
   function setRefreshLoading(loading) {
     if (!(refreshBtn instanceof HTMLButtonElement)) return;
     refreshBtn.disabled = loading;
@@ -258,15 +272,27 @@ const statsPassword = STATS_VIEW_PASSWORD;
       try {
         const live = await fetchLiveStats(key);
         renderStats(live);
+        showSourceNotice('Dữ liệu live từ Cloudflare API.', 'ok');
         if (loginEl) loginEl.hidden = true;
         if (panelEl) panelEl.hidden = false;
         return { source: 'live' };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Không tải được API.';
-        if (!message.includes('STATS_VIEW_KEY') && !message.includes('503') && !message.includes('502')) {
+        const apiUnavailable =
+          message.includes('STATS_VIEW_KEY') ||
+          message.includes('503') ||
+          message.includes('502') ||
+          message.includes('CF_ZONE_ID');
+        if (!apiUnavailable) {
           throw err;
         }
+        showSourceNotice(
+          'API live chưa cấu hình trên Cloudflare Pages (STATS_VIEW_KEY, CF_ZONE_ID, CLOUDFLARE_API_TOKEN). Đang dùng bản snapshot — số liệu chỉ mới khi chạy workflow "Novixa update stats" trên GitHub.',
+          'warn',
+        );
       }
+    } else {
+      showSourceNotice('');
     }
 
     const data = await fetchSnapshotStats();
