@@ -178,15 +178,17 @@ Local: đặt token trong `.env` (gitignore) rồi `npm run dev` / `npm run buil
 
 Trang riêng: **https://novixa.vn/vi/thong-ke** (không hiện trên menu, có mật khẩu).
 
-**Cấu hình một lần** — Cloudflare Pages → Settings → Environment variables (Production):
+**Cấu hình một lần** — Cloudflare Pages → project **pharmacore** → **Settings** → **Variables and secrets** (Production):
 
 | Biến | Cách lấy |
 |------|----------|
-| `STATS_VIEW_KEY` | Mật khẩu bạn tự đặt (vd. `novixa2026`) — nhập khi mở trang thống kê |
-| `CF_ZONE_ID` | Cloudflare → domain **novixa.vn** → Overview → **Zone ID** (cột phải) |
-| `CLOUDFLARE_API_TOKEN` | API Token có quyền **Zone → Analytics → Read** |
+| `STATS_VIEW_KEY` | Mật khẩu bạn tự đặt (vd. `novixa2026`) |
+| `CF_ZONE_ID` | Domains → **novixa.vn** → Overview → **Zone ID** |
+| `CLOUDFLARE_API_TOKEN` | API Token quyền **Zone → Analytics → Read** |
 
-Sau khi thêm biến → **Retry deployment**. Mở `/vi/thong-ke`, nhập `STATS_VIEW_KEY`, xem visitor hôm nay / 24h / 7 ngày, biểu đồ và trang được xem nhiều.
+Sau khi thêm → **Deployments** → **Retry deployment**. Mỗi lần deploy, site tự lấy số liệu Cloudflare và lưu vào `/stats-snapshot.json`. Mở `/vi/thong-ke`, nhập mật khẩu.
+
+**Lưu ý:** Biến dùng lúc **build** (không cần Functions runtime). Bấm **Tải lại** trên trang chỉ đọc lại file đã build; số mới nhất sau mỗi deploy.
 
 ## Bảo mật
 

@@ -7,7 +7,7 @@
   },
   "scripts": {
     "sync:assets": "node scripts/sync-brand-assets.mjs",
-    "prebuild": "npm run sync:assets && npm run generate:news-images",
+    "prebuild": "npm run sync:assets && npm run generate:news-images && npm run fetch:stats-snapshot",
     "dev": "npm run sync:assets && astro dev --host localhost --port 4321",
     "build": "astro build",
     "preview": "astro preview --host localhost --port 4321",
@@ -17,6 +17,7 @@
     "generate:news-images:cf": "node scripts/generate-news-images-cf.mjs",
     "generate:news-images:ai": "node scripts/generate-news-images-ai.mjs",
     "generate:news-images:svg": "node scripts/generate-news-images.mjs --svg-only",
+    "fetch:stats-snapshot": "node scripts/fetch-stats-snapshot.mjs",
     "post:fanpage": "node scripts/post-fanpage-today.mjs",
     "post:fanpage:dry": "node scripts/post-fanpage-today.mjs --dry-run",
     "post:fanpage:verify": "node scripts/verify-fanpage-token.mjs"

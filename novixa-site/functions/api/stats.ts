@@ -191,14 +191,26 @@ async function fetchZoneStats(env: CfEnv) {
   };
 }
 
+function envStatus(env: CfEnv) {
+  return {
+    STATS_VIEW_KEY: Boolean(env.STATS_VIEW_KEY?.trim()),
+    CF_ZONE_ID: Boolean(env.CF_ZONE_ID?.trim()),
+    CLOUDFLARE_API_TOKEN: Boolean(env.CLOUDFLARE_API_TOKEN?.trim()),
+  };
+}
+
 export const onRequestGet: PagesFunction<CfEnv> = async (context) => {
   const expected = context.env.STATS_VIEW_KEY?.trim();
   const auth = readAuth(context.request);
+  const configured = envStatus(context.env);
 
   if (!expected) {
     return json(
       {
         error: 'Chưa cấu hình STATS_VIEW_KEY trên Cloudflare Pages.',
+        configured,
+        hint:
+          'Workers & Pages → pharmacore → Settings → Variables and secrets: thêm STATS_VIEW_KEY, tick Production, Save. Sau đó Deployments → Retry deployment.',
       },
       503,
     );
@@ -218,6 +230,8 @@ export const onRequestGet: PagesFunction<CfEnv> = async (context) => {
         {
           error:
             'Chưa cấu hình CF_ZONE_ID hoặc CLOUDFLARE_API_TOKEN trên Cloudflare Pages.',
+          configured: envStatus(context.env),
+          hint: 'Thêm CF_ZONE_ID và CLOUDFLARE_API_TOKEN (Production), rồi Retry deployment.',
         },
         503,
       );

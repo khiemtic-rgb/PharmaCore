@@ -3,6 +3,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import '../../styles/global.css';
+
+const statsPassword = import.meta.env.STATS_VIEW_KEY?.trim() ?? '';
 ---
 
 <BaseLayout
@@ -16,8 +18,8 @@ import '../../styles/global.css';
     <div class="container stats-container">
       <h1 class="section-title">Thống kê truy cập website</h1>
       <p class="section-intro stats-intro">
-        Xem nhanh lượt ghé thăm novixa.vn — dữ liệu lấy từ Cloudflare, cập nhật mỗi lần bạn bấm
-        <strong>Tải lại</strong>.
+        Xem nhanh lượt ghé thăm novixa.vn — dữ liệu Cloudflare, cập nhật mỗi lần site deploy. Bấm
+        <strong>Tải lại</strong> để đọc lại bản mới nhất trên server.
       </p>
 
       <div id="stats-login" class="stats-login card">
@@ -82,7 +84,7 @@ import '../../styles/global.css';
   <Footer slot="footer" />
 </BaseLayout>
 
-<script>
+<script define:vars={{ statsPassword }}>
   const STORAGE_KEY = 'novixa-stats-key';
   const loginEl = document.getElementById('stats-login');
   const panelEl = document.getElementById('stats-panel');
@@ -202,11 +204,18 @@ import '../../styles/global.css';
 
   async function loadStats(key) {
     showError('');
-    const response = await fetch('/api/stats', {
-      headers: { Authorization: `Bearer ${key}` },
-    });
+    if (!statsPassword) {
+      throw new Error(
+        'Chưa cấu hình STATS_VIEW_KEY lúc build. Cloudflare Pages → Variables and secrets → Retry deployment.',
+      );
+    }
+    if (key !== statsPassword) {
+      throw new Error('Mật khẩu không đúng.');
+    }
+
+    const response = await fetch(`/stats-snapshot.json?t=${Date.now()}`);
     const data = await response.json();
-    if (!response.ok) {
+    if (!response.ok || data.ok === false) {
       throw new Error(data.error ?? 'Không tải được thống kê.');
     }
     renderStats(data);
@@ -249,6 +258,6 @@ import '../../styles/global.css';
       sessionStorage.removeItem(STORAGE_KEY);
     });
   } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    showError('Trang thống kê chỉ lấy dữ liệu trên production (novixa.vn). Local preview không gọi được API.');
+    showError('Local: chạy npm run build với STATS_VIEW_KEY trong .env để thử trang thống kê.');
   }
 </script>
