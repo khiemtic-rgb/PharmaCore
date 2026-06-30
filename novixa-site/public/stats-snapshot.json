@@ -1,46 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-06-30T07:42:04.581Z",
+  "generatedAt": "2026-06-30T13:26:13.966Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 100,
-    "todayPageViews": 169,
-    "todayRequests": 392,
-    "last24hVisitors": 123,
-    "last24hPageViews": 226,
-    "last24hRequests": 511
+    "todayVisitors": 119,
+    "todayPageViews": 203,
+    "todayRequests": 569,
+    "last24hVisitors": 131,
+    "last24hPageViews": 237,
+    "last24hRequests": 620
   },
   "hourly": [
-    {
-      "time": "2026-06-29T08:00:00Z",
-      "visitors": 5,
-      "requests": 15
-    },
-    {
-      "time": "2026-06-29T09:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
-    {
-      "time": "2026-06-29T10:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
-    {
-      "time": "2026-06-29T11:00:00Z",
-      "visitors": 4,
-      "requests": 21
-    },
-    {
-      "time": "2026-06-29T12:00:00Z",
-      "visitors": 3,
-      "requests": 22
-    },
-    {
-      "time": "2026-06-29T13:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
     {
       "time": "2026-06-29T14:00:00Z",
       "visitors": 4,
@@ -108,8 +78,38 @@
     },
     {
       "time": "2026-06-30T07:00:00Z",
+      "visitors": 5,
+      "requests": 150
+    },
+    {
+      "time": "2026-06-30T08:00:00Z",
+      "visitors": 5,
+      "requests": 59
+    },
+    {
+      "time": "2026-06-30T09:00:00Z",
+      "visitors": 3,
+      "requests": 13
+    },
+    {
+      "time": "2026-06-30T10:00:00Z",
+      "visitors": 4,
+      "requests": 23
+    },
+    {
+      "time": "2026-06-30T11:00:00Z",
       "visitors": 2,
-      "requests": 82
+      "requests": 3
+    },
+    {
+      "time": "2026-06-30T12:00:00Z",
+      "visitors": 4,
+      "requests": 5
+    },
+    {
+      "time": "2026-06-30T13:00:00Z",
+      "visitors": 1,
+      "requests": 1
     }
   ],
   "daily": [
@@ -151,70 +151,70 @@
     },
     {
       "date": "2026-06-30",
-      "visitors": 100,
-      "pageViews": 169,
-      "requests": 392
+      "visitors": 119,
+      "pageViews": 203,
+      "requests": 569
     }
   ],
   "topPages": [
     {
       "path": "/cdn-cgi/rum",
-      "views": 110
+      "views": 134
     },
     {
       "path": "/vi/tin-tuc/chuyen-doi-so-cho-nha-thuoc-bat-dau-tu-dau/",
-      "views": 100
+      "views": 104
     },
     {
       "path": "/stats-snapshot.json",
-      "views": 56
+      "views": 74
     },
     {
       "path": "/api/stats",
-      "views": 49
+      "views": 71
     },
     {
       "path": "/vi/thong-ke/",
-      "views": 29
-    },
-    {
-      "path": "/",
-      "views": 24
+      "views": 34
     },
     {
       "path": "/vi/",
-      "views": 24
+      "views": 26
+    },
+    {
+      "path": "/",
+      "views": 25
     },
     {
       "path": "/images/tin-tuc/chuyen-doi-so-cho-nha-thuoc-bat-dau-tu-dau.png",
+      "views": 14
+    },
+    {
+      "path": "/images/logo.png",
       "views": 13
     },
     {
       "path": "/robots.txt",
-      "views": 13
-    },
-    {
-      "path": "/images/logo.png",
-      "views": 12
+      "views": 11
     },
     {
       "path": "/_astro/Footer.s1ekC5lm.css",
-      "views": 8
+      "views": 6
     },
     {
-      "path": "/sitemap-index.xml",
-      "views": 8
+      "path": "/vi/thong-ke",
+      "views": 5
     },
     {
       "path": "/vi",
-      "views": 7
+      "views": 5
+    },
+    {
+      "path": "/vi/tin-tuc/chuyen-doi-so-cho-nha-thuoc-bat-dau-tu-dau",
+      "views": 5
     },
     {
       "path": "/images/tin-tuc/quan-ly-nhieu-chi-nhanh-nha-thuoc-thach-thuc-va-giai-phap.png",
-      "views": 7
-    },
-    {
-      "path": "/favicon.ico",
       "views": 5
     }
   ]
