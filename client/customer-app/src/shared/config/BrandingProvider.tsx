@@ -74,9 +74,12 @@ function normalizeBranding(raw: Record<string, unknown>): CustomerAppBranding {
     supportPhone: (raw.supportPhone ?? raw.SupportPhone ?? null) as string | null,
     tagline: (raw.tagline ?? raw.Tagline ?? null) as string | null,
     defaultLocale: String(raw.defaultLocale ?? raw.DefaultLocale ?? 'vi-VN'),
-    supportedLocales: Array.isArray(raw.supportedLocales ?? raw.SupportedLocales)
-      ? (raw.supportedLocales ?? raw.SupportedLocales).map((x: unknown) => String(x))
-      : ['vi-VN', 'en-US'],
+    supportedLocales: (() => {
+      const localesRaw = raw.supportedLocales ?? raw.SupportedLocales;
+      return Array.isArray(localesRaw)
+        ? localesRaw.map((x) => String(x))
+        : ['vi-VN', 'en-US'];
+    })(),
   };
 }
 
