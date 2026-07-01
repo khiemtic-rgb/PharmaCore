@@ -18,20 +18,20 @@ if (-not $psql) {
 }
 
 if (-not $psql) {
-    Write-Host "[CANH BAO] Khong tim thay psql — bo qua migration 064 (i18n)." -ForegroundColor Yellow
+    Write-Host '[CANH BAO] Khong tim thay psql — bo qua migration 064 (i18n).' -ForegroundColor Yellow
     exit 0
 }
 
 if (-not (Test-Path $MigrationFile)) {
-    Write-Host "[CANH BAO] Thieu $MigrationFile" -ForegroundColor Yellow
+    Write-Host "[CANH BAO] Thieu migration: $MigrationFile" -ForegroundColor Yellow
     exit 0
 }
 
 Write-Host ">> P10b i18n: 064_p10b_customer_app_i18n.sql" -ForegroundColor Yellow
 & $psql $ConnectionString -v ON_ERROR_STOP=1 -f $MigrationFile
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[LOI] Migration 064 that bai." -ForegroundColor Red
+    Write-Host '[LOI] Migration 064 that bai.' -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
-Write-Host "[OK] en-US da bat; DEMO_PHARMACY ho tro vi + en." -ForegroundColor Green
+Write-Host '[OK] en-US da bat; DEMO_PHARMACY ho tro vi + en.' -ForegroundColor Green
