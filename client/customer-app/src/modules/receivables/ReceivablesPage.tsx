@@ -15,45 +15,49 @@ import {
 } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import {
   fetchReceivableOrder,
   fetchReceivablesSummary,
   getApiErrorMessage,
 } from '@/shared/api/customer-app.api';
-import {
-  CUSTOMER_PAYMENT_METHOD_LABELS,
-  type CustomerPurchaseDetail,
-  type CustomerReceivableLine,
-  type CustomerReceivablesSummary,
+import type {
+  CustomerPurchaseDetail,
+  CustomerReceivableLine,
+  CustomerReceivablesSummary,
 } from '@/shared/api/customer-app.types';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
+import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 
-function formatMoney(value: number) {
-  return value.toLocaleString('vi-VN') + 'đ';
-}
+import { formatMoney } from '@/shared/i18n/format-money';
 
 function ReceivableOrderDetail({ detail }: { detail: CustomerPurchaseDetail }) {
+  const { t } = useTranslation();
+  const { paymentMethod } = useCustomerLabels();
+
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Alert
         type="info"
         showIcon
-        message="Chỉ xem công nợ trên app"
-        description="Vui lòng đến quầy nhà thuốc để thanh toán phần còn nợ."
+        message={t('receivables.viewOnlyTitle')}
+        description={t('receivables.viewOnlyDesc')}
       />
 
       <Card size="small" style={{ borderRadius: 12, background: '#fff7ed' }}>
         <Statistic
-          title="Còn nợ (đơn này)"
+          title={t('receivables.outstandingThisOrder')}
           value={detail.outstanding}
-          suffix="đ"
+          formatter={(v) => formatMoney(Number(v))}
           valueStyle={{ color: '#c2410c', fontSize: 24 }}
-          formatter={(v) => Number(v).toLocaleString('vi-VN')}
         />
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Đã thanh toán: {formatMoney(detail.amountPaid)} · Tổng đơn: {formatMoney(detail.totalAmount)}
+          {t('receivables.paidAndTotal', {
+            paid: formatMoney(detail.amountPaid),
+            total: formatMoney(detail.totalAmount),
+          })}
         </Typography.Text>
       </Card>
 
@@ -72,11 +76,11 @@ function ReceivableOrderDetail({ detail }: { detail: CustomerPurchaseDetail }) {
 
       {detail.payments.length > 0 ? (
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Đã thu:{' '}
+          {t('receivables.collected')}:{' '}
           {detail.payments
             .map(
               (p) =>
-                `${CUSTOMER_PAYMENT_METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod}: ${formatMoney(p.amount)}`,
+                `${paymentMethod(p.paymentMethod)}: ${formatMoney(p.amount)}`,
             )
             .join(' · ')}
         </Typography.Text>
@@ -86,6 +90,7 @@ function ReceivableOrderDetail({ detail }: { detail: CustomerPurchaseDetail }) {
 }
 
 export function ReceivablesPage() {
+  const { t } = useTranslation();
   const { online } = useApiHealth();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -101,11 +106,11 @@ export function ReceivablesPage() {
     try {
       setSummary(await fetchReceivablesSummary());
     } catch (error) {
-      setLoadError(getApiErrorMessage(error, 'Không tải được công nợ'));
+      setLoadError(getApiErrorMessage(error, t('receivables.loadFailed')));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadSummary();
@@ -121,7 +126,7 @@ export function ReceivablesPage() {
     try {
       setDetail(await fetchReceivableOrder(line.salesOrderId));
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không tải được chi tiết đơn'));
+      message.error(getApiErrorMessage(error, t('receivables.detailLoadFailed')));
       setDrawerOpen(false);
     } finally {
       setDetailLoading(false);
@@ -140,7 +145,7 @@ export function ReceivablesPage() {
     <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 12px 24px' }}>
       <BackToHomeButton />
       <Typography.Title level={5} style={{ marginTop: 0 }}>
-        Công nợ của tôi
+        {t('receivables.title')}
       </Typography.Title>
 
       {loadError && !shouldHidePageErrorForOfflineApi(loadError, online) ? (
@@ -150,7 +155,7 @@ export function ReceivablesPage() {
           message={loadError}
           action={
             <Button size="small" onClick={() => void loadSummary()}>
-              Thử lại
+              {t('common.retry')}
             </Button>
           }
           style={{ marginBottom: 16 }}
@@ -159,21 +164,20 @@ export function ReceivablesPage() {
 
       {summary && summary.totalReceivable <= 0.009 ? (
         <Empty
-          description="Bạn không còn nợ đơn nào tại nhà thuốc."
+          description={t('receivables.empty')}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       ) : summary ? (
         <>
           <Card size="small" style={{ borderRadius: 12, marginBottom: 16, background: '#fff7ed' }}>
             <Statistic
-              title="Tổng còn nợ"
+              title={t('receivables.totalOutstanding')}
               value={summary.totalReceivable}
-              suffix="đ"
+              formatter={(v) => formatMoney(Number(v))}
               valueStyle={{ color: '#c2410c', fontSize: 28 }}
-              formatter={(v) => Number(v).toLocaleString('vi-VN')}
             />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {summary.openOrderCount} đơn chưa trả đủ · Thanh toán tại quầy nhà thuốc
+              {t('receivables.openOrdersSummary', { count: summary.openOrderCount })}
             </Typography.Text>
           </Card>
 
@@ -194,11 +198,16 @@ export function ReceivablesPage() {
                   <Space direction="vertical" size={2}>
                     <Space wrap>
                       <Typography.Text strong>{line.orderNumber}</Typography.Text>
-                      <Tag color="orange">Nợ {formatMoney(line.outstanding)}</Tag>
+                      <Tag color="orange">{t('receivables.owed', { amount: formatMoney(line.outstanding) })}</Tag>
                     </Space>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {dayjs(line.orderDate).format('DD/MM/YYYY')} · Tổng {formatMoney(line.orderTotal)}
-                      {line.amountPaid > 0.009 ? ` · Đã trả ${formatMoney(line.amountPaid)}` : ''}
+                      {t('receivables.orderDateTotal', {
+                        date: dayjs(line.orderDate).format('DD/MM/YYYY'),
+                        total: formatMoney(line.orderTotal),
+                      })}
+                      {line.amountPaid > 0.009
+                        ? t('receivables.paidPartial', { amount: formatMoney(line.amountPaid) })
+                        : ''}
                     </Typography.Text>
                   </Space>
                   <RightOutlined style={{ color: '#94a3b8', flexShrink: 0 }} />
@@ -210,7 +219,7 @@ export function ReceivablesPage() {
       ) : null}
 
       <Drawer
-        title={detail ? detail.orderNumber : 'Chi tiết công nợ'}
+        title={detail ? detail.orderNumber : t('receivables.drawerDetail')}
         placement="bottom"
         height="85%"
         open={drawerOpen}

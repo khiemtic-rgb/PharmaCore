@@ -1,143 +1,158 @@
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { Alert, Button, Card, Col, Row, Space, Spin, Statistic, Typography } from 'antd';
-import { useNavigate } from 'react-router-dom';
-import dayjs from 'dayjs';
-import { fetchDraftOrders, fetchLoyaltySummary, fetchReceivablesSummary, fetchReminders, fetchReservations, getApiErrorMessage } from '@/shared/api/customer-app.api';
-import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
-import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
-import { CUSTOMER_DRAFT_ORDER_STATUS, CUSTOMER_RESERVATION_STATUS, type LoyaltyProgramSummary } from '@/shared/api/customer-app.types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  BellOutlined,
+  GiftOutlined,
+  HeartOutlined,
+  MedicineBoxOutlined,
+  MessageOutlined,
+  RobotOutlined,
+  ShoppingOutlined,
+  TeamOutlined,
+} from '@ant-design/icons';
+import { Badge, Button, Card, Col, Row, Space, Spin, Typography } from 'antd';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import {
+  fetchDraftOrders,
+  fetchLoyaltySummary,
+  fetchMedicationAdherenceSummary,
+  fetchRepurchaseSuggestions,
+  getApiErrorMessage,
+} from '@/shared/api/customer-app.api';
+import { CUSTOMER_DRAFT_ORDER_STATUS } from '@/shared/api/customer-app.types';
 import { useAuthStore } from '@/shared/auth/auth.store';
+import { useCustomerBranding } from '@/shared/config/BrandingProvider';
+import { useCustomerNotificationCount } from '@/shared/hooks/useCustomerNotificationCount';
+import { DueRemindersPanel, MissedMedicationAlert } from '@/modules/reminders/DueRemindersPanel';
+import { FamilyCaregiverDuePanel } from '@/modules/reminders/FamilyCaregiverDuePanel';
 import { formatPoints } from '@/shared/utils/points';
 
-const tappableCardStyle: CSSProperties = {
-  borderRadius: 12,
-  cursor: 'pointer',
-  transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+type ShortcutKey =
+  | 'shortcutHealth'
+  | 'shortcutReminders'
+  | 'shortcutReservations'
+  | 'shortcutAi'
+  | 'shortcutFamily'
+  | 'shortcutPoints'
+  | 'shortcutChat';
+
+type HealthStatProps = {
+  label: string;
+  value: string;
+  valueColor?: string;
+  compact?: boolean;
+  onClick?: () => void;
 };
 
-function TappableHomeCard({
-  title,
-  onClick,
-  children,
-}: {
-  title: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
+function HealthStat({ label, value, valueColor, compact, onClick }: HealthStatProps) {
+  const clickable = Boolean(onClick);
   return (
-    <Card
-      size="small"
-      style={tappableCardStyle}
-      styles={{ body: { padding: '12px 16px' } }}
-      hoverable
+    <div
+      className={`home-health-stat${clickable ? ' home-health-stat--clickable' : ''}`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
       onClick={onClick}
-      role="button"
-      tabIndex={0}
-      aria-label={title}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onClick();
-        }
-      }}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
     >
-      {children}
-    </Card>
+      <span className="home-health-stat-label">{label}</span>
+      <span
+        className={`home-health-stat-value${compact ? ' home-health-stat-value--compact' : ''}`}
+        style={valueColor ? { color: valueColor } : undefined}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 
 export function HomePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const profile = useAuthStore((s) => s.profile);
-  const { online } = useApiHealth();
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [program, setProgram] = useState<LoyaltyProgramSummary | null>(null);
-  const [reminderCount, setReminderCount] = useState(0);
-  const [nextReminder, setNextReminder] = useState<string | null>(null);
-  const [pendingDraftCount, setPendingDraftCount] = useState(0);
-  const [activeReservationCount, setActiveReservationCount] = useState(0);
-  const [totalReceivable, setTotalReceivable] = useState(0);
+  const { branding } = useCustomerBranding();
+  const notificationCount = useCustomerNotificationCount();
 
-  const loadData = useCallback(async () => {
-    setLoadError(null);
+  const shortcuts = useMemo(
+    () =>
+      [
+        { to: '/health', icon: <HeartOutlined />, labelKey: 'shortcutHealth' as ShortcutKey },
+        { to: '/reminders', icon: <MedicineBoxOutlined />, labelKey: 'shortcutReminders' as ShortcutKey },
+        { to: '/reservations', icon: <ShoppingOutlined />, labelKey: 'shortcutReservations' as ShortcutKey },
+        { to: '/ai', icon: <RobotOutlined />, labelKey: 'shortcutAi' as ShortcutKey },
+        { to: '/family', icon: <TeamOutlined />, labelKey: 'shortcutFamily' as ShortcutKey },
+        { to: '/loyalty', icon: <GiftOutlined />, labelKey: 'shortcutPoints' as ShortcutKey },
+        { to: '/chat', icon: <MessageOutlined />, labelKey: 'shortcutChat' as ShortcutKey },
+      ] as const,
+    [],
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [points, setPoints] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [repurchaseCount, setRepurchaseCount] = useState(0);
+  const [adherence, setAdherence] = useState({
+    dueCount: 0,
+    takenToday: 0,
+    scheduledToday: 0,
+    missedStreakDays: 0,
+    showMissedAlert: false,
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const [loyaltyResult, remindersResult, draftsResult, reservationsResult, receivablesResult] = await Promise.allSettled([
+      const [loyalty, drafts, repurchase, summary] = await Promise.allSettled([
         fetchLoyaltySummary(),
-        fetchReminders(),
         fetchDraftOrders(),
-        fetchReservations(),
-        fetchReceivablesSummary(),
+        fetchRepurchaseSuggestions(),
+        fetchMedicationAdherenceSummary(),
       ]);
-
-      if (loyaltyResult.status === 'rejected') {
-        setLoadError(getApiErrorMessage(loyaltyResult.reason, 'Không tải được dữ liệu'));
-      } else if (remindersResult.status === 'rejected') {
-        setLoadError(getApiErrorMessage(remindersResult.reason, 'Không tải được dữ liệu'));
+      if (loyalty.status === 'fulfilled') {
+        setPoints(loyalty.value.programs[0]?.pointsBalance ?? 0);
       }
-
-      if (draftsResult.status === 'rejected') {
-        console.error(getApiErrorMessage(draftsResult.reason, 'Không tải được đơn hàng'));
-      }
-
-      if (reservationsResult.status === 'rejected') {
-        console.error(getApiErrorMessage(reservationsResult.reason, 'Không tải được đặt trước'));
-      }
-
-      if (receivablesResult.status === 'rejected') {
-        console.error(getApiErrorMessage(receivablesResult.reason, 'Không tải được công nợ'));
-      }
-
-      if (loyaltyResult.status === 'fulfilled') {
-        setProgram(loyaltyResult.value?.programs[0] ?? null);
-      }
-
-      if (remindersResult.status === 'fulfilled') {
-        const active = remindersResult.value.items.filter((r) => r.isActive);
-        setReminderCount(active.length);
-        const next = active
-          .map((r) => r.nextRemindAt)
-          .filter(Boolean)
-          .sort()[0];
-        setNextReminder(next ?? null);
-      }
-
-      if (draftsResult.status === 'fulfilled') {
-        setPendingDraftCount(
-          draftsResult.value.filter(
+      if (drafts.status === 'fulfilled') {
+        setPendingOrders(
+          drafts.value.filter(
             (d) =>
               d.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent ||
               d.status === CUSTOMER_DRAFT_ORDER_STATUS.Confirmed,
           ).length,
         );
       }
-
-      if (reservationsResult.status === 'fulfilled') {
-        setActiveReservationCount(
-          reservationsResult.value.filter(
-            (r) =>
-              r.status === CUSTOMER_RESERVATION_STATUS.Pending ||
-              r.status === CUSTOMER_RESERVATION_STATUS.Confirmed ||
-              r.status === CUSTOMER_RESERVATION_STATUS.Ready,
-          ).length,
+      if (repurchase.status === 'fulfilled') {
+        setRepurchaseCount(
+          repurchase.value.filter((r) => r.status === 'pending' || r.status === 'snoozed').length,
         );
       }
-
-      if (receivablesResult.status === 'fulfilled') {
-        setTotalReceivable(receivablesResult.value.totalReceivable);
+      if (summary.status === 'fulfilled') {
+        setAdherence(summary.value);
       }
+    } catch (error) {
+      console.error(getApiErrorMessage(error));
     } finally {
-      setInitialLoading(false);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void load();
+  }, [load]);
 
-  useRetryWhenApiOnline(() => loadData());
+  const medicationDone =
+    adherence.scheduledToday > 0
+      ? adherence.takenToday >= adherence.scheduledToday && adherence.dueCount === 0
+      : adherence.dueCount === 0;
 
-  if (initialLoading) {
+  if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: 48 }}>
         <Spin />
@@ -147,120 +162,131 @@ export function HomePage() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <div>
-        <Typography.Title level={4} style={{ marginBottom: 4 }}>
-          Xin chào, {profile?.fullName ?? 'bạn'}!
-        </Typography.Title>
-        <Typography.Text type="secondary">Chào mừng trở lại nhà thuốc của bạn</Typography.Text>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <Typography.Title level={4} style={{ marginBottom: 2 }}>
+            {t('home.greeting', { name: profile?.fullName ?? t('home.guestName') })}
+          </Typography.Title>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            {branding.appName}
+          </Typography.Text>
+        </div>
+        <Link to="/notifications" aria-label={t('home.notifications')}>
+          <Badge count={notificationCount} size="small">
+            <Button type="text" icon={<BellOutlined style={{ fontSize: 20 }} />} />
+          </Badge>
+        </Link>
       </div>
 
-      {loadError && !shouldHidePageErrorForOfflineApi(loadError, online) ? (
-        <Alert
-          type="warning"
-          showIcon
-          message="Không tải được dữ liệu"
-          description={loadError}
-          action={
-            <Button size="small" onClick={() => void loadData()}>
-              Thử lại
-            </Button>
-          }
-        />
-      ) : null}
-
-      {online === false && loadError ? (
-        <div style={{ textAlign: 'center', padding: 24 }}>
-          <Spin tip="Đang chờ API — tự tải lại khi kết nối trở lại" />
-        </div>
-      ) : null}
-
-      {!(online === false && loadError) ? (
-        <>
-          <Row gutter={[12, 12]}>
-            <Col span={12}>
-              <TappableHomeCard title="Xem điểm thưởng và voucher" onClick={() => navigate('/loyalty')}>
-                <Statistic
-                  title="Điểm thưởng"
-                  value={formatPoints(program?.pointsBalance ?? 0)}
-                  suffix="điểm"
-                  valueStyle={{ color: '#0f766e', fontSize: 22 }}
-                />
-                {program?.currentTier ? (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Hạng {program.currentTier.tierName}
-                  </Typography.Text>
-                ) : (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Chạm để xem voucher
-                  </Typography.Text>
-                )}
-              </TappableHomeCard>
-            </Col>
-            <Col span={12}>
-              <TappableHomeCard title="Quản lý nhắc uống thuốc" onClick={() => navigate('/reminders')}>
-                <Statistic
-                  title="Nhắc uống thuốc"
-                  value={reminderCount}
-                  suffix="lịch"
-                  valueStyle={{ fontSize: 22 }}
-                />
-                {nextReminder ? (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Tiếp theo: {dayjs(nextReminder).format('DD/MM HH:mm')}
-                  </Typography.Text>
-                ) : (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Chạm để thêm lịch nhắc
-                  </Typography.Text>
-                )}
-              </TappableHomeCard>
-            </Col>
-            <Col span={24}>
-              <TappableHomeCard title="Đặt thuốc trước khi có hàng" onClick={() => navigate('/reservations')}>
-                <Statistic
-                  title="Đặt thuốc trước"
-                  value={activeReservationCount}
-                  suffix="yêu cầu"
-                  valueStyle={{ fontSize: 22, color: '#b45309' }}
-                />
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Chạm để gửi danh sách thuốc cần đặt
-                </Typography.Text>
-              </TappableHomeCard>
-            </Col>
-            {totalReceivable > 0.009 ? (
-              <Col span={24}>
-                <TappableHomeCard title="Xem công nợ tại nhà thuốc" onClick={() => navigate('/receivables')}>
-                  <Statistic
-                    title="Còn nợ"
-                    value={totalReceivable}
-                    suffix="đ"
-                    valueStyle={{ fontSize: 22, color: '#c2410c' }}
-                    formatter={(v) => Number(v).toLocaleString('vi-VN')}
-                  />
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Thanh toán tại quầy nhà thuốc
-                  </Typography.Text>
-                </TappableHomeCard>
-              </Col>
-            ) : null}
-          </Row>
-
-          {pendingDraftCount > 0 ? (
-            <Alert
-              type="info"
-              showIcon
-              message={`Bạn có ${pendingDraftCount} đơn đang đặt`}
-              description="Xem và xác nhận tại tab Đơn hàng bên dưới."
-              action={
-                <Button size="small" type="primary" onClick={() => navigate('/orders')}>
-                  Mở đơn hàng
-                </Button>
-              }
+      <Card
+        style={{
+          borderRadius: 16,
+          background: 'linear-gradient(145deg, #ffffff 0%, #ecfdf5 100%)',
+          border: '1px solid #99f6e4',
+          cursor: 'pointer',
+        }}
+        styles={{ body: { padding: '16px 18px' } }}
+        onClick={() => navigate('/health')}
+      >
+        <Space align="center" style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
+          <Space align="center">
+            <HeartOutlined style={{ color: branding.primaryColor, fontSize: 18 }} />
+            <Typography.Text strong>{t('home.healthToday')}</Typography.Text>
+          </Space>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t('home.healthWalletLink')}
+          </Typography.Text>
+        </Space>
+        <Row gutter={[10, 10]} onClick={(e) => e.stopPropagation()}>
+          <Col span={12}>
+            <HealthStat
+              label={t('home.medicationTaken')}
+              value={medicationDone ? '✓' : `${adherence.takenToday}/${Math.max(adherence.scheduledToday, 1)}`}
+              valueColor={medicationDone ? '#059669' : '#b45309'}
             />
-          ) : null}
-        </>
-      ) : null}
+          </Col>
+          <Col span={12}>
+            <HealthStat
+              label={t('home.points')}
+              value={formatPoints(points)}
+              valueColor={branding.primaryColor}
+              compact={formatPoints(points).length > 9}
+              onClick={() => navigate('/loyalty')}
+            />
+          </Col>
+          <Col span={12}>
+            <HealthStat label={t('home.orders')} value={String(pendingOrders)} onClick={() => navigate('/orders')} />
+          </Col>
+          <Col span={12}>
+            <HealthStat
+              label={t('home.notificationsCount')}
+              value={String(notificationCount)}
+              onClick={() => navigate('/notifications')}
+            />
+          </Col>
+        </Row>
+        {repurchaseCount > 0 ? (
+          <Button
+            type="link"
+            className="home-health-footer-link"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/medications');
+            }}
+          >
+            {t('home.repurchaseHint', { count: repurchaseCount })}
+          </Button>
+        ) : null}
+      </Card>
+
+      <MissedMedicationAlert show={adherence.showMissedAlert} streak={adherence.missedStreakDays} />
+      <DueRemindersPanel compact onResponded={() => void load()} />
+      <FamilyCaregiverDuePanel compact onResponded={() => void load()} />
+
+      <div>
+        <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+          {t('home.shortcuts')}
+        </Typography.Text>
+        <div className="home-shortcut-grid">
+          {shortcuts.map((item) => (
+            <button key={item.to} type="button" className="home-shortcut-btn" onClick={() => navigate(item.to)}>
+              <span className="home-shortcut-icon">{item.icon}</span>
+              <span className="home-shortcut-label">{t(`home.${item.labelKey}`)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Card
+        size="small"
+        hoverable
+        style={{ borderRadius: 12, cursor: 'pointer' }}
+        onClick={() => navigate('/health')}
+      >
+        <Typography.Text strong>{t('home.healthWalletCardTitle')}</Typography.Text>
+        <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
+          {t('home.healthWalletCardDesc')}
+        </Typography.Text>
+      </Card>
+
+      <Card
+        size="small"
+        hoverable
+        style={{ borderRadius: 12, cursor: 'pointer' }}
+        onClick={() => navigate('/medications')}
+      >
+        <Typography.Text strong>{t('home.medicationsCardTitle')}</Typography.Text>
+        <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
+          {t('home.medicationsCardDesc')}
+        </Typography.Text>
+      </Card>
+
+      <Card size="small" hoverable style={{ borderRadius: 12, cursor: 'pointer' }} onClick={() => navigate('/pharmacy')}>
+        <Typography.Text strong>{branding.tenantName}</Typography.Text>
+        <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
+          {t('home.pharmacyCardDesc')}
+        </Typography.Text>
+      </Card>
     </Space>
   );
 }

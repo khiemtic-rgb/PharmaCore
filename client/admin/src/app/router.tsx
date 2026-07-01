@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { AuthGuard, GuestGuard } from '@/shared/auth/AuthGuard';
+import { RedirectPreserveSearch } from '@/shared/components/RedirectPreserveSearch';
 
 const AppLayout = lazy(() =>
   import('@/shared/components/AppLayout').then((m) => ({ default: m.AppLayout })),
@@ -93,6 +94,9 @@ const SupplierPaymentListPage = lazy(() =>
     default: m.SupplierPaymentListPage,
   })),
 );
+const ReceivablesLayout = lazy(() =>
+  import('@/modules/receivables/ReceivablesLayout').then((m) => ({ default: m.ReceivablesLayout })),
+);
 const SalesLayout = lazy(() =>
   import('@/modules/sales/SalesLayout').then((m) => ({ default: m.SalesLayout })),
 );
@@ -127,6 +131,9 @@ const CustomerChatPage = lazy(() =>
 );
 const ReceiptSettingsPage = lazy(() =>
   import('@/modules/sales/ReceiptSettingsPage').then((m) => ({ default: m.ReceiptSettingsPage })),
+);
+const CustomerAppSettingsPage = lazy(() =>
+  import('@/modules/sales/CustomerAppSettingsPage').then((m) => ({ default: m.CustomerAppSettingsPage })),
 );
 const LoyaltySettingsPage = lazy(() =>
   import('@/modules/sales/LoyaltySettingsPage').then((m) => ({ default: m.LoyaltySettingsPage })),
@@ -278,7 +285,27 @@ export function AppRouter() {
                 <Route path="goods-receipts" element={<GoodsReceiptListPage />} />
                 <Route path="suppliers" element={<SupplierListPage />} />
                 <Route path="vat-treatments" element={<VatTreatmentListPage />} />
-                <Route path="supplier-payables" element={<SupplierPayablesPage />} />
+                <Route
+                  path="supplier-payables"
+                  element={<RedirectPreserveSearch to="/receivables/suppliers" />}
+                />
+                <Route
+                  path="supplier-payments"
+                  element={<RedirectPreserveSearch to="/receivables/supplier-payments" />}
+                />
+              </Route>
+              <Route
+                path="receivables"
+                element={
+                  <SuspenseRoute>
+                    <ReceivablesLayout />
+                  </SuspenseRoute>
+                }
+              >
+                <Route index element={<Navigate to="/receivables/customers" replace />} />
+                <Route path="customers" element={<CustomerReceivablesPage />} />
+                <Route path="customer-payments" element={<CustomerPaymentListPage />} />
+                <Route path="suppliers" element={<SupplierPayablesPage />} />
                 <Route path="supplier-payments" element={<SupplierPaymentListPage />} />
               </Route>
               <Route
@@ -292,8 +319,14 @@ export function AppRouter() {
                 <Route index element={<Navigate to="/sales/pos" replace />} />
                 <Route path="pos" element={<PosPage />} />
                 <Route path="orders" element={<SalesOrderListPage />} />
-                <Route path="customer-receivables" element={<CustomerReceivablesPage />} />
-                <Route path="customer-payments" element={<CustomerPaymentListPage />} />
+                <Route
+                  path="customer-receivables"
+                  element={<Navigate to="/receivables/customers" replace />}
+                />
+                <Route
+                  path="customer-payments"
+                  element={<RedirectPreserveSearch to="/receivables/customer-payments" />}
+                />
                 <Route path="customer-drafts" element={<CustomerDraftOrderListPage />} />
                 <Route path="customer-reservations" element={<CustomerReservationListPage />} />
                 <Route path="returns" element={<SalesReturnListPage />} />
@@ -404,6 +437,7 @@ export function AppRouter() {
                 <Route path="users" element={<UserListPage />} />
                 <Route path="roles" element={<RoleListPage />} />
                 <Route path="pos-settings" element={<ReceiptSettingsPage />} />
+                <Route path="customer-app-settings" element={<CustomerAppSettingsPage />} />
                 <Route path="audit-log" element={<AuditLogListPage />} />
               </Route>
             </Route>

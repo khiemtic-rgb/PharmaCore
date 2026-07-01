@@ -60,7 +60,8 @@ internal sealed record CustomerAccountRecord(
     Guid TenantId,
     string TenantCode,
     string FullName,
-    string Phone);
+    string Phone,
+    string? PreferredLocale);
 
 internal sealed record TenantPhoneRow(Guid TenantId, string TenantCode);
 

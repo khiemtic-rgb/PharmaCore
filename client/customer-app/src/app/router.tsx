@@ -35,6 +35,17 @@ const ReservationsPage = lazy(() =>
 const ReceivablesPage = lazy(() =>
   import('@/modules/receivables/ReceivablesPage').then((m) => ({ default: m.ReceivablesPage })),
 );
+const HealthWalletPage = lazy(() =>
+  import('@/modules/health/HealthWalletPage').then((m) => ({ default: m.HealthWalletPage })),
+);
+const FamilyPage = lazy(() => import('@/modules/family/FamilyPage').then((m) => ({ default: m.FamilyPage })));
+const MyMedicationPage = lazy(() =>
+  import('@/modules/medication/MyMedicationPage').then((m) => ({ default: m.MyMedicationPage })),
+);
+const PharmacyHubPage = lazy(() =>
+  import('@/modules/pharmacy/PharmacyHubPage').then((m) => ({ default: m.PharmacyHubPage })),
+);
+const AiHealthPage = lazy(() => import('@/modules/ai/AiHealthPage').then((m) => ({ default: m.AiHealthPage })));
 
 function RouteFallback() {
   return (
@@ -149,6 +160,46 @@ export function AppRouter() {
                 element={
                   <SuspenseRoute>
                     <ReservationsPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="health"
+                element={
+                  <SuspenseRoute>
+                    <HealthWalletPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="family"
+                element={
+                  <SuspenseRoute>
+                    <FamilyPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="medications"
+                element={
+                  <SuspenseRoute>
+                    <MyMedicationPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="pharmacy"
+                element={
+                  <SuspenseRoute>
+                    <PharmacyHubPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="ai"
+                element={
+                  <SuspenseRoute>
+                    <AiHealthPage />
                   </SuspenseRoute>
                 }
               />

@@ -67,4 +67,32 @@ internal sealed class CustomerCatalogRepository
         var items = (await multi.ReadAsync<CustomerProductSearchItemDto>()).ToList();
         return (items, total);
     }
+
+    public async Task<CustomerProductSearchItemDto?> GetByIdAsync(
+        Guid tenantId,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                p.id AS Id,
+                p.product_code AS ProductCode,
+                p.product_name AS ProductName,
+                p.generic_name AS GenericName,
+                (SELECT u.unit_name FROM product_units u
+                 WHERE u.product_id = p.id AND u.is_sale_unit = TRUE
+                 ORDER BY u.is_base_unit DESC, u.unit_name LIMIT 1) AS SaleUnitName
+            FROM products p
+            WHERE p.id = @ProductId
+              AND p.tenant_id = @TenantId
+              AND p.deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<CustomerProductSearchItemDto>(sql, new
+        {
+            ProductId = productId,
+            TenantId = tenantId,
+        });
+    }
 }

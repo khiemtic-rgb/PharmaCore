@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button, Result } from 'antd';
+import i18n from '@/shared/i18n';
 
 interface Props {
   children: ReactNode;
@@ -35,11 +36,11 @@ export class AppErrorBoundary extends Component<Props, State> {
         >
           <Result
             status="error"
-            title="Không tải được giao diện"
-            subTitle={this.state.error.message || 'Có lỗi JavaScript. Thử tải lại trang.'}
+            title={i18n.t('error.title')}
+            subTitle={this.state.error.message || i18n.t('error.subtitle')}
             extra={
               <Button type="primary" onClick={() => window.location.reload()}>
-                Tải lại
+                {i18n.t('error.reload')}
               </Button>
             }
           />

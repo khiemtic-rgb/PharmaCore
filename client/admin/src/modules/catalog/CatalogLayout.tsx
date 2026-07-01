@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Tabs } from 'antd';
 import {
   AppstoreOutlined,
   CloudSyncOutlined,
@@ -9,11 +8,7 @@ import {
   FolderOutlined,
   TagOutlined,
 } from '@ant-design/icons';
-import {
-  moduleTabsShellStyle,
-  secondaryTabLabel,
-  secondaryTabsBarStyle,
-} from '@/shared/components/module-tabs.ui';
+import { useRegisterProductNavSubnav } from '@/shared/components/module-subnav.context';
 import type { ProductNavTab } from '@/shared/product/product-phases';
 import { useProductNavGuard } from '@/shared/product/useProductNavGuard';
 
@@ -74,25 +69,7 @@ export function CatalogLayout() {
       ? 'products'
       : tabs.find((tab) => location.pathname.startsWith(tab.path))?.key ?? 'products';
 
-  return (
-    <div>
-      <div style={moduleTabsShellStyle}>
-        <div style={secondaryTabsBarStyle}>
-          <Tabs
-            activeKey={activeKey}
-            size="small"
-            items={tabs.map((tab) => ({
-              key: tab.key,
-              label: secondaryTabLabel(tab.label, tab.icon),
-            }))}
-            onChange={(key) => {
-              const tab = tabs.find((item) => item.key === key);
-              if (tab) navigate(tab.path);
-            }}
-          />
-        </div>
-      </div>
-      <Outlet />
-    </div>
-  );
+  useRegisterProductNavSubnav(tabs, activeKey, (tab) => navigate(tab.path));
+
+  return <Outlet />;
 }

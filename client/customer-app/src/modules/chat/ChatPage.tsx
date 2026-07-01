@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Input, Space, Spin, Typography, message } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import {
   fetchChatMessages,
@@ -63,6 +64,7 @@ function ChatBubble({ item, isMine }: { item: CustomerChatMessage; isMine: boole
 }
 
 export function ChatPage() {
+  const { t } = useTranslation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const [messages, setMessages] = useState<CustomerChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,13 +98,13 @@ export function ChatPage() {
       setHasMore(page.hasMore);
       await markChatRead().catch(() => undefined);
     } catch (error) {
-      const errMsg = getApiErrorMessage(error, 'Không tải được tin nhắn');
+      const errMsg = getApiErrorMessage(error, t('chat.loadFailed'));
       if (!silent) setLoadError(errMsg);
       if (!silent) message.error(errMsg);
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadMessages();
@@ -136,9 +138,9 @@ export function ChatPage() {
           c.purpose === CUSTOMER_APP_CHAT_CONSENT.purpose,
       );
       setChatConsentGranted(chatConsent?.granted ?? false);
-      message.success('Đã bật chat dược sĩ — bạn có thể gửi tin nhắn');
+      message.success(t('chat.consentEnabled'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không bật được đồng ý chat'));
+      message.error(getApiErrorMessage(error, t('chat.consentEnableFailed')));
     } finally {
       setEnablingConsent(false);
     }
@@ -154,7 +156,7 @@ export function ChatPage() {
       setDraft('');
       scrollToBottom();
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không gửi được tin nhắn'));
+      message.error(getApiErrorMessage(error, t('chat.sendFailed')));
     } finally {
       setSending(false);
     }
@@ -164,10 +166,10 @@ export function ChatPage() {
     <div className="customer-chat-page">
       <div className="customer-chat-toolbar">
         <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 4 }}>
-          Chat dược sĩ
+          {t('chat.title')}
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 8, fontSize: 13 }}>
-          Hỏi đáp trực tiếp với nhà thuốc.
+          {t('chat.intro')}
         </Typography.Paragraph>
 
         {!chatConsentGranted ? (
@@ -175,14 +177,14 @@ export function ChatPage() {
             type="warning"
             showIcon
             style={{ marginBottom: 8 }}
-            message="Cần đồng ý chat dược sĩ trước khi gửi tin nhắn."
+            message={t('chat.consentRequired')}
             action={
               <Space size={8} wrap>
                 <Button size="small" type="primary" loading={enablingConsent} onClick={() => void onEnableChatConsent()}>
-                  Bật ngay
+                  {t('chat.enableNow')}
                 </Button>
                 <Link to="/profile" style={{ whiteSpace: 'nowrap' }}>
-                  Tài khoản
+                  {t('chat.account')}
                 </Link>
               </Space>
             }
@@ -194,11 +196,11 @@ export function ChatPage() {
             type="warning"
             showIcon
             style={{ marginBottom: 8 }}
-            message="Không tải được chat"
+            message={t('chat.loadErrorTitle')}
             description={loadError}
             action={
               <Button size="small" onClick={() => void loadMessages()}>
-                Thử lại
+                {t('common.retry')}
               </Button>
             }
           />
@@ -211,9 +213,7 @@ export function ChatPage() {
             <Spin />
           </div>
         ) : messages.length === 0 ? (
-          <Typography.Text type="secondary">
-            Chưa có tin nhắn. Gửi câu hỏi đầu tiên cho dược sĩ nhé.
-          </Typography.Text>
+          <Typography.Text type="secondary">{t('chat.empty')}</Typography.Text>
         ) : (
           messages.map((item) => (
             <ChatBubble key={item.id} item={item} isMine={item.senderType !== STAFF_SENDER} />
@@ -221,7 +221,7 @@ export function ChatPage() {
         )}
         {hasMore ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            (Cuộc trò chuyện dài — hiển thị tin gần nhất)
+            {t('chat.longConversation')}
           </Typography.Text>
         ) : null}
         <div ref={bottomRef} />
@@ -231,7 +231,7 @@ export function ChatPage() {
         <Input.TextArea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={chatConsentGranted ? 'Nhập câu hỏi...' : 'Cần đồng ý chat trước'}
+          placeholder={chatConsentGranted ? t('chat.placeholder') : t('chat.placeholderDisabled')}
           autoSize={{ minRows: 1, maxRows: 4 }}
           disabled={!chatConsentGranted || sending}
           onPressEnter={(e) => {

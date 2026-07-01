@@ -13,7 +13,7 @@ self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     (async () => {
       let title = 'PharmaCore';
-      let body = 'Bạn có thông báo mới';
+      let body = 'You have a new notification';
       let data: unknown;
 
       try {

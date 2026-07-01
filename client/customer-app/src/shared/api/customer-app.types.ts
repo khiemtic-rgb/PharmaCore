@@ -5,6 +5,7 @@ export interface CustomerProfile {
   tenantCode: string;
   fullName: string;
   phone: string;
+  preferredLocale?: string | null;
 }
 
 export interface CustomerLoginResponse {
@@ -76,6 +77,7 @@ export interface CustomerVoucherList {
 export interface MedicationReminder {
   id: string;
   productId: string;
+  familyMemberId: string | null;
   productCode: string;
   productName: string;
   dosageNote: string | null;
@@ -93,6 +95,7 @@ export interface MedicationReminderList {
 
 export interface CreateMedicationReminderRequest {
   productId: string;
+  familyMemberId?: string | null;
   dosageNote?: string;
   remindTime: string;
   daysOfWeek?: number[];
@@ -100,6 +103,7 @@ export interface CreateMedicationReminderRequest {
 
 export interface UpdateMedicationReminderRequest {
   productId?: string;
+  familyMemberId?: string | null;
   dosageNote?: string;
   remindTime?: string;
   daysOfWeek?: number[];
@@ -417,3 +421,142 @@ export const DAY_LABELS: Record<number, string> = {
 };
 
 export const DEFAULT_TENANT_CODE = 'DEMO_PHARMACY';
+
+export interface RepurchaseSuggestion {
+  id: string;
+  salesOrderId: string;
+  orderNumber: string;
+  orderLabel: string;
+  status: string;
+  orderDate: string;
+  reminderDaysSupply: number | null;
+  suggestedForDate: string | null;
+  snoozedUntil: string | null;
+  drinkRemindersCreatedAt: string | null;
+}
+
+export interface FamilyMember {
+  id: string;
+  linkedCustomerId: string | null;
+  fullName: string;
+  phone: string | null;
+  dateOfBirth: string | null;
+  gender: number | null;
+  relationship: string;
+  notes: string | null;
+  status: number;
+  notifyCaregiver: boolean;
+}
+
+export interface HealthRecordAttachment {
+  fileName: string;
+  mimeType: string;
+  url?: string;
+  dataUrl?: string;
+}
+
+export interface HealthRecord {
+  id: string;
+  familyMemberId: string | null;
+  recordType: string;
+  title: string;
+  summary: string | null;
+  providerName: string | null;
+  recordedAt: string;
+  attachmentsJson: string;
+  metadataJson: string;
+  attachments: HealthRecordAttachment[];
+}
+
+export interface ServerNotification {
+  id: string;
+  category: string;
+  title: string;
+  body: string;
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+  isRead: boolean;
+}
+
+export interface CareReminder {
+  id: string;
+  familyMemberId: string | null;
+  healthRecordId: string | null;
+  reminderType: string;
+  title: string;
+  note: string | null;
+  remindAt: string;
+  isDone: boolean;
+}
+
+export const FAMILY_RELATIONSHIP_LABELS: Record<string, string> = {
+  parent: 'Cha/mẹ',
+  child: 'Con',
+  spouse: 'Vợ/chồng',
+  sibling: 'Anh/chị/em',
+  other: 'Khác',
+};
+
+export const HEALTH_RECORD_TYPE_LABELS: Record<string, string> = {
+  visit: 'Khám bệnh',
+  prescription: 'Đơn thuốc',
+  lab: 'Xét nghiệm',
+  allergy: 'Dị ứng',
+  diagnosis: 'Chẩn đoán',
+  note: 'Ghi chú',
+  bmi: 'BMI',
+  blood_pressure: 'Huyết áp',
+  blood_glucose: 'Đường huyết',
+  vaccination: 'Tiêm chủng',
+  other: 'Khác',
+};
+
+export const VITAL_RECORD_TYPES = ['bmi', 'blood_pressure', 'blood_glucose'] as const;
+
+export const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
+  order: 'Đơn hàng',
+  medication: 'Nhắc thuốc',
+  care: 'Tái khám / chăm sóc',
+  family: 'Gia đình',
+  system: 'Hệ thống',
+  general: 'Chung',
+};
+
+export interface ActiveMedicationTimelineEvent {
+  eventType: string;
+  occurredAt: string;
+  label: string;
+}
+
+export interface ActiveMedication {
+  productId: string;
+  productCode: string;
+  productName: string;
+  dosageNote: string | null;
+  familyMemberId: string | null;
+  medicationReminderId: string | null;
+  remindTime: string | null;
+  daysRemaining: number | null;
+  supplyEndDate: string | null;
+  lastOrderNumber: string | null;
+  lastOrderDate: string | null;
+  repurchaseSuggestionCount: number;
+  timeline: ActiveMedicationTimelineEvent[];
+}
+
+export interface MedicationAdherenceSummary {
+  dueCount: number;
+  takenToday: number;
+  skippedToday: number;
+  scheduledToday: number;
+  missedStreakDays: number;
+  showMissedAlert: boolean;
+}
+
+export interface AiHealthAskResponse {
+  answer: string;
+  confidence: string;
+  suggestChat: boolean;
+  disclaimer: string;
+}

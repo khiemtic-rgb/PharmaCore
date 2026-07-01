@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Spin } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/shared/auth/auth.store';
 
 function BootFallback() {
+  const { t } = useTranslation();
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Spin size="large" tip="Đang khởi động...">
+      <Spin size="large" tip={t('auth.booting')}>
         <div style={{ minHeight: 120, minWidth: 120 }} />
       </Spin>
     </div>

@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Tabs } from 'antd';
 import {
   AuditOutlined,
   BankOutlined,
@@ -10,11 +9,7 @@ import {
   SwapOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import {
-  moduleTabsShellStyle,
-  secondaryTabLabel,
-  secondaryTabsBarStyle,
-} from '@/shared/components/module-tabs.ui';
+import { useRegisterSimpleModuleSubnav } from '@/shared/components/module-subnav.context';
 
 export function InventoryLayout() {
   const { t } = useTranslation('inventory', { keyPrefix: 'inventoryLayout.tabs' });
@@ -46,25 +41,7 @@ export function InventoryLayout() {
 
   const activeKey = tabs.find((tab) => location.pathname.startsWith(tab.path))?.key ?? 'opening';
 
-  return (
-    <div>
-      <div style={moduleTabsShellStyle}>
-        <div style={secondaryTabsBarStyle}>
-          <Tabs
-            activeKey={activeKey}
-            size="small"
-            items={tabs.map((tab) => ({
-              key: tab.key,
-              label: secondaryTabLabel(tab.label, tab.icon),
-            }))}
-            onChange={(key) => {
-              const tab = tabs.find((item) => item.key === key);
-              if (tab) navigate(tab.path);
-            }}
-          />
-        </div>
-      </div>
-      <Outlet />
-    </div>
-  );
+  useRegisterSimpleModuleSubnav(tabs, activeKey, navigate);
+
+  return <Outlet />;
 }

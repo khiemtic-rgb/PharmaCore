@@ -1,0 +1,12 @@
+{
+  "receivablesLayout": {
+    "navAriaLabel": "Menu công nợ",
+    "loading": "Đang tải...",
+    "tabs": {
+      "customerReceivables": "Công nợ KH",
+      "customerPayments": "Thu nợ KH",
+      "supplierPayables": "Công nợ NCC",
+      "supplierPayments": "Trả NCC"
+    }
+  }
+}

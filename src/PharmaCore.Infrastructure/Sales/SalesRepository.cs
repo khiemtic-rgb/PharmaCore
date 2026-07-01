@@ -775,13 +775,17 @@ internal sealed class SalesRepository
         var paymentResolution = await NormalizeAndValidatePaymentsAsync(
             conn, tx, request.CustomerId, request.Payments, redeem.FinalTotal, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, request.WarehouseId, pricing.Lines, cancellationToken);
+        var orderReminder = SalesOrderReminderNormalizer.Normalize(
+            request.OrderReminderLabel,
+            request.OrderReminderDaysSupply);
 
         var orderId = await InsertSaleHeaderAsync(
             conn, tx, orderNumber, branchId, request.WarehouseId, request.CustomerId, employeeId,
             SalesOrderStatuses.Completed, request.PriceType, pricing.SubtotalGross, pricing.OrderDiscountAmount,
             request.OrderDiscountType, request.OrderDiscountValue ?? 0, redeem.FinalTotal,
             paymentResolution.AmountPaid, paymentResolution.Outstanding, request.Notes,
-            shiftId, voucher.VoucherId, voucher.DiscountAmount, redeem.PointsRedeemed, redeem.DiscountAmount);
+            shiftId, voucher.VoucherId, voucher.DiscountAmount, redeem.PointsRedeemed, redeem.DiscountAmount,
+            orderReminder.Label, orderReminder.DaysSupply);
 
         await InsertCompletedLinesAsync(conn, tx, orderId, request.WarehouseId, linePlans, cancellationToken);
         await InsertPaymentsAsync(conn, tx, orderId, paymentResolution.CashPayments);
@@ -836,6 +840,9 @@ internal sealed class SalesRepository
             },
             userId,
             cancellationToken);
+
+        await TryUpsertRepurchaseSuggestionAsync(conn, tx, orderId);
+        await TryAutoCreateDrinkRemindersFromOrderAsync(conn, tx, orderId);
 
         await tx.CommitAsync(cancellationToken);
         return orderId;
@@ -1017,6 +1024,9 @@ internal sealed class SalesRepository
         var paymentResolution = await NormalizeAndValidatePaymentsAsync(
             conn, tx, customerId, request?.Payments, redeem.FinalTotal, cancellationToken);
         var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
+        var orderReminder = SalesOrderReminderNormalizer.Normalize(
+            request?.OrderReminderLabel,
+            request?.OrderReminderDaysSupply);
 
         await conn.ExecuteAsync("""
             UPDATE sales_orders SET
@@ -1028,7 +1038,9 @@ internal sealed class SalesRepository
                 voucher_discount_amount = @VoucherDiscountAmount,
                 loyalty_points_redeemed = @LoyaltyPointsRedeemed,
                 loyalty_discount_amount = @LoyaltyDiscountAmount,
-                sales_shift_id = @ShiftId, notes = COALESCE(@Notes, notes)
+                sales_shift_id = @ShiftId, notes = COALESCE(@Notes, notes),
+                reminder_label = @ReminderLabel,
+                reminder_days_supply = @ReminderDaysSupply
             WHERE id = @Id AND tenant_id = @TenantId
             """, new
         {
@@ -1049,6 +1061,8 @@ internal sealed class SalesRepository
             LoyaltyDiscountAmount = redeem.DiscountAmount,
             ShiftId = shiftId,
             Notes = notes,
+            ReminderLabel = orderReminder.Label,
+            ReminderDaysSupply = orderReminder.DaysSupply,
         }, tx);
 
         await InsertCompletedLinesAsync(conn, tx, id, header.WarehouseId, linePlans, cancellationToken);
@@ -1108,6 +1122,9 @@ internal sealed class SalesRepository
             },
             _tenant.UserId,
             cancellationToken);
+
+        await TryUpsertRepurchaseSuggestionAsync(conn, tx, id);
+        await TryAutoCreateDrinkRemindersFromOrderAsync(conn, tx, id);
 
         await tx.CommitAsync(cancellationToken);
         return true;
@@ -2109,20 +2126,22 @@ internal sealed class SalesRepository
         Guid? voucherId = null,
         decimal voucherDiscountAmount = 0,
         decimal loyaltyPointsRedeemed = 0,
-        decimal loyaltyDiscountAmount = 0)
+        decimal loyaltyDiscountAmount = 0,
+        string? reminderLabel = null,
+        int? reminderDaysSupply = null)
     {
         const string sql = """
             INSERT INTO sales_orders (
                 tenant_id, order_number, branch_id, warehouse_id, customer_id, employee_id,
                 status, price_type, subtotal, discount_amount, order_discount_type, order_discount_value,
                 total_amount, amount_paid, outstanding, notes, sales_shift_id, voucher_id, voucher_discount_amount,
-                loyalty_points_redeemed, loyalty_discount_amount
+                loyalty_points_redeemed, loyalty_discount_amount, reminder_label, reminder_days_supply
             )
             VALUES (
                 @TenantId, @OrderNumber, @BranchId, @WarehouseId, @CustomerId, @EmployeeId,
                 @Status, @PriceType, @Subtotal, @OrderDiscountAmount, @OrderDiscountType, @OrderDiscountValue,
                 @TotalAmount, @AmountPaid, @Outstanding, @Notes, @SalesShiftId, @VoucherId, @VoucherDiscountAmount,
-                @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount
+                @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount, @ReminderLabel, @ReminderDaysSupply
             )
             RETURNING id
             """;
@@ -2149,7 +2168,129 @@ internal sealed class SalesRepository
             VoucherDiscountAmount = voucherDiscountAmount,
             LoyaltyPointsRedeemed = loyaltyPointsRedeemed,
             LoyaltyDiscountAmount = loyaltyDiscountAmount,
+            ReminderLabel = reminderLabel,
+            ReminderDaysSupply = reminderDaysSupply,
         }, tx);
+    }
+
+    private async Task TryUpsertRepurchaseSuggestionAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid orderId)
+    {
+        const string sql = """
+            INSERT INTO repurchase_suggestions (
+                tenant_id, customer_id, customer_account_id, sales_order_id,
+                order_label, status, suggested_for_date
+            )
+            SELECT
+                so.tenant_id,
+                so.customer_id,
+                ca.id,
+                so.id,
+                COALESCE(NULLIF(TRIM(so.reminder_label), ''), CONCAT('Đơn ', so.order_number)),
+                'pending',
+                (so.order_date + (so.reminder_days_supply || ' days')::interval)::date
+            FROM sales_orders so
+            CROSS JOIN LATERAL (
+                SELECT id
+                FROM customer_accounts
+                WHERE customer_id = so.customer_id
+                  AND tenant_id = so.tenant_id
+                ORDER BY created_at ASC
+                LIMIT 1
+            ) ca
+            WHERE so.id = @OrderId
+              AND so.tenant_id = @TenantId
+              AND so.reminder_days_supply IS NOT NULL
+              AND so.customer_id IS NOT NULL
+            ON CONFLICT (sales_order_id) DO UPDATE SET
+                order_label = EXCLUDED.order_label,
+                suggested_for_date = EXCLUDED.suggested_for_date,
+                updated_at = NOW()
+            """;
+
+        await conn.ExecuteAsync(sql, new { OrderId = orderId, TenantId }, tx);
+    }
+
+    private async Task TryAutoCreateDrinkRemindersFromOrderAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid orderId)
+    {
+        var suggestion = await conn.QuerySingleOrDefaultAsync<RepurchaseDrinkBootstrapRow>(
+            """
+            SELECT
+                rs.id AS Id,
+                rs.drink_reminders_created_at AS DrinkRemindersCreatedAt,
+                so.customer_id AS CustomerId
+            FROM repurchase_suggestions rs
+            INNER JOIN sales_orders so ON so.id = rs.sales_order_id AND so.tenant_id = rs.tenant_id
+            WHERE rs.sales_order_id = @OrderId
+              AND rs.tenant_id = @TenantId
+              AND so.reminder_days_supply IS NOT NULL
+              AND so.customer_id IS NOT NULL
+            FOR UPDATE OF rs
+            """,
+            new { OrderId = orderId, TenantId },
+            tx);
+
+        if (suggestion is null || suggestion.DrinkRemindersCreatedAt.HasValue)
+            return;
+
+        await conn.ExecuteAsync(
+            """
+            INSERT INTO medication_reminders (
+                tenant_id,
+                customer_id,
+                family_member_id,
+                product_id,
+                dosage_note,
+                remind_time,
+                days_of_week,
+                next_remind_at,
+                is_active
+            )
+            SELECT
+                @TenantId,
+                @CustomerId,
+                NULL,
+                soi.product_id,
+                CONCAT('Auto from order #', so.order_number),
+                TIME '08:00',
+                ARRAY[1,2,3,4,5,6,7]::SMALLINT[],
+                @NextRemindAt,
+                TRUE
+            FROM sales_order_items soi
+            INNER JOIN sales_orders so ON so.id = soi.sales_order_id
+            WHERE soi.sales_order_id = @OrderId
+            ORDER BY soi.id
+            """,
+            new
+            {
+                TenantId,
+                CustomerId = suggestion.CustomerId,
+                OrderId = orderId,
+                NextRemindAt = DateTime.UtcNow.AddHours(1),
+            },
+            tx);
+
+        await conn.ExecuteAsync(
+            """
+            UPDATE repurchase_suggestions
+            SET drink_reminders_created_at = NOW(),
+                updated_at = NOW()
+            WHERE id = @SuggestionId
+            """,
+            new { SuggestionId = suggestion.Id },
+            tx);
+    }
+
+    private sealed class RepurchaseDrinkBootstrapRow
+    {
+        public Guid Id { get; set; }
+        public DateTime? DrinkRemindersCreatedAt { get; set; }
+        public Guid CustomerId { get; set; }
     }
 
     private static async Task InsertDraftItemAsync(

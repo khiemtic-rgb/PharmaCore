@@ -17,22 +17,28 @@ import {
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import {
   createReminder,
+  fetchFamilyMembers,
   fetchReminders,
   getApiErrorMessage,
   searchProducts,
   updateReminder,
 } from '@/shared/api/customer-app.api';
-import type { CustomerProductSearchItem, MedicationReminder } from '@/shared/api/customer-app.types';
-import { DAY_LABELS } from '@/shared/api/customer-app.types';
+import type { CustomerProductSearchItem, FamilyMember, MedicationReminder } from '@/shared/api/customer-app.types';
+import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 import { normalizeReminderId } from '@/shared/api/reminder-normalize';
+import i18n from '@/shared/i18n';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
+import { RepurchaseSuggestionsPanel } from '@/modules/reminders/RepurchaseSuggestionsPanel';
+import { DueRemindersPanel, MissedMedicationAlert } from '@/modules/reminders/DueRemindersPanel';
+import { fetchMedicationAdherenceSummary } from '@/shared/api/customer-app.api';
 
-const DAY_OPTIONS = Object.entries(DAY_LABELS).map(([value, label]) => ({
-  label,
-  value: Number(value),
-}));
+function useDayOptions() {
+  const { day } = useCustomerLabels();
+  return [1, 2, 3, 4, 5, 6, 7].map((value) => ({ label: day(value), value }));
+}
 
 function formatProductLabel(product: CustomerProductSearchItem) {
   const unit = product.saleUnitName ? ` · ${product.saleUnitName}` : '';
@@ -51,7 +57,7 @@ function assertUniqueReminderIds(items: MedicationReminder[]) {
   const seen = new Set<string>();
   for (const item of items) {
     if (seen.has(item.id)) {
-      throw new Error(`Trùng id lịch nhắc: ${item.id}`);
+      throw new Error(i18n.t('reminders.duplicateIdLocal', { id: item.id }));
     }
     seen.add(item.id);
   }
@@ -70,24 +76,33 @@ function patchReminderById(
     return { ...row, ...patch };
   });
   if (!matched) {
-    throw new Error(`Không tìm thấy lịch nhắc ${targetId}`);
+    throw new Error(i18n.t('reminders.notFound', { id: targetId }));
   }
   return next;
+}
+
+function formatFamilyMemberLabel(member: FamilyMember, relationLabel: (key: string) => string) {
+  const relation = relationLabel(member.relationship);
+  return `${member.fullName} (${relation})`;
 }
 
 function ReminderRow({
   item,
   rowNumber,
   togglingId,
+  familyName,
   onToggle,
   onEdit,
 }: {
   item: MedicationReminder;
   rowNumber: number;
   togglingId: string | null;
+  familyName?: string;
   onToggle: (id: string, active: boolean) => void;
   onEdit: (item: MedicationReminder) => void;
 }) {
+  const { t } = useTranslation();
+  const { day } = useCustomerLabels();
   const reminderId = item.id;
 
   return (
@@ -110,7 +125,8 @@ function ReminderRow({
             #{rowNumber}
           </Typography.Text>
           <Typography.Text strong>{item.productName}</Typography.Text>
-          {item.isActive ? <Tag color="green">Đang bật</Tag> : <Tag>Đã tắt</Tag>}
+          {familyName ? <Tag color="blue">{familyName}</Tag> : null}
+          {item.isActive ? <Tag color="green">{t('common.active')}</Tag> : <Tag>{t('common.inactive')}</Tag>}
         </Space>
         <div>
           <Typography.Text>
@@ -119,8 +135,10 @@ function ReminderRow({
           </Typography.Text>
         </div>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          {item.daysOfWeek.map((d) => DAY_LABELS[d]).join(', ')}
-          {item.nextRemindAt ? ` · Tiếp theo: ${dayjs(item.nextRemindAt).format('DD/MM HH:mm')}` : ''}
+          {item.daysOfWeek.map((d) => day(d)).join(', ')}
+          {item.nextRemindAt
+            ? ` · ${t('common.nextAt', { time: dayjs(item.nextRemindAt).format('DD/MM HH:mm') })}`
+            : ''}
         </Typography.Text>
       </div>
 
@@ -128,13 +146,13 @@ function ReminderRow({
         <Switch
           checked={item.isActive}
           loading={togglingId === reminderId}
-          checkedChildren="Bật"
-          unCheckedChildren="Tắt"
+          checkedChildren={t('common.on')}
+          unCheckedChildren={t('common.off')}
           onClick={(_, e) => e.stopPropagation()}
           onChange={(checked) => onToggle(reminderId, checked)}
         />
         <Button type="link" size="small" style={{ padding: 0 }} onClick={() => onEdit(item)}>
-          Sửa
+          {t('common.edit')}
         </Button>
       </Space>
     </div>
@@ -142,16 +160,38 @@ function ReminderRow({
 }
 
 export function RemindersPage() {
+  const { t } = useTranslation();
+  const { familyRelationship } = useCustomerLabels();
+  const dayOptions = useDayOptions();
   const [items, setItems] = useState<MedicationReminder[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [includeInactive, setIncludeInactive] = useState(true);
+  const [includeInactive, setIncludeInactive] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MedicationReminder | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [productOptions, setProductOptions] = useState<CustomerProductSearchItem[]>([]);
   const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const [adherence, setAdherence] = useState({ showMissedAlert: false, missedStreakDays: 0 });
   const [form] = Form.useForm();
   const searchTimerRef = useRef<number | null>(null);
+
+  const familyNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const member of familyMembers) {
+      map.set(member.id, formatFamilyMemberLabel(member, familyRelationship));
+    }
+    return map;
+  }, [familyMembers, familyRelationship]);
+
+  const loadFamily = useCallback(async () => {
+    try {
+      const rows = await fetchFamilyMembers();
+      setFamilyMembers(rows);
+    } catch {
+      setFamilyMembers([]);
+    }
+  }, []);
 
   const visibleItems = useMemo(() => {
     const ordered = stableReminderOrder(items);
@@ -164,29 +204,40 @@ export function RemindersPage() {
       const result = await searchProducts(search, 1, 30);
       setProductOptions(result.items);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không tải được danh sách sản phẩm'));
+      message.error(getApiErrorMessage(error, t('reminders.productLoadFailed')));
     } finally {
       setProductSearchLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchReminders(true);
-      const ordered = stableReminderOrder(data.items);
-      assertUniqueReminderIds(ordered);
-      setItems(ordered);
-    } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không tải được danh sách nhắc'));
+      const [remindersResult, summaryResult] = await Promise.allSettled([
+        fetchReminders(true),
+        fetchMedicationAdherenceSummary(),
+      ]);
+
+      if (remindersResult.status === 'fulfilled') {
+        const ordered = stableReminderOrder(remindersResult.value.items);
+        assertUniqueReminderIds(ordered);
+        setItems(ordered);
+      } else {
+        message.error(getApiErrorMessage(remindersResult.reason, t('reminders.listLoadFailed')));
+      }
+
+      if (summaryResult.status === 'fulfilled') {
+        setAdherence(summaryResult.value);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadFamily();
+  }, [load, loadFamily]);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -206,6 +257,7 @@ export function RemindersPage() {
     setEditing(null);
     form.setFieldsValue({
       productId: undefined,
+      familyMemberId: undefined,
       dosageNote: '',
       remindTime: dayjs('08:00', 'HH:mm'),
       daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
@@ -230,6 +282,7 @@ export function RemindersPage() {
     });
     form.setFieldsValue({
       productId: item.productId,
+      familyMemberId: item.familyMemberId ?? undefined,
       dosageNote: item.dosageNote ?? '',
       remindTime: dayjs(item.remindTime, 'HH:mm'),
       daysOfWeek: item.daysOfWeek,
@@ -245,26 +298,28 @@ export function RemindersPage() {
       if (editing) {
         const updated = await updateReminder(editing.id, {
           productId: values.productId,
+          familyMemberId: values.familyMemberId ?? null,
           dosageNote: values.dosageNote || undefined,
           remindTime,
           daysOfWeek: values.daysOfWeek,
           isActive: values.isActive,
         });
         setItems((prev) => patchReminderById(prev, updated.id, updated));
-        message.success('Đã cập nhật nhắc uống thuốc');
+        message.success(t('reminders.updated'));
       } else {
         const created = await createReminder({
           productId: values.productId,
+          familyMemberId: values.familyMemberId ?? undefined,
           dosageNote: values.dosageNote || undefined,
           remindTime,
           daysOfWeek: values.daysOfWeek,
         });
         setItems((prev) => stableReminderOrder([...prev, created]));
-        message.success('Đã thêm nhắc uống thuốc');
+        message.success(t('reminders.added'));
       }
       setModalOpen(false);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không lưu được'));
+      message.error(getApiErrorMessage(error, t('reminders.saveFailed')));
     }
   };
 
@@ -272,26 +327,27 @@ export function RemindersPage() {
     const targetId = normalizeReminderId(reminderId);
     const previousItems = items;
 
-    if (!includeInactive && !isActive) {
-      setIncludeInactive(true);
-    }
-
     setTogglingId(targetId);
 
     try {
       const updated = await updateReminder(targetId, { isActive });
       if (normalizeReminderId(updated.id) !== targetId) {
-        throw new Error('API trả về id không khớp lịch nhắc vừa cập nhật');
+        throw new Error(t('reminders.idMismatch'));
       }
       setItems((prev) => patchReminderById(prev, targetId, updated));
-      message.success(isActive ? 'Đã bật nhắc' : 'Đã tắt nhắc');
+      message.success(isActive ? t('reminders.toggleOn') : t('reminders.toggleOff'));
     } catch (error) {
       setItems(previousItems);
-      message.error(getApiErrorMessage(error, 'Không cập nhật được trạng thái nhắc'));
+      message.error(getApiErrorMessage(error, t('reminders.toggleFailed')));
     } finally {
       setTogglingId(null);
     }
   };
+
+  const familySelectOptions = familyMembers.map((member) => ({
+    value: member.id,
+    label: formatFamilyMemberLabel(member, familyRelationship),
+  }));
 
   const selectOptions = productOptions.map((p) => ({
     value: p.id,
@@ -301,18 +357,22 @@ export function RemindersPage() {
   return (
     <div>
       <BackToHomeButton />
+      <MissedMedicationAlert show={adherence.showMissedAlert} streak={adherence.missedStreakDays} />
+      <DueRemindersPanel onResponded={() => void load()} />
+      <RepurchaseSuggestionsPanel onAccepted={() => void load()} />
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Typography.Title level={5} style={{ margin: 0 }}>
-          Nhắc uống thuốc
+          {t('reminders.pageTitle')}
         </Typography.Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          Thêm
+          {t('common.add')}
         </Button>
       </div>
 
       <div style={{ marginBottom: 12 }}>
         <Checkbox checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)}>
-          Hiện cả lịch đã tắt
+          {t('reminders.showInactive')}
         </Checkbox>
       </div>
 
@@ -321,7 +381,7 @@ export function RemindersPage() {
           <Spin />
         </div>
       ) : visibleItems.length === 0 ? (
-        <Empty description="Chưa có lịch nhắc" />
+        <Empty description={t('reminders.empty')} />
       ) : (
         <div>
           {visibleItems.map((item, index) => (
@@ -330,6 +390,7 @@ export function RemindersPage() {
               item={item}
               rowNumber={index + 1}
               togglingId={togglingId}
+              familyName={item.familyMemberId ? familyNameById.get(item.familyMemberId) : undefined}
               onToggle={onToggleActive}
               onEdit={openEdit}
             />
@@ -338,37 +399,51 @@ export function RemindersPage() {
       )}
 
       <Modal
-        title={editing ? 'Sửa nhắc uống thuốc' : 'Thêm nhắc uống thuốc'}
+        title={editing ? t('reminders.modalEdit') : t('reminders.modalAdd')}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={() => void onSubmit()}
-        okText="Lưu"
-        cancelText="Hủy"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         destroyOnClose
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="productId" label="Sản phẩm" rules={[{ required: true, message: 'Chọn sản phẩm' }]}>
+          <Form.Item
+            name="productId"
+            label={t('reminders.formProduct')}
+            rules={[{ required: true, message: t('reminders.formProductRequired') }]}
+          >
             <Select
               showSearch
               filterOption={false}
               loading={productSearchLoading}
               options={selectOptions}
-              placeholder="Gõ tên hoặc mã sản phẩm"
+              placeholder={t('reminders.formProductSearch')}
               onSearch={onProductSearch}
-              notFoundContent={productSearchLoading ? <Spin size="small" /> : 'Không tìm thấy sản phẩm'}
+              notFoundContent={
+                productSearchLoading ? <Spin size="small" /> : t('reminders.formProductNotFound')
+              }
             />
           </Form.Item>
-          <Form.Item name="dosageNote" label="Liều dùng / ghi chú">
-            <Input placeholder="1 viên sau ăn sáng" />
+          <Form.Item name="familyMemberId" label={t('reminders.formTaker')}>
+            <Select
+              allowClear
+              placeholder={t('reminders.formTakerSelf')}
+              options={familySelectOptions}
+              notFoundContent={t('reminders.formTakerEmpty')}
+            />
           </Form.Item>
-          <Form.Item name="remindTime" label="Giờ nhắc" rules={[{ required: true }]}>
+          <Form.Item name="dosageNote" label={t('reminders.formDosage')}>
+            <Input placeholder={t('reminders.formDosagePlaceholder')} />
+          </Form.Item>
+          <Form.Item name="remindTime" label={t('reminders.formRemindTime')} rules={[{ required: true }]}>
             <TimePicker format="HH:mm" style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="daysOfWeek" label="Ngày trong tuần" rules={[{ required: true }]}>
-            <Checkbox.Group options={DAY_OPTIONS} />
+          <Form.Item name="daysOfWeek" label={t('reminders.formDaysOfWeek')} rules={[{ required: true }]}>
+            <Checkbox.Group options={dayOptions} />
           </Form.Item>
           {editing ? (
-            <Form.Item name="isActive" label="Bật nhắc" valuePropName="checked">
+            <Form.Item name="isActive" label={t('reminders.formActive')} valuePropName="checked">
               <Switch />
             </Form.Item>
           ) : null}

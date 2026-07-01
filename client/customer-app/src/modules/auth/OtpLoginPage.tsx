@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Card, Form, Input, Space, Steps, Typography, message } from 'antd';
 import { MobileOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getApiErrorMessage, requestOtp, verifyOtp } from '@/shared/api/customer-app.api';
 import {
   APP_BRAND,
@@ -12,6 +13,7 @@ import {
 import { useAuthStore } from '@/shared/auth/auth.store';
 
 export function OtpLoginPage() {
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState(import.meta.env.DEV ? '0909123456' : '');
@@ -22,22 +24,22 @@ export function OtpLoginPage() {
   const onRequestOtp = async () => {
     const normalized = phone.trim();
     if (normalized.length < 9) {
-      message.warning('Nhập số điện thoại hợp lệ');
+      message.warning(t('auth.invalidPhone'));
       return;
     }
     setLoading(true);
     try {
       const code = tenantCode.trim().toUpperCase();
       if (!code) {
-        message.warning('Nhập mã nhà thuốc');
+        message.warning(t('auth.tenantRequired'));
         return;
       }
       saveStoredTenantCode(code);
       const res = await requestOtp(normalized, code);
-      message.success(res.message || 'Đã gửi mã OTP');
+      message.success(res.message || t('auth.otpSent'));
       setStep(1);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không gửi được OTP'));
+      message.error(getApiErrorMessage(error, t('auth.otpSendFailed')));
     } finally {
       setLoading(false);
     }
@@ -48,10 +50,10 @@ export function OtpLoginPage() {
     try {
       const data = await verifyOtp(phone.trim(), values.code.trim(), tenantCode.trim().toUpperCase());
       setSession(data);
-      message.success(`Xin chào ${data.profile.fullName}!`);
+      message.success(t('auth.welcome', { name: data.profile.fullName }));
       navigate('/', { replace: true });
     } catch {
-      message.error('Mã OTP không đúng hoặc đã hết hạn');
+      message.error(t('auth.otpInvalid'));
     } finally {
       setLoading(false);
     }
@@ -74,18 +76,18 @@ export function OtpLoginPage() {
             <Typography.Title level={3} style={{ marginBottom: 4, color: '#0f766e' }}>
               {APP_BRAND}
             </Typography.Title>
-            <Typography.Text type="secondary">App khách hàng — đăng nhập OTP</Typography.Text>
+            <Typography.Text type="secondary">{t('auth.subtitle')}</Typography.Text>
           </div>
 
           <Steps
             size="small"
             current={step}
-            items={[{ title: 'SĐT' }, { title: 'OTP' }]}
+            items={[{ title: t('auth.stepPhone') }, { title: t('auth.stepOtp') }]}
           />
 
           {step === 0 ? (
             <Form layout="vertical" onFinish={onRequestOtp}>
-              <Form.Item label="Số điện thoại" required>
+              <Form.Item label={t('auth.phoneLabel')} required>
                 <Input
                   prefix={<MobileOutlined />}
                   value={phone}
@@ -94,7 +96,7 @@ export function OtpLoginPage() {
                   size="large"
                 />
               </Form.Item>
-              <Form.Item label="Mã nhà thuốc" required>
+              <Form.Item label={t('auth.tenantLabel')} required>
                 <Input
                   value={tenantCode}
                   onChange={(e) => setTenantCode(e.target.value.toUpperCase())}
@@ -104,21 +106,21 @@ export function OtpLoginPage() {
                 />
               </Form.Item>
               <Button type="primary" htmlType="submit" block size="large" loading={loading}>
-                Gửi mã OTP
+                {t('auth.sendOtp')}
               </Button>
             </Form>
           ) : (
             <Form layout="vertical" onFinish={onVerifyOtp}>
               <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-                Mã gửi tới <strong>{phone}</strong>.
+                {t('auth.otpSentTo')} <strong>{phone}</strong>.
                 {import.meta.env.DEV ? (
-                  <> Dev: dùng <code>000000</code></>
+                  <> {t('auth.devOtpHint')} <code>000000</code></>
                 ) : null}
               </Typography.Paragraph>
               <Form.Item
                 name="code"
-                label="Mã OTP"
-                rules={[{ required: true, message: 'Nhập mã OTP' }]}
+                label={t('auth.otpLabel')}
+                rules={[{ required: true, message: t('auth.otpRequired') }]}
               >
                 <Input
                   prefix={<SafetyOutlined />}
@@ -129,10 +131,10 @@ export function OtpLoginPage() {
                 />
               </Form.Item>
               <Button type="primary" htmlType="submit" block size="large" loading={loading}>
-                Xác nhận
+                {t('auth.confirm')}
               </Button>
               <Button type="link" block onClick={() => setStep(0)} style={{ marginTop: 8 }}>
-                Đổi số điện thoại
+                {t('auth.changePhone')}
               </Button>
             </Form>
           )}

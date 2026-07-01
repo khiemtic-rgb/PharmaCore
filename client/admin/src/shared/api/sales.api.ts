@@ -15,6 +15,7 @@ import type {
   PosProductLookup,
   PosProductSearchItem,
   ReceiptStoreSettings,
+  CustomerAppStoreSettings,
   SalesOrderDetail,
   SalesOrderListItem,
   SalesOrderListFilters,
@@ -361,6 +362,38 @@ export async function updateBatchModeSettings(
   return String(data.batchMode ?? data.BatchMode ?? batchMode) as TenantBatchModeValue;
 }
 
+function normalizeCustomerAppSettings(row: Record<string, unknown>): CustomerAppStoreSettings {
+  return {
+    appName: String(row.appName ?? row.AppName ?? ''),
+    shortName: String(row.shortName ?? row.ShortName ?? ''),
+    logoUrl: String(row.logoUrl ?? row.LogoUrl ?? '/customer-app/icon.svg'),
+    primaryColor: String(row.primaryColor ?? row.PrimaryColor ?? '#0F52BA'),
+    secondaryColor: String(row.secondaryColor ?? row.SecondaryColor ?? '#3CB371'),
+    supportPhone: String(row.supportPhone ?? row.SupportPhone ?? ''),
+    tagline: String(row.tagline ?? row.Tagline ?? ''),
+  };
+}
+
+export async function fetchCustomerAppSettings(): Promise<CustomerAppStoreSettings> {
+  const { data } = await http.get<Record<string, unknown>>('/sales/settings/customer-app');
+  return normalizeCustomerAppSettings(data);
+}
+
+export async function updateCustomerAppSettings(
+  payload: CustomerAppStoreSettings,
+): Promise<CustomerAppStoreSettings> {
+  const { data } = await http.put<Record<string, unknown>>('/sales/settings/customer-app', {
+    appName: payload.appName,
+    shortName: payload.shortName,
+    logoUrl: payload.logoUrl || undefined,
+    primaryColor: payload.primaryColor || undefined,
+    secondaryColor: payload.secondaryColor || undefined,
+    supportPhone: payload.supportPhone || undefined,
+    tagline: payload.tagline || undefined,
+  });
+  return normalizeCustomerAppSettings(data);
+}
+
 export async function previewPosAllocation(payload: {
   warehouseId: string;
   items: { productId: string; productUnitId: string; quantity: number }[];
@@ -415,10 +448,15 @@ type CreateSalePayload = Pick<
   items: SaleLinePayload[];
   loyaltyDiscountAmount?: number;
   customerVoucherId?: string;
+  orderReminderLabel?: string | null;
+  orderReminderDaysSupply?: number;
 };
 
 export type CompleteDraftSaleOptions = CompleteDraftSaleRequest & {
   loyaltyDiscountAmount?: number;
+  items?: SaleLinePayload[];
+  orderReminderLabel?: string | null;
+  orderReminderDaysSupply?: number;
 };
 
 export function normalizePosCustomerLoyalty(row: Record<string, unknown>): PosCustomerLoyalty {
@@ -495,6 +533,13 @@ export async function completeDraftSale(
       : {}),
     ...(options?.loyaltyDiscountAmount != null && options.loyaltyDiscountAmount > 0
       ? { loyaltyDiscountAmount: options.loyaltyDiscountAmount }
+      : {}),
+    ...(options?.customerVoucherId ? { customerVoucherId: options.customerVoucherId } : {}),
+    ...(options?.orderReminderDaysSupply != null && options.orderReminderDaysSupply >= 1
+      ? {
+          orderReminderLabel: options.orderReminderLabel ?? null,
+          orderReminderDaysSupply: options.orderReminderDaysSupply,
+        }
       : {}),
   };
   const { data } = await http.post<Record<string, unknown>>(`/sales/orders/${id}/complete`, body);

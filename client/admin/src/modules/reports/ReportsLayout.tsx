@@ -1,18 +1,14 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Tabs } from 'antd';
 import {
   BarChartOutlined,
   InboxOutlined,
   ShoppingOutlined,
   ShopOutlined,
 } from '@ant-design/icons';
-import {
-  moduleTabsShellStyle,
-  secondaryTabLabel,
-  secondaryTabsBarStyle,
-} from '@/shared/components/module-tabs.ui';
+import { moduleTabsShellStyle } from '@/shared/components/module-tabs.ui';
+import { useRegisterProductNavSubnav } from '@/shared/components/module-subnav.context';
 import type { ProductNavTab } from '@/shared/product/product-phases';
 import { useProductNavGuard } from '@/shared/product/useProductNavGuard';
 import { ReportCategoryNav } from '@/modules/reports/ReportCategoryNav';
@@ -69,23 +65,11 @@ export function ReportsLayout() {
           ? 'inventory'
           : 'home';
 
+  useRegisterProductNavSubnav(allTabs, activeKey, (tab) => navigate(tab.path));
+
   return (
     <div>
       <div style={moduleTabsShellStyle}>
-        <div style={secondaryTabsBarStyle}>
-          <Tabs
-            activeKey={activeKey}
-            size="small"
-            items={allTabs.map((tab) => ({
-              key: tab.key,
-              label: secondaryTabLabel(tab.label, tab.icon),
-            }))}
-            onChange={(key) => {
-              const tab = allTabs.find((item) => item.key === key);
-              if (tab) navigate(tab.path);
-            }}
-          />
-        </div>
         <ReportCategoryNav />
       </div>
       <Outlet />

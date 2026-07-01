@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import { HomeOutlined, PlusOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   createAddress,
   deleteAddress,
@@ -45,6 +46,7 @@ function formatAddressLine(address: CustomerAddress) {
 }
 
 export function AddressesPage() {
+  const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   const { online } = useApiHealth();
   const [loading, setLoading] = useState(true);
@@ -62,11 +64,11 @@ export function AddressesPage() {
       setItems(await fetchAddresses());
     } catch (error) {
       setItems([]);
-      setLoadError(getApiErrorMessage(error, 'Không tải được địa chỉ'));
+      setLoadError(getApiErrorMessage(error, t('addresses.loadFailed')));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -77,7 +79,7 @@ export function AddressesPage() {
   const openCreate = () => {
     setEditing(null);
     form.setFieldsValue({
-      label: 'Nhà',
+      label: t('addresses.defaultLabel'),
       recipientName: profile?.fullName ?? '',
       phone: profile?.phone ?? '',
       addressLine: '',
@@ -120,15 +122,15 @@ export function AddressesPage() {
       };
       if (editing) {
         await updateAddress(editing.id, payload);
-        message.success('Đã cập nhật địa chỉ');
+        message.success(t('addresses.updated'));
       } else {
         await createAddress(payload);
-        message.success('Đã thêm địa chỉ');
+        message.success(t('addresses.added'));
       }
       setModalOpen(false);
       await load();
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không lưu được địa chỉ'));
+      message.error(getApiErrorMessage(error, t('addresses.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -137,10 +139,10 @@ export function AddressesPage() {
   const onDelete = async (id: string) => {
     try {
       await deleteAddress(id);
-      message.success('Đã xóa địa chỉ');
+      message.success(t('addresses.deleted'));
       await load();
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không xóa được địa chỉ'));
+      message.error(getApiErrorMessage(error, t('addresses.deleteFailed')));
     }
   };
 
@@ -156,10 +158,10 @@ export function AddressesPage() {
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <BackToHomeButton />
       <Typography.Title level={5} style={{ margin: 0 }}>
-        Địa chỉ giao hàng
+        {t('addresses.title')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-        Lưu địa chỉ nhận thuốc — dùng khi nhà thuốc giao hàng tận nơi.
+        {t('addresses.intro')}
       </Typography.Paragraph>
 
       {loadError && !shouldHidePageErrorForOfflineApi(loadError, online) ? (
@@ -167,19 +169,19 @@ export function AddressesPage() {
           <Typography.Text type="danger">{loadError}</Typography.Text>
           <div style={{ marginTop: 8 }}>
             <Button size="small" onClick={() => void load()}>
-              Thử lại
+              {t('common.retry')}
             </Button>
           </div>
         </Card>
       ) : null}
 
       <Button type="primary" block size="large" icon={<PlusOutlined />} onClick={openCreate}>
-        Thêm địa chỉ
+        {t('addresses.add')}
       </Button>
 
       {items.length === 0 ? (
         <Card size="small" style={{ borderRadius: 12 }}>
-          <Empty description="Chưa có địa chỉ" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description={t('addresses.empty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
         </Card>
       ) : (
         items.map((address) => (
@@ -192,7 +194,7 @@ export function AddressesPage() {
               <Space wrap>
                 <HomeOutlined style={{ color: '#0f766e' }} />
                 <Typography.Text strong>{address.label}</Typography.Text>
-                {address.isDefault ? <Tag color="success">Mặc định</Tag> : null}
+                {address.isDefault ? <Tag color="success">{t('addresses.default')}</Tag> : null}
               </Space>
               {address.recipientName ? (
                 <Typography.Text>{address.recipientName}</Typography.Text>
@@ -205,11 +207,16 @@ export function AddressesPage() {
               <Typography.Text style={{ fontSize: 14 }}>{formatAddressLine(address)}</Typography.Text>
               <Space wrap>
                 <Button size="small" onClick={() => openEdit(address)}>
-                  Sửa
+                  {t('common.edit')}
                 </Button>
-                <Popconfirm title="Xóa địa chỉ này?" okText="Xóa" cancelText="Huỷ" onConfirm={() => void onDelete(address.id)}>
+                <Popconfirm
+                  title={t('addresses.confirmDelete')}
+                  okText={t('common.delete')}
+                  cancelText={t('common.cancel')}
+                  onConfirm={() => void onDelete(address.id)}
+                >
                   <Button size="small" danger>
-                    Xóa
+                    {t('common.delete')}
                   </Button>
                 </Popconfirm>
               </Space>
@@ -218,42 +225,42 @@ export function AddressesPage() {
         ))
       )}
 
-      <Link to="/profile">← Về tài khoản</Link>
+      <Link to="/profile">{t('addresses.backToProfile')}</Link>
 
       <Modal
-        title={editing ? 'Sửa địa chỉ' : 'Thêm địa chỉ'}
+        title={editing ? t('addresses.modalEdit') : t('addresses.modalAdd')}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={() => void onSave()}
         confirmLoading={saving}
-        okText="Lưu"
-        cancelText="Huỷ"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
-          <Form.Item name="label" label="Nhãn" rules={[{ required: true, message: 'Nhập nhãn' }]}>
-            <Input placeholder="Nhà, Cơ quan…" />
+          <Form.Item name="label" label={t('addresses.label')} rules={[{ required: true, message: t('addresses.labelRequired') }]}>
+            <Input placeholder={t('addresses.labelPlaceholder')} />
           </Form.Item>
-          <Form.Item name="recipientName" label="Người nhận">
+          <Form.Item name="recipientName" label={t('addresses.recipient')}>
             <Input />
           </Form.Item>
-          <Form.Item name="phone" label="Số điện thoại">
+          <Form.Item name="phone" label={t('addresses.phone')}>
             <Input inputMode="tel" />
           </Form.Item>
-          <Form.Item name="addressLine" label="Địa chỉ" rules={[{ required: true, message: 'Nhập địa chỉ' }]}>
-            <Input.TextArea rows={2} placeholder="Số nhà, tên đường" />
+          <Form.Item name="addressLine" label={t('addresses.address')} rules={[{ required: true, message: t('addresses.addressRequired') }]}>
+            <Input.TextArea rows={2} placeholder={t('addresses.addressPlaceholder')} />
           </Form.Item>
-          <Form.Item name="ward" label="Phường / xã">
+          <Form.Item name="ward" label={t('addresses.ward')}>
             <Input />
           </Form.Item>
-          <Form.Item name="district" label="Quận / huyện">
+          <Form.Item name="district" label={t('addresses.district')}>
             <Input />
           </Form.Item>
-          <Form.Item name="province" label="Tỉnh / thành phố">
+          <Form.Item name="province" label={t('addresses.province')}>
             <Input />
           </Form.Item>
-          <Form.Item name="isDefault" label="Đặt làm mặc định" valuePropName="checked">
-            <Switch checkedChildren="Có" unCheckedChildren="Không" />
+          <Form.Item name="isDefault" label={t('addresses.setDefault')} valuePropName="checked">
+            <Switch checkedChildren={t('addresses.yes')} unCheckedChildren={t('addresses.no')} />
           </Form.Item>
         </Form>
       </Modal>

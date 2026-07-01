@@ -57,13 +57,14 @@
   },
   "modules": {
     "dashboard": "Overview",
-    "catalog": "Catalog",
+    "sales": "Sales",
     "procurement": "Procurement",
     "inventory": "Inventory",
-    "sales": "Sales",
+    "receivables": "Receivables",
     "customer": "Customers",
+    "catalog": "Products",
     "reports": "Reports",
-    "system": "System",
+    "system": "Settings",
     "comingSoon": "{{name}} (coming soon)"
   },
   "datePicker": {

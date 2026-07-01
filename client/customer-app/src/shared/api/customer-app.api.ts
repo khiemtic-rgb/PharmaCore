@@ -1,12 +1,12 @@
 import axios from 'axios';
 import { http } from '@/shared/api/http';
+import i18n from '@/shared/i18n';
 import type {
   CreateMedicationReminderRequest,
   CustomerChatMessageList,
   CustomerChatThread,
   CustomerConsent,
   CustomerLoginResponse,
-  CustomerProductSearchResult,
   CustomerProfile,
   CustomerVoucherList,
   LoyaltySummary,
@@ -40,6 +40,11 @@ export async function logoutApi(refreshToken: string) {
 
 export async function fetchProfile() {
   const { data } = await http.get<CustomerProfile>('/auth/me');
+  return data;
+}
+
+export async function updatePreferredLocale(preferredLocale: string) {
+  const { data } = await http.patch<CustomerProfile>('/auth/locale', { preferredLocale });
   return data;
 }
 
@@ -83,11 +88,27 @@ export async function deactivateReminder(id: string) {
   await http.delete(`/reminders/${id}`);
 }
 
+function normalizeProductSearchItem(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? row.Id ?? ''),
+    productCode: String(row.productCode ?? row.ProductCode ?? ''),
+    productName: String(row.productName ?? row.ProductName ?? ''),
+    genericName: (row.genericName ?? row.GenericName ?? null) as string | null,
+    saleUnitName: (row.saleUnitName ?? row.SaleUnitName ?? null) as string | null,
+  };
+}
+
 export async function searchProducts(search?: string, page = 1, pageSize = 20) {
-  const { data } = await http.get<CustomerProductSearchResult>('/catalog/products', {
+  const { data } = await http.get<Record<string, unknown>>('/catalog/products', {
     params: { search: search?.trim() || undefined, page, pageSize },
   });
-  return data;
+  const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return {
+    items: rawItems.map(normalizeProductSearchItem),
+    total: Number(data.total ?? data.Total ?? rawItems.length),
+    page: Number(data.page ?? data.Page ?? page),
+    pageSize: Number(data.pageSize ?? data.PageSize ?? pageSize),
+  };
 }
 
 function normalizeGranted(row: Record<string, unknown>): boolean {
@@ -487,10 +508,368 @@ export async function cancelReservation(id: string) {
   return normalizeReservationDetail(data);
 }
 
-export function getApiErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra') {
+function normalizeRepurchase(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? row.Id),
+    salesOrderId: String(row.salesOrderId ?? row.SalesOrderId ?? ''),
+    orderNumber: String(row.orderNumber ?? row.OrderNumber ?? ''),
+    orderLabel: String(row.orderLabel ?? row.OrderLabel ?? i18n.t('ordersDetail.defaultOrderLabel')),
+    status: String(row.status ?? row.Status ?? 'pending'),
+    orderDate: String(row.orderDate ?? row.OrderDate ?? ''),
+    reminderDaysSupply: (row.reminderDaysSupply ?? row.ReminderDaysSupply ?? null) as number | null,
+    suggestedForDate: (row.suggestedForDate ?? row.SuggestedForDate ?? null) as string | null,
+    snoozedUntil: (row.snoozedUntil ?? row.SnoozedUntil ?? null) as string | null,
+    drinkRemindersCreatedAt: (row.drinkRemindersCreatedAt ?? row.DrinkRemindersCreatedAt ?? null) as
+      | string
+      | null,
+  };
+}
+
+export async function fetchRepurchaseSuggestions() {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/repurchase-suggestions',
+  );
+  const rows = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return rows.map(normalizeRepurchase);
+}
+
+export async function acceptRepurchaseSuggestion(
+  id: string,
+  payload?: { familyMemberId?: string; remindTime?: string },
+) {
+  const { data } = await http.post<Record<string, unknown>>(`/repurchase-suggestions/${id}/accept`, payload ?? {});
+  return normalizeRepurchase(data);
+}
+
+export async function dismissRepurchaseSuggestion(id: string) {
+  const { data } = await http.post<Record<string, unknown>>(`/repurchase-suggestions/${id}/dismiss`);
+  return normalizeRepurchase(data);
+}
+
+export async function snoozeRepurchaseSuggestion(id: string, snoozedUntil: string) {
+  const { data } = await http.post<Record<string, unknown>>(`/repurchase-suggestions/${id}/snooze`, {
+    snoozedUntil,
+  });
+  return normalizeRepurchase(data);
+}
+
+function normalizeFamilyMember(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? row.Id),
+    linkedCustomerId: (row.linkedCustomerId ?? row.LinkedCustomerId ?? null) as string | null,
+    fullName: String(row.fullName ?? row.FullName ?? ''),
+    phone: (row.phone ?? row.Phone ?? null) as string | null,
+    dateOfBirth: (row.dateOfBirth ?? row.DateOfBirth ?? null) as string | null,
+    gender: (row.gender ?? row.Gender ?? null) as number | null,
+    relationship: String(row.relationship ?? row.Relationship ?? 'other'),
+    notes: (row.notes ?? row.Notes ?? null) as string | null,
+    status: Number(row.status ?? row.Status ?? 1),
+    notifyCaregiver: Boolean(row.notifyCaregiver ?? row.NotifyCaregiver ?? false),
+  };
+}
+
+export async function fetchFamilyMembers() {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/family',
+  );
+  const rows = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return rows.map(normalizeFamilyMember);
+}
+
+export async function createFamilyMember(payload: {
+  fullName: string;
+  relationship: string;
+  phone?: string;
+  dateOfBirth?: string;
+  notes?: string;
+  notifyCaregiver?: boolean;
+}) {
+  const { data } = await http.post<Record<string, unknown>>('/family', payload);
+  return normalizeFamilyMember(data);
+}
+
+export async function updateFamilyMember(
+  id: string,
+  payload: {
+    fullName: string;
+    relationship: string;
+    phone?: string;
+    dateOfBirth?: string;
+    notes?: string;
+    status: number;
+    notifyCaregiver?: boolean;
+  },
+) {
+  const { data } = await http.put<Record<string, unknown>>(`/family/${id}`, payload);
+  return normalizeFamilyMember(data);
+}
+
+export async function setFamilyNotifyCaregiver(id: string, notifyCaregiver: boolean) {
+  const { data } = await http.patch<Record<string, unknown>>(`/family/${id}/notify-caregiver`, {
+    notifyCaregiver,
+  });
+  return normalizeFamilyMember(data);
+}
+
+export async function deleteFamilyMember(id: string) {
+  await http.delete(`/family/${id}`);
+}
+
+function normalizeHealthRecord(row: Record<string, unknown>) {
+  const attachmentsRaw = row.attachmentsJson ?? row.AttachmentsJson ?? '[]';
+  let attachments: { fileName: string; mimeType: string; url?: string; dataUrl?: string }[] = [];
+  try {
+    attachments = JSON.parse(String(attachmentsRaw)) as typeof attachments;
+  } catch {
+    attachments = [];
+  }
+  attachments = attachments.map((att) => ({
+    fileName: String(att.fileName ?? (att as { name?: string }).name ?? 'file'),
+    mimeType: String(att.mimeType ?? (att as { mime?: string }).mime ?? 'application/octet-stream'),
+    url: att.url ?? (att as { Url?: string }).Url,
+    dataUrl: att.dataUrl,
+  }));
+  return {
+    id: String(row.id ?? row.Id),
+    familyMemberId: (row.familyMemberId ?? row.FamilyMemberId ?? null) as string | null,
+    recordType: String(row.recordType ?? row.RecordType ?? 'note'),
+    title: String(row.title ?? row.Title ?? ''),
+    summary: (row.summary ?? row.Summary ?? null) as string | null,
+    providerName: (row.providerName ?? row.ProviderName ?? null) as string | null,
+    recordedAt: String(row.recordedAt ?? row.RecordedAt ?? ''),
+    attachmentsJson: String(attachmentsRaw),
+    metadataJson: String(row.metadataJson ?? row.MetadataJson ?? '{}'),
+    attachments,
+  };
+}
+
+export async function fetchHealthRecords() {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/health-records',
+  );
+  const rows = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return rows.map(normalizeHealthRecord);
+}
+
+export async function createHealthRecord(payload: {
+  familyMemberId?: string;
+  recordType: string;
+  title: string;
+  summary?: string;
+  providerName?: string;
+  recordedAt: string;
+  attachmentsJson?: string;
+  metadataJson?: string;
+}) {
+  const { data } = await http.post<Record<string, unknown>>('/health-records', payload);
+  return normalizeHealthRecord(data);
+}
+
+export async function deleteHealthRecord(id: string) {
+  await http.delete(`/health-records/${id}`);
+}
+
+export async function uploadHealthRecordAttachment(file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await http.post<{
+    url: string;
+    fileName: string;
+    mimeType: string;
+  }>('/health-records/upload-attachment', form);
+  return {
+    url: String(data.url ?? ''),
+    fileName: String(data.fileName ?? file.name),
+    mimeType: String(data.mimeType ?? (file.type || 'application/octet-stream')),
+  };
+}
+
+function normalizeCareReminder(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? row.Id),
+    familyMemberId: (row.familyMemberId ?? row.FamilyMemberId ?? null) as string | null,
+    healthRecordId: (row.healthRecordId ?? row.HealthRecordId ?? null) as string | null,
+    reminderType: String(row.reminderType ?? row.ReminderType ?? 'visit'),
+    title: String(row.title ?? row.Title ?? ''),
+    note: (row.note ?? row.Note ?? null) as string | null,
+    remindAt: String(row.remindAt ?? row.RemindAt ?? ''),
+    isDone: Boolean(row.isDone ?? row.IsDone ?? false),
+  };
+}
+
+export async function fetchCareReminders(includeDone = false) {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/care-reminders',
+    { params: { includeDone } },
+  );
+  const rows = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return rows.map(normalizeCareReminder);
+}
+
+export async function createCareReminder(payload: {
+  familyMemberId?: string;
+  healthRecordId?: string;
+  reminderType: string;
+  title: string;
+  note?: string;
+  remindAt: string;
+}) {
+  const { data } = await http.post<Record<string, unknown>>('/care-reminders', payload);
+  return normalizeCareReminder(data);
+}
+
+export async function markCareReminderDone(reminder: {
+  id: string;
+  familyMemberId: string | null;
+  healthRecordId: string | null;
+  reminderType: string;
+  title: string;
+  note: string | null;
+  remindAt: string;
+}) {
+  const { data } = await http.put<Record<string, unknown>>(`/care-reminders/${reminder.id}`, {
+    familyMemberId: reminder.familyMemberId,
+    healthRecordId: reminder.healthRecordId,
+    reminderType: reminder.reminderType,
+    title: reminder.title,
+    note: reminder.note,
+    remindAt: reminder.remindAt,
+    isDone: true,
+    snoozedUntil: null,
+  });
+  return normalizeCareReminder(data);
+}
+
+function normalizeTimelineEvent(row: Record<string, unknown>) {
+  return {
+    eventType: String(row.eventType ?? row.EventType ?? ''),
+    occurredAt: String(row.occurredAt ?? row.OccurredAt ?? ''),
+    label: String(row.label ?? row.Label ?? ''),
+  };
+}
+
+function normalizeActiveMedication(row: Record<string, unknown>) {
+  const timeline = (row.timeline ?? row.Timeline ?? []) as Record<string, unknown>[];
+  return {
+    productId: String(row.productId ?? row.ProductId ?? ''),
+    productCode: String(row.productCode ?? row.ProductCode ?? ''),
+    productName: String(row.productName ?? row.ProductName ?? ''),
+    dosageNote: (row.dosageNote ?? row.DosageNote ?? null) as string | null,
+    familyMemberId: (row.familyMemberId ?? row.FamilyMemberId ?? null) as string | null,
+    medicationReminderId: (row.medicationReminderId ?? row.MedicationReminderId ?? null) as string | null,
+    remindTime: (row.remindTime ?? row.RemindTime ?? null) as string | null,
+    daysRemaining: row.daysRemaining != null || row.DaysRemaining != null
+      ? Number(row.daysRemaining ?? row.DaysRemaining)
+      : null,
+    supplyEndDate: (row.supplyEndDate ?? row.SupplyEndDate ?? null) as string | null,
+    lastOrderNumber: (row.lastOrderNumber ?? row.LastOrderNumber ?? null) as string | null,
+    lastOrderDate: (row.lastOrderDate ?? row.LastOrderDate ?? null) as string | null,
+    repurchaseSuggestionCount: Number(row.repurchaseSuggestionCount ?? row.RepurchaseSuggestionCount ?? 0),
+    timeline: timeline.map(normalizeTimelineEvent),
+  };
+}
+
+export async function fetchActiveMedications() {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/active-medications',
+  );
+  const rows = data.items ?? data.Items ?? [];
+  return rows.map(normalizeActiveMedication);
+}
+
+export async function fetchMedicationAdherenceSummary() {
+  const { data } = await http.get<Record<string, unknown>>('/medication-adherence/summary');
+  return {
+    dueCount: Number(data.dueCount ?? data.DueCount ?? 0),
+    takenToday: Number(data.takenToday ?? data.TakenToday ?? 0),
+    skippedToday: Number(data.skippedToday ?? data.SkippedToday ?? 0),
+    scheduledToday: Number(data.scheduledToday ?? data.ScheduledToday ?? 0),
+    missedStreakDays: Number(data.missedStreakDays ?? data.MissedStreakDays ?? 0),
+    showMissedAlert: Boolean(data.showMissedAlert ?? data.ShowMissedAlert ?? false),
+  };
+}
+
+export async function fetchDueReminders() {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/medication-adherence/due',
+  );
+  const rows = data.items ?? data.Items ?? [];
+  return normalizeReminderList({ items: rows });
+}
+
+export async function fetchFamilyDueReminders() {
+  const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
+    '/medication-adherence/family-due',
+  );
+  const rows = data.items ?? data.Items ?? [];
+  return normalizeReminderList({ items: rows });
+}
+
+export async function respondMedicationReminder(
+  reminderId: string,
+  action: 'taken' | 'skipped' | 'snooze',
+  snoozeMinutes?: number,
+) {
+  const { data } = await http.post<Record<string, unknown>>(
+    `/medication-adherence/reminders/${reminderId}/respond`,
+    { action, snoozeMinutes: snoozeMinutes ?? null },
+  );
+  return normalizeReminder(data);
+}
+
+function normalizeServerNotification(row: Record<string, unknown>) {
+  return {
+    id: String(row.id ?? row.Id),
+    category: String(row.category ?? row.Category ?? 'general'),
+    title: String(row.title ?? row.Title ?? ''),
+    body: String(row.body ?? row.Body ?? ''),
+    href: (row.href ?? row.Href ?? null) as string | null,
+    readAt: (row.readAt ?? row.ReadAt ?? null) as string | null,
+    createdAt: String(row.createdAt ?? row.CreatedAt ?? ''),
+    isRead: Boolean(row.isRead ?? row.IsRead ?? false),
+  };
+}
+
+export async function fetchServerNotifications(limit = 50) {
+  const { data } = await http.get<{
+    items?: Record<string, unknown>[];
+    Items?: Record<string, unknown>[];
+    unreadCount?: number;
+    UnreadCount?: number;
+  }>('/notifications', { params: { limit } });
+  const rows = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+  return {
+    items: rows.map(normalizeServerNotification),
+    unreadCount: Number(data.unreadCount ?? data.UnreadCount ?? 0),
+  };
+}
+
+export async function markServerNotificationRead(id: string) {
+  await http.post(`/notifications/${id}/read`);
+}
+
+export async function markAllServerNotificationsRead() {
+  await http.post('/notifications/read-all');
+}
+
+export async function askAiHealth(question: string, productId?: string) {
+  const { data } = await http.post<Record<string, unknown>>('/ai-health/ask', {
+    question,
+    productId: productId ?? null,
+  });
+  return {
+    answer: String(data.answer ?? data.Answer ?? ''),
+    confidence: String(data.confidence ?? data.Confidence ?? 'low'),
+    suggestChat: Boolean(data.suggestChat ?? data.SuggestChat ?? false),
+    disclaimer: String(data.disclaimer ?? data.Disclaimer ?? ''),
+  };
+}
+
+export function getApiErrorMessage(error: unknown, fallback?: string) {
+  const generic = fallback ?? i18n.t('errors.generic');
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return 'Không kết nối được API. Chạy run-dev.bat hoặc .\\scripts\\restart-api.ps1 trước.';
+      return i18n.t('errors.apiOffline');
     }
     const data = error.response.data;
     if (typeof data === 'string' && data.trim()) return data;
@@ -499,18 +878,18 @@ export function getApiErrorMessage(error: unknown, fallback = 'Đã có lỗi x�
       if (msg.trim()) return msg;
     }
     if (error.response.status === 500) {
-      return 'API đang lỗi hoặc chưa chạy. Chạy .\\scripts\\restart-api.ps1 (hoặc run-dev.bat) rồi thử lại.';
+      return i18n.t('errors.apiServerError');
     }
     if (error.response.status === 502 || error.response.status === 503) {
-      return 'Không kết nối được API. Chạy run-dev.bat hoặc .\\scripts\\restart-api.ps1 trước.';
+      return i18n.t('errors.apiOffline');
     }
-    return `${fallback} (HTTP ${error.response.status})`;
+    return i18n.t('errors.httpStatus', { fallback: generic, status: error.response.status });
   }
   if (error instanceof Error && error.message) {
     if (/applicationServerKey is not valid/i.test(error.message)) {
-      return 'VAPID key không hợp lệ. Restart API (scripts\\restart-api.ps1) để nạp CustomerAppPush mới.';
+      return i18n.t('errors.vapidInvalid');
     }
     return error.message;
   }
-  return fallback;
+  return generic;
 }

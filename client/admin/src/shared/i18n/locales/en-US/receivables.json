@@ -1,0 +1,12 @@
+{
+  "receivablesLayout": {
+    "navAriaLabel": "Receivables menu",
+    "loading": "Loading...",
+    "tabs": {
+      "customerReceivables": "Customer AR",
+      "customerPayments": "Customer receipts",
+      "supplierPayables": "Supplier AP",
+      "supplierPayments": "Supplier payments"
+    }
+  }
+}

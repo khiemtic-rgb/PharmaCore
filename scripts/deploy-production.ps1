@@ -96,6 +96,11 @@ Tao nha thuoc (form — khuyen nghi Novixa):
   Hoac script: .\scripts\bootstrap-first-tenant.ps1 ...
 
 Huong dan Novixa: docs\novixa-deploy.md
+Huong dan push app khach (pilot NT): docs\customer-app-push-pilot.md
+
+Sinh VAPID (Production):
+  .\scripts\generate-vapid-keys.ps1 -Subject "mailto:care@domain.vn"
+  .\scripts\verify-push-config.ps1 -BaseUrl https://api.domain.vn
 
 Chạy API:
   cd api

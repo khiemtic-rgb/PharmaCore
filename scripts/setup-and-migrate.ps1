@@ -117,7 +117,13 @@ $migrationFiles = @(
     "047_procurement_placeholder_grn_discount.sql",
     "048_sales_customer_credit.sql",
     "049_customer_payments.sql",
-    "050_fix_return_ar_adjustments.sql"
+    "050_fix_return_ar_adjustments.sql",
+    "051_platform_multi_branch_i18n.sql",
+    "052_family_members.sql",
+    "053_health_records.sql",
+    "054_care_reminders.sql",
+    "055_repurchase_and_order_reminders.sql",
+    "056_customer_app_branding.sql"
 )
 
 foreach ($file in $migrationFiles) {

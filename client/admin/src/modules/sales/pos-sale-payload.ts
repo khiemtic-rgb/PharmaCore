@@ -31,6 +31,7 @@ export function buildCreateSalePayload(
   payments?: PosCheckoutPaymentLine[],
   loyaltyDiscountAmount?: number,
   customerVoucherId?: string,
+  orderReminder?: { label?: string; daysSupply?: number },
 ) {
   return {
     warehouseId,
@@ -41,6 +42,12 @@ export function buildCreateSalePayload(
     payments: payments?.map((p) => ({ paymentMethod: p.paymentMethod, amount: p.amount })),
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
     ...(customerVoucherId ? { customerVoucherId } : {}),
+    ...(orderReminder?.daysSupply != null && orderReminder.daysSupply >= 1
+      ? {
+          orderReminderLabel: orderReminder.label ?? null,
+          orderReminderDaysSupply: orderReminder.daysSupply,
+        }
+      : {}),
     items: buildSaleLineItems(cart),
   };
 }
@@ -52,6 +59,7 @@ export function buildDraftCompletePayload(
   notes?: string,
   loyaltyDiscountAmount?: number,
   customerVoucherId?: string,
+  orderReminder?: { label?: string; daysSupply?: number },
 ) {
   return {
     customerId: customerId ?? null,
@@ -60,6 +68,12 @@ export function buildDraftCompletePayload(
     notes: notes ?? null,
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
     ...(customerVoucherId ? { customerVoucherId } : {}),
+    ...(orderReminder?.daysSupply != null && orderReminder.daysSupply >= 1
+      ? {
+          orderReminderLabel: orderReminder.label ?? null,
+          orderReminderDaysSupply: orderReminder.daysSupply,
+        }
+      : {}),
     items: buildSaleLineItems(cart),
   };
 }

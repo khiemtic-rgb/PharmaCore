@@ -165,6 +165,23 @@ internal sealed class CustomerAppAuthService : ICustomerAppAuthService
         return account is null ? null : ToProfile(account);
     }
 
+    public async Task<CustomerProfileDto?> UpdatePreferredLocaleAsync(
+        Guid accountId,
+        string preferredLocale,
+        CancellationToken cancellationToken = default)
+    {
+        var locale = preferredLocale?.Trim();
+        if (string.IsNullOrWhiteSpace(locale))
+            throw new InvalidOperationException("Ngôn ngữ không hợp lệ.");
+
+        var updated = await _repo.UpdatePreferredLocaleAsync(accountId, locale, cancellationToken);
+        if (!updated)
+            throw new InvalidOperationException("Ngôn ngữ không được hỗ trợ hoặc tài khoản không tồn tại.");
+
+        var account = await _repo.FindAccountByIdAsync(accountId, cancellationToken);
+        return account is null ? null : ToProfile(account);
+    }
+
     public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
@@ -189,7 +206,14 @@ internal sealed class CustomerAppAuthService : ICustomerAppAuthService
     }
 
     private static CustomerProfileDto ToProfile(CustomerAccountRecord account) =>
-        new(account.AccountId, account.CustomerId, account.TenantId, account.TenantCode, account.FullName, account.Phone);
+        new(
+            account.AccountId,
+            account.CustomerId,
+            account.TenantId,
+            account.TenantCode,
+            account.FullName,
+            account.Phone,
+            account.PreferredLocale);
 
     private string? ResolveTenantCode(string? tenantCode)
     {

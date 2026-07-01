@@ -12,7 +12,7 @@ export function buildCustomerPaymentCreateUrl(prefill: CustomerPaymentPrefill): 
   if (prefill.amount != null && prefill.amount > 0) {
     params.set('amount', String(Math.round(prefill.amount)));
   }
-  return `/sales/customer-payments?${params.toString()}`;
+  return `/receivables/customer-payments?${params.toString()}`;
 }
 
 export function parseCustomerPaymentPrefill(searchParams: URLSearchParams): CustomerPaymentPrefill | null {

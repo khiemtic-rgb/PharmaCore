@@ -1,3 +1,4 @@
+import i18n from '@/shared/i18n';
 import { registerSW } from 'virtual:pwa-register';
 
 let setupDone = false;
@@ -18,7 +19,7 @@ function createReadyPromise() {
     const fail = (error: unknown) => {
       if (settled) return;
       settled = true;
-      reject(error instanceof Error ? error : new Error('Không đăng ký được service worker.'));
+      reject(error instanceof Error ? error : new Error(i18n.t('push.swRegisterFailed')));
     };
 
     registerSW({
@@ -62,7 +63,7 @@ export function setupServiceWorkerRegistration() {
 
 export async function waitForServiceWorkerRegistration(timeoutMs = 20_000) {
   if (!('serviceWorker' in navigator)) {
-    throw new Error('Trình duyệt không hỗ trợ service worker.');
+    throw new Error(i18n.t('push.swUnsupported'));
   }
 
   if (!readyPromise) {
@@ -72,15 +73,7 @@ export async function waitForServiceWorkerRegistration(timeoutMs = 20_000) {
   const registration = await Promise.race([
     readyPromise!,
     new Promise<ServiceWorkerRegistration>((_, reject) => {
-      window.setTimeout(
-        () =>
-          reject(
-            new Error(
-              'Service worker chưa sẵn sàng. Tải lại trang, đợi 3–5 giây rồi bấm lại.',
-            ),
-          ),
-        timeoutMs,
-      );
+      window.setTimeout(() => reject(new Error(i18n.t('push.swNotReady'))), timeoutMs);
     }),
   ]);
 
@@ -88,7 +81,7 @@ export async function waitForServiceWorkerRegistration(timeoutMs = 20_000) {
     return withTimeout(
       navigator.serviceWorker.ready,
       timeoutMs,
-      'Service worker chưa active. Tải lại trang rồi thử lại.',
+      i18n.t('push.swNotActive'),
     );
   }
 
@@ -107,9 +100,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 function normalizeServiceWorkerError(error: unknown): Error {
   const text = error instanceof Error ? error.message : String(error);
   if (/ssl certificate error/i.test(text)) {
-    return new Error(
-      'Chứng chỉ HTTPS dev không hợp lệ với service worker. Mở http://localhost:5174 (không dùng https) rồi thử lại.',
-    );
+    return new Error(i18n.t('push.swSslError'));
   }
-  return error instanceof Error ? error : new Error(text || 'Không đăng ký được service worker.');
+  return error instanceof Error ? error : new Error(text || i18n.t('push.swRegisterFailed'));
 }

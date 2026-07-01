@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Space, Spin, Switch, Tag, Typography, message } from 'antd';
-import { BellOutlined, DollarOutlined, EnvironmentOutlined, GiftOutlined, LogoutOutlined } from '@ant-design/icons';
+import { BellOutlined, DollarOutlined, EnvironmentOutlined, GiftOutlined, HeartOutlined, LogoutOutlined, MedicineBoxOutlined, RobotOutlined, ShopOutlined, TeamOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   fetchCareReminderEligible,
   fetchConsents,
@@ -13,8 +14,6 @@ import {
   upsertConsents,
 } from '@/shared/api/customer-app.api';
 import {
-  CONSENT_CHANNEL_LABELS,
-  CONSENT_PURPOSE_LABELS,
   CUSTOMER_APP_CARE_REMINDER_CONSENTS,
   CUSTOMER_APP_CHAT_CONSENT,
   type CustomerConsent,
@@ -26,6 +25,9 @@ import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthB
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
 import { isPushSupported, requestNotificationPermission, subscribePush, unsubscribePush } from '@/shared/push/push-client';
 import { useCustomerNotificationCount } from '@/shared/hooks/useCustomerNotificationCount';
+import { useCustomerLocale } from '@/shared/i18n/LocaleProvider';
+import { LanguageSelect } from '@/shared/i18n/LanguageSelect';
+import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 
 const APP_PUSH_CHANNEL = 4;
 const CARE_REMINDER_PURPOSE = 2;
@@ -64,13 +66,15 @@ function ConsentToggleRow({
   saving: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div
       role="button"
       tabIndex={0}
       aria-pressed={checked}
       aria-busy={saving}
-      aria-label={`${label} — ${checked ? 'đã bật' : 'chưa bật'}`}
+      aria-label={t('profile.toggleAria', { label, state: checked ? t('common.enabled') : t('common.disabled') })}
       onClick={() => {
         if (saving) return;
         onToggle();
@@ -101,7 +105,7 @@ function ConsentToggleRow({
         <Space wrap size={6} style={{ marginBottom: 2 }}>
           <Typography.Text strong>{label}</Typography.Text>
           <Tag color={checked ? 'success' : 'default'} style={{ margin: 0 }}>
-            {checked ? 'Đã bật' : 'Chưa bật'}
+            {checked ? t('common.enabled') : t('common.disabled')}
           </Tag>
         </Space>
         <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
@@ -111,8 +115,8 @@ function ConsentToggleRow({
       <Switch
         checked={checked}
         loading={saving}
-        checkedChildren="Bật"
-        unCheckedChildren="Tắt"
+        checkedChildren={t('common.on')}
+        unCheckedChildren={t('common.off')}
         tabIndex={-1}
         style={{ flexShrink: 0, pointerEvents: 'none' }}
       />
@@ -121,6 +125,9 @@ function ConsentToggleRow({
 }
 
 export function ProfilePage() {
+  const { t } = useTranslation();
+  const { consentChannel, consentPurpose } = useCustomerLabels();
+  const { locale, supportedLocales, setLocale, saving: savingLocale } = useCustomerLocale();
   const profile = useAuthStore((s) => s.profile);
   const { online } = useApiHealth();
   const refreshToken = useAuthStore((s) => s.refreshToken);
@@ -164,7 +171,7 @@ export function ProfilePage() {
           ),
         );
       } else {
-        const msg = getApiErrorMessage(consentsResult.reason, 'Không tải được đồng ý');
+        const msg = getApiErrorMessage(consentsResult.reason, t('profile.loadConsentsFailed'));
         setConsentLoadError(msg);
       }
 
@@ -180,7 +187,7 @@ export function ProfilePage() {
     } finally {
       setConsentLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadConsents();
@@ -190,11 +197,11 @@ export function ProfilePage() {
 
   const consentSummary = useMemo(() => {
     const granted = consentRows.filter((row) => row.granted);
-    if (granted.length === 0) return 'Chưa đồng ý kênh nào';
+    if (granted.length === 0) return t('profile.consentNone');
     return granted
-      .map((row) => `${CONSENT_CHANNEL_LABELS[row.channel]} — ${CONSENT_PURPOSE_LABELS[row.purpose]}`)
+      .map((row) => `${consentChannel(row.channel)} — ${consentPurpose(row.purpose)}`)
       .join(', ');
-  }, [consentRows]);
+  }, [consentRows, consentChannel, consentPurpose, t]);
 
   const onDisablePush = async (showToast = true) => {
     setPushLoading(true);
@@ -205,9 +212,9 @@ export function ProfilePage() {
         await unregisterPushSubscription(endpoint);
       }
       setPushStatus(await fetchPushStatus());
-      if (showToast) message.success('Đã tắt thông báo push');
+      if (showToast) message.success(t('profile.pushDisabledSuccess'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không tắt được thông báo push'));
+      message.error(getApiErrorMessage(error, t('profile.pushDisableFailed')));
     } finally {
       setPushLoading(false);
     }
@@ -230,10 +237,10 @@ export function ProfilePage() {
         void onDisablePush(false);
       }
 
-      message.success(granted ? 'Đã bật' : 'Đã tắt');
+      message.success(granted ? t('profile.turnedOn') : t('profile.turnedOff'));
     } catch (error) {
       setConsentRows(previousItems);
-      message.error(getApiErrorMessage(error, 'Không lưu được đồng ý'));
+      message.error(getApiErrorMessage(error, t('profile.consentSaveFailed')));
     } finally {
       setSavingConsentKey(null);
     }
@@ -241,7 +248,7 @@ export function ProfilePage() {
 
   const onEnablePush = async () => {
     if (!browserPushSupported) {
-      message.warning('Trình duyệt không hỗ trợ thông báo push.');
+      message.warning(t('profile.pushBrowserUnsupported'));
       return;
     }
 
@@ -253,7 +260,7 @@ export function ProfilePage() {
 
       const status = pushStatus ?? (await fetchPushStatus());
       if (!status.publicKey) {
-        throw new Error('API chưa cấu hình VAPID key (CustomerAppPush).');
+        throw new Error(t('profile.vapidNotConfigured'));
       }
 
       if (!appPushConsentGranted) {
@@ -267,9 +274,9 @@ export function ProfilePage() {
       const subscription = await subscribePush(status.publicKey);
       await registerPushSubscription(subscription);
       setPushStatus(await fetchPushStatus());
-      message.success('Đã bật thông báo push trên thiết bị này');
+      message.success(t('profile.pushEnabledSuccess'));
     } catch (error) {
-      const msg = getApiErrorMessage(error, 'Không bật được thông báo push');
+      const msg = getApiErrorMessage(error, t('profile.pushEnableFailed'));
       setPushError(msg);
       message.error(msg);
     } finally {
@@ -300,10 +307,10 @@ export function ProfilePage() {
             c.granted,
         ),
       );
-      message.success(granted ? 'Đã bật chat dược sĩ' : 'Đã tắt chat dược sĩ');
+      message.success(granted ? t('profile.chatConsentOn') : t('profile.chatConsentOff'));
     } catch (error) {
       setChatConsentGranted(previous);
-      message.error(getApiErrorMessage(error, 'Không lưu được đồng ý chat'));
+      message.error(getApiErrorMessage(error, t('profile.chatConsentSaveFailed')));
     } finally {
       setSavingConsentKey(null);
     }
@@ -318,7 +325,7 @@ export function ProfilePage() {
       // vẫn xóa session local
     } finally {
       clearSession();
-      message.success('Đã đăng xuất');
+      message.success(t('profile.logoutSuccess'));
       navigate('/login', { replace: true });
     }
   };
@@ -345,7 +352,7 @@ export function ProfilePage() {
 
       {online === false && consentLoadError ? (
         <div style={{ textAlign: 'center', padding: 16, marginBottom: 12 }}>
-          <Spin tip="Đang chờ API — tự tải lại khi kết nối trở lại" />
+          <Spin tip={t('common.waitingApi')} />
         </div>
       ) : null}
 
@@ -354,31 +361,31 @@ export function ProfilePage() {
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Cần đồng ý ít nhất SMS hoặc App push cho nhắc chăm sóc để bật lịch nhắc uống thuốc."
+          message={t('profile.consentWarning')}
           action={
             <Link to="/reminders" style={{ whiteSpace: 'nowrap' }}>
-              Xem nhắc thuốc
+              {t('profile.consentViewReminders')}
             </Link>
           }
         />
       ) : !(online === false && consentLoadError) ? (
         <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
-          Đã đủ điều kiện gửi nhắc: {consentSummary}
+          {t('profile.consentEligible', { summary: consentSummary })}
         </Typography.Paragraph>
       ) : null}
 
       {!(online === false && consentLoadError) ? (
         <>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 12 }}>
-        Mỗi dòng hiển thị nhãn <strong>Đã bật</strong> / <strong>Chưa bật</strong> — chạm cả dòng để bật hoặc tắt.
+        {t('profile.consentHint')}
       </Typography.Paragraph>
 
       <Space direction="vertical" style={{ width: '100%' }} size={12}>
         {consentRows.map((row) => (
           <ConsentToggleRow
             key={row.key}
-            label={CONSENT_CHANNEL_LABELS[row.channel]}
-            description={CONSENT_PURPOSE_LABELS[row.purpose]}
+            label={consentChannel(row.channel)}
+            description={consentPurpose(row.purpose)}
             checked={row.granted}
             saving={savingConsentKey === row.key}
             onToggle={() => void onConsentToggle(row.key, !row.granted)}
@@ -386,12 +393,12 @@ export function ProfilePage() {
         ))}
 
         <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
-          Chat dược sĩ
+          {t('profile.chatConsentSection')}
         </Typography.Text>
 
         <ConsentToggleRow
-          label={CONSENT_CHANNEL_LABELS[CUSTOMER_APP_CHAT_CONSENT.channel]}
-          description={CONSENT_PURPOSE_LABELS[CUSTOMER_APP_CHAT_CONSENT.purpose]}
+          label={consentChannel(CUSTOMER_APP_CHAT_CONSENT.channel)}
+          description={consentPurpose(CUSTOMER_APP_CHAT_CONSENT.purpose)}
           checked={chatConsentGranted}
           saving={savingConsentKey === CHAT_CONSENT_KEY}
           onToggle={() => void onChatConsentToggle()}
@@ -399,7 +406,7 @@ export function ProfilePage() {
 
         {!chatConsentGranted ? (
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 12 }}>
-            Bật đồng ý này để gửi tin nhắn tại mục <Link to="/chat">Chat</Link>.
+            {t('profile.chatConsentHint')} <Link to="/chat">{t('nav.chat')}</Link>.
           </Typography.Paragraph>
         ) : null}
       </Space>
@@ -412,14 +419,27 @@ export function ProfilePage() {
     <div>
       <BackToHomeButton />
       <Typography.Title level={5} style={{ marginTop: 0 }}>
-        Tài khoản
+        {t('profile.title')}
       </Typography.Title>
+
+      <Card style={{ borderRadius: 12, marginBottom: 16 }} title={t('profile.language')}>
+        <LanguageSelect
+          value={locale}
+          options={supportedLocales}
+          loading={savingLocale}
+          onChange={(value) => {
+            void setLocale(value).then((saved) => {
+              if (saved) message.success(t('profile.languageSaved'));
+            });
+          }}
+        />
+      </Card>
 
       <Card style={{ borderRadius: 12, marginBottom: 16 }}>
         <Descriptions column={1} size="small">
-          <Descriptions.Item label="Họ tên">{profile?.fullName ?? '—'}</Descriptions.Item>
-          <Descriptions.Item label="Số điện thoại">{profile?.phone ?? '—'}</Descriptions.Item>
-          <Descriptions.Item label="Nhà thuốc">{profile?.tenantCode ?? '—'}</Descriptions.Item>
+          <Descriptions.Item label={t('profile.fullName')}>{profile?.fullName ?? '—'}</Descriptions.Item>
+          <Descriptions.Item label={t('profile.phone')}>{profile?.phone ?? '—'}</Descriptions.Item>
+          <Descriptions.Item label={t('profile.pharmacy')}>{profile?.tenantCode ?? '—'}</Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -428,11 +448,61 @@ export function ProfilePage() {
           type="default"
           block
           size="large"
+          icon={<HeartOutlined />}
+          onClick={() => navigate('/health')}
+          style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
+        >
+          {t('profile.healthWallet')}
+        </Button>
+        <Button
+          type="default"
+          block
+          size="large"
           icon={<GiftOutlined />}
           onClick={() => navigate('/loyalty')}
           style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
         >
-          Điểm thưởng & voucher
+          {t('profile.loyalty')}
+        </Button>
+        <Button
+          type="default"
+          block
+          size="large"
+          icon={<TeamOutlined />}
+          onClick={() => navigate('/family')}
+          style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
+        >
+          {t('profile.family')}
+        </Button>
+        <Button
+          type="default"
+          block
+          size="large"
+          icon={<MedicineBoxOutlined />}
+          onClick={() => navigate('/medications')}
+          style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
+        >
+          {t('profile.medications')}
+        </Button>
+        <Button
+          type="default"
+          block
+          size="large"
+          icon={<ShopOutlined />}
+          onClick={() => navigate('/pharmacy')}
+          style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
+        >
+          {t('profile.myPharmacy')}
+        </Button>
+        <Button
+          type="default"
+          block
+          size="large"
+          icon={<RobotOutlined />}
+          onClick={() => navigate('/ai')}
+          style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
+        >
+          {t('profile.aiCopilot')}
         </Button>
         <Button
           type="default"
@@ -442,7 +512,7 @@ export function ProfilePage() {
           onClick={() => navigate('/receivables')}
           style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
         >
-          Công nợ của tôi
+          {t('profile.receivables')}
         </Button>
         <Button
           type="default"
@@ -452,7 +522,7 @@ export function ProfilePage() {
           onClick={() => navigate('/addresses')}
           style={{ textAlign: 'left', justifyContent: 'flex-start', marginBottom: 12 }}
         >
-          Địa chỉ giao hàng
+          {t('profile.addresses')}
         </Button>
         <Button
           type="default"
@@ -462,26 +532,28 @@ export function ProfilePage() {
           onClick={() => navigate('/notifications')}
           style={{ textAlign: 'left', justifyContent: 'flex-start' }}
         >
-          Thông báo{notificationCount > 0 ? ` (${notificationCount} mới)` : ''}
+          {notificationCount > 0
+            ? t('profile.notificationsNew', { count: notificationCount })
+            : t('profile.notifications')}
         </Button>
       </Card>
 
-      <Card title="Thông báo push (PWA)" style={{ borderRadius: 12, marginBottom: 16 }}>
+      <Card title={t('profile.pushCardTitle')} style={{ borderRadius: 12, marginBottom: 16 }}>
         {consentLoading ? (
           <div style={{ textAlign: 'center', padding: 24 }}>
             <Spin />
           </div>
         ) : !browserPushSupported ? (
-          <Alert type="info" showIcon message="Trình duyệt hiện tại chưa hỗ trợ Web Push." />
+          <Alert type="info" showIcon message={t('profile.pushUnsupportedBrowser')} />
         ) : pushStatus === null ? (
           <Alert
             type="warning"
             showIcon
-            message="Không tải được trạng thái push"
-            description="Kiểm tra API đang chạy (port 5290) rồi bấm Thử lại."
+            message={t('profile.pushLoadFailed')}
+            description={t('profile.pushLoadFailedDesc')}
             action={
               <Button size="small" onClick={() => void loadConsents()}>
-                Thử lại
+                {t('common.retry')}
               </Button>
             }
           />
@@ -489,7 +561,7 @@ export function ProfilePage() {
           <Alert
             type="warning"
             showIcon
-            message="API chưa bật push — cấu hình CustomerAppPush:PublicKey/PrivateKey rồi restart API."
+            message={t('profile.pushApiDisabled')}
           />
         ) : (
           <>
@@ -497,15 +569,15 @@ export function ProfilePage() {
               <Alert type="error" showIcon message={pushError} style={{ marginBottom: 12 }} closable onClose={() => setPushError(null)} />
             ) : null}
             <Space wrap style={{ marginBottom: 12 }}>
-              <Typography.Text type="secondary">Trạng thái thiết bị:</Typography.Text>
+              <Typography.Text type="secondary">{t('profile.pushDeviceStatus')}</Typography.Text>
               <Tag color={pushStatus.subscribed ? 'success' : 'default'}>
-                {pushStatus.subscribed ? 'Đã bật push' : 'Chưa bật push'}
+                {pushStatus.subscribed ? t('profile.pushSubscribed') : t('profile.pushNotSubscribed')}
               </Tag>
             </Space>
             <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
               {pushStatus.subscribed
-                ? `Đã đăng ký ${pushStatus.subscriptionCount} thiết bị nhận nhắc uống thuốc qua push.`
-                : 'Bật push để nhận nhắc uống thuốc (dev: mở http://localhost:5174, cho phép thông báo khi trình duyệt hỏi).'}
+                ? t('profile.pushSubscribedDesc', { count: pushStatus.subscriptionCount })
+                : t('profile.pushNotSubscribedDesc')}
             </Typography.Paragraph>
             <Button
               type={pushStatus.subscribed ? 'default' : 'primary'}
@@ -514,18 +586,18 @@ export function ProfilePage() {
               block
               onClick={() => void (pushStatus.subscribed ? onDisablePush() : onEnablePush())}
             >
-              {pushStatus.subscribed ? 'Tắt thông báo push' : 'Bật thông báo push'}
+              {pushStatus.subscribed ? t('profile.pushDisable') : t('profile.pushEnable')}
             </Button>
           </>
         )}
       </Card>
 
-      <Card title="Đồng ý nhận thông báo (CDP)" style={{ borderRadius: 12, marginBottom: 16 }}>
+      <Card title={t('profile.consentCardTitle')} style={{ borderRadius: 12, marginBottom: 16 }}>
         {consentBody}
       </Card>
 
       <Button danger block icon={<LogoutOutlined />} size="large" onClick={() => void onLogout()}>
-        Đăng xuất
+        {t('profile.logout')}
       </Button>
     </div>
   );

@@ -20,6 +20,7 @@ import {
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   cancelReservation,
   createReservation,
@@ -37,13 +38,12 @@ import type {
 } from '@/shared/api/customer-app.types';
 import {
   CUSTOMER_RESERVATION_FULFILLMENT,
-  CUSTOMER_RESERVATION_FULFILLMENT_LABELS,
   CUSTOMER_RESERVATION_STATUS,
-  CUSTOMER_RESERVATION_STATUS_LABELS,
 } from '@/shared/api/customer-app.types';
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
 import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
+import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 
 type DraftLine = {
   key: string;
@@ -74,37 +74,40 @@ function ReservationDetailPanel({
   onCancel: () => void;
   cancelling: boolean;
 }) {
+  const { t } = useTranslation();
+  const { reservationStatus, reservationFulfillment } = useCustomerLabels();
+
   return (
     <Card size="small" style={{ borderRadius: 12, marginBottom: 12 }}>
       <Space direction="vertical" size="small" style={{ width: '100%' }}>
         <Space wrap>
           <Typography.Text strong>{detail.reservationNumber}</Typography.Text>
           <Tag color={reservationStatusColor(detail.status)}>
-            {CUSTOMER_RESERVATION_STATUS_LABELS[detail.status] ?? detail.status}
+            {reservationStatus(detail.status)}
           </Tag>
         </Space>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          {CUSTOMER_RESERVATION_FULFILLMENT_LABELS[detail.fulfillmentType] ?? detail.fulfillmentType}
+          {reservationFulfillment(detail.fulfillmentType)}
           {detail.addressSummary ? ` · ${detail.addressSummary}` : ''}
         </Typography.Text>
         {detail.notes ? (
-          <Typography.Text style={{ fontSize: 13 }}>Ghi chú: {detail.notes}</Typography.Text>
+          <Typography.Text style={{ fontSize: 13 }}>{t('reservations.notes')}: {detail.notes}</Typography.Text>
         ) : null}
         {detail.staffNotes ? (
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            Nhà thuốc: {detail.staffNotes}
+            {t('reservations.pharmacy')}: {detail.staffNotes}
           </Typography.Text>
         ) : null}
         {detail.salesOrderNumber ? (
           <Typography.Text type="success" style={{ fontSize: 13, display: 'block' }}>
-            Hóa đơn {detail.salesOrderNumber} — xem tab Đơn hàng → Đã mua
+            {t('reservations.invoiceLink', { number: detail.salesOrderNumber })}
           </Typography.Text>
         ) : detail.status === CUSTOMER_RESERVATION_STATUS.Collected ? (
           <Alert
             type="warning"
             showIcon
-            message="Chưa có hóa đơn bán"
-            description="Nhà thuốc cần bán qua quầy để ghi nhận thanh toán."
+            message={t('reservations.noInvoiceTitle')}
+            description={t('reservations.noInvoiceDesc')}
           />
         ) : null}
         <List
@@ -126,9 +129,9 @@ function ReservationDetailPanel({
           )}
         />
         {detail.status === CUSTOMER_RESERVATION_STATUS.Pending ? (
-          <Popconfirm title="Hủy yêu cầu đặt trước?" onConfirm={onCancel}>
+          <Popconfirm title={t('reservations.cancelConfirm')} onConfirm={onCancel}>
             <Button danger loading={cancelling} block>
-              Hủy yêu cầu
+              {t('reservations.cancelRequest')}
             </Button>
           </Popconfirm>
         ) : null}
@@ -138,6 +141,8 @@ function ReservationDetailPanel({
 }
 
 export function ReservationsPage() {
+  const { t } = useTranslation();
+  const { reservationStatus } = useCustomerLabels();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { online } = useApiHealth();
@@ -159,7 +164,7 @@ export function ReservationsPage() {
   const [productSearch, setProductSearch] = useState('');
   const [productOptions, setProductOptions] = useState<CustomerProductSearchItem[]>([]);
   const [productLoading, setProductLoading] = useState(false);
-  const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
+  const [selectOpen, setSelectOpen] = useState(false);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -168,11 +173,11 @@ export function ReservationsPage() {
       setItems(await fetchReservations());
     } catch (error) {
       setItems([]);
-      setLoadError(getApiErrorMessage(error, 'Không tải được yêu cầu đặt trước'));
+      setLoadError(getApiErrorMessage(error, t('reservations.loadFailed')));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadList();
@@ -196,7 +201,7 @@ export function ReservationsPage() {
     void fetchReservation(selectedId)
       .then(setDetail)
       .catch((error) => {
-        message.error(getApiErrorMessage(error, 'Không tải được chi tiết'));
+        message.error(getApiErrorMessage(error, t('reservations.detailLoadFailed')));
         setSelectedId(null);
       })
       .finally(() => setDetailLoading(false));
@@ -216,7 +221,7 @@ export function ReservationsPage() {
       setProductOptions(result.items);
     } catch (error) {
       setProductOptions([]);
-      message.error(getApiErrorMessage(error, 'Không tải được danh sách thuốc'));
+      message.error(getApiErrorMessage(error, t('reservations.productLoadFailed')));
     } finally {
       setProductLoading(false);
     }
@@ -225,22 +230,25 @@ export function ReservationsPage() {
   useEffect(() => {
     if (!createOpen) return;
     const q = productSearch.trim();
-    if (q.length < 2) {
-      setProductOptions([]);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      void loadProducts(q);
-    }, 300);
+    const timer = window.setTimeout(
+      () => {
+        void loadProducts(q || undefined);
+      },
+      q.length === 0 ? 0 : 250,
+    );
     return () => window.clearTimeout(timer);
   }, [createOpen, productSearch, loadProducts]);
+
+  useEffect(() => {
+    if (createOpen) {
+      void loadProducts();
+    }
+  }, [createOpen, loadProducts]);
 
   const searchResults = useMemo(
     () => productOptions.filter((p) => !draftLines.some((line) => line.productId === p.id)),
     [productOptions, draftLines],
   );
-
-  const showSearchDropdown = searchDropdownOpen && productSearch.trim().length >= 2;
 
   const defaultAddressId = useMemo(
     () => addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id,
@@ -255,7 +263,7 @@ export function ReservationsPage() {
 
   const addProduct = (product: CustomerProductSearchItem) => {
     if (draftLines.some((line) => line.productId === product.id)) {
-      message.info('Sản phẩm đã có trong danh sách');
+      message.info(t('reservations.productInList'));
       return;
     }
     setDraftLines((prev) => [
@@ -270,17 +278,16 @@ export function ReservationsPage() {
       },
     ]);
     setProductSearch('');
-    setProductOptions([]);
-    setSearchDropdownOpen(false);
+    setSelectOpen(false);
   };
 
   const submitCreate = async () => {
     if (draftLines.length === 0) {
-      message.warning('Thêm ít nhất một sản phẩm');
+      message.warning(t('reservations.addAtLeastOne'));
       return;
     }
     if (fulfillmentType === CUSTOMER_RESERVATION_FULFILLMENT.Delivery && !addressId) {
-      message.warning('Chọn địa chỉ giao hàng');
+      message.warning(t('reservations.selectAddress'));
       return;
     }
     setSubmitting(true);
@@ -295,7 +302,7 @@ export function ReservationsPage() {
           customerNote: line.customerNote?.trim() || undefined,
         })),
       });
-      message.success('Đã gửi yêu cầu đặt trước');
+      message.success(t('reservations.submitted'));
       setCreateOpen(false);
       setDraftLines([]);
       setNotes('');
@@ -303,7 +310,7 @@ export function ReservationsPage() {
       await loadList();
       setSelectedId(created.id);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không gửi được yêu cầu'));
+      message.error(getApiErrorMessage(error, t('reservations.submitFailed')));
     } finally {
       setSubmitting(false);
     }
@@ -316,9 +323,9 @@ export function ReservationsPage() {
       const updated = await cancelReservation(selectedId);
       setDetail(updated);
       await loadList();
-      message.success('Đã hủy yêu cầu');
+      message.success(t('reservations.cancelled'));
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không hủy được yêu cầu'));
+      message.error(getApiErrorMessage(error, t('reservations.cancelFailed')));
     } finally {
       setCancelling(false);
     }
@@ -337,10 +344,10 @@ export function ReservationsPage() {
       <BackToHomeButton />
       <div>
         <Typography.Title level={4} style={{ marginBottom: 4 }}>
-          Đặt thuốc trước
+          {t('reservations.title')}
         </Typography.Title>
         <Typography.Text type="secondary">
-          Gửi danh sách thuốc cần — nhà thuốc xác nhận khi có hàng
+          {t('reservations.intro')}
         </Typography.Text>
       </div>
 
@@ -357,34 +364,38 @@ export function ReservationsPage() {
           onClick={() => {
             setCreateOpen(true);
             setProductSearch('');
-            setProductOptions([]);
-            setSearchDropdownOpen(false);
+            setSelectOpen(false);
           }}
         >
-          Tạo yêu cầu mới
+          {t('reservations.createNew')}
         </Button>
       ) : (
-        <Card size="small" title="Yêu cầu mới" style={{ borderRadius: 12 }}>
+        <Card
+          size="small"
+          title={t('reservations.newRequest')}
+          style={{ borderRadius: 12, overflow: 'visible' }}
+          styles={{ body: { overflow: 'visible' } }}
+        >
           <Form layout="vertical" requiredMark={false}>
-            <Form.Item label="Hình thức nhận">
+            <Form.Item label={t('reservations.fulfillmentType')}>
               <Radio.Group
                 value={fulfillmentType}
                 onChange={(e) => setFulfillmentType(e.target.value)}
                 optionType="button"
                 buttonStyle="solid"
               >
-                <Radio.Button value={CUSTOMER_RESERVATION_FULFILLMENT.Pickup}>Đến quầy</Radio.Button>
-                <Radio.Button value={CUSTOMER_RESERVATION_FULFILLMENT.Delivery}>Giao tận nơi</Radio.Button>
+                <Radio.Button value={CUSTOMER_RESERVATION_FULFILLMENT.Pickup}>{t('reservations.pickup')}</Radio.Button>
+                <Radio.Button value={CUSTOMER_RESERVATION_FULFILLMENT.Delivery}>{t('reservations.delivery')}</Radio.Button>
               </Radio.Group>
             </Form.Item>
 
             {fulfillmentType === CUSTOMER_RESERVATION_FULFILLMENT.Delivery ? (
-              <Form.Item label="Địa chỉ giao hàng">
+              <Form.Item label={t('reservations.deliveryAddress')}>
                 {addresses.length === 0 ? (
                   <Typography.Text type="secondary">
-                    Chưa có địa chỉ.{' '}
+                    {t('reservations.noAddress')}{' '}
                     <Link to="/addresses" onClick={() => navigate('/addresses')}>
-                      Thêm địa chỉ
+                      {t('reservations.addAddress')}
                     </Link>
                   </Typography.Text>
                 ) : (
@@ -400,92 +411,58 @@ export function ReservationsPage() {
               </Form.Item>
             ) : null}
 
-            <Form.Item label="Tìm sản phẩm" extra="Gõ tên hoặc mã thuốc, chọn + để thêm vào danh sách">
-              <div style={{ position: 'relative' }}>
-                <Input
-                  value={productSearch}
-                  onChange={(e) => {
-                    setProductSearch(e.target.value);
-                    setSearchDropdownOpen(true);
-                  }}
-                  onFocus={() => setSearchDropdownOpen(true)}
-                  onBlur={() => {
-                    window.setTimeout(() => setSearchDropdownOpen(false), 180);
-                  }}
-                  placeholder="Gõ tên hoặc mã thuốc..."
-                  allowClear
-                  onClear={() => {
-                    setProductOptions([]);
-                    setSearchDropdownOpen(false);
-                  }}
-                />
-                {showSearchDropdown ? (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 4px)',
-                      left: 0,
-                      right: 0,
-                      zIndex: 20,
-                      background: '#fff',
-                      border: '1px solid #d9d9d9',
-                      borderRadius: 10,
-                      boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
-                      maxHeight: 260,
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {productLoading ? (
-                      <div style={{ textAlign: 'center', padding: 16 }}>
-                        <Spin size="small" />
-                      </div>
-                    ) : searchResults.length === 0 ? (
-                      <Typography.Text type="secondary" style={{ display: 'block', padding: '12px 14px' }}>
-                        Không tìm thấy thuốc
-                      </Typography.Text>
-                    ) : (
-                      searchResults.map((product) => (
-                        <div
-                          key={product.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '10px 12px',
-                            borderBottom: '1px solid #f0f0f0',
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <Typography.Text strong style={{ fontSize: 14, display: 'block' }}>
-                              {product.productName}
-                            </Typography.Text>
-                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                              {product.productCode}
-                              {product.saleUnitName ? ` · ${product.saleUnitName}` : ''}
-                            </Typography.Text>
-                          </div>
-                          <Button
-                            type="primary"
-                            shape="circle"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            aria-label={`Thêm ${product.productName}`}
-                            title="Thêm vào danh sách"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => addProduct(product)}
-                          />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ) : null}
-              </div>
+            <Form.Item label={t('reservations.searchProduct')} extra={t('reservations.searchHint')}>
+              <Select
+                showSearch
+                allowClear
+                value={null}
+                open={selectOpen}
+                placeholder={t('reservations.searchPlaceholder')}
+                filterOption={false}
+                loading={productLoading}
+                searchValue={productSearch}
+                style={{ width: '100%' }}
+                listHeight={280}
+                getPopupContainer={(node) => node.parentElement ?? document.body}
+                notFoundContent={
+                  productLoading ? (
+                    <div style={{ textAlign: 'center', padding: 12 }}>
+                      <Spin size="small" />
+                    </div>
+                  ) : (
+                    t('reservations.noProducts')
+                  )
+                }
+                onSearch={(value) => setProductSearch(value)}
+                onOpenChange={(open) => {
+                  setSelectOpen(open);
+                  if (open && productOptions.length === 0) {
+                    void loadProducts(productSearch.trim() || undefined);
+                  }
+                }}
+                onSelect={(productId) => {
+                  const product = productOptions.find((p) => p.id === productId);
+                  if (product) addProduct(product);
+                  setProductSearch('');
+                  setSelectOpen(false);
+                }}
+                onClear={() => {
+                  setProductSearch('');
+                  void loadProducts();
+                }}
+                options={searchResults.map((product) => ({
+                  value: product.id,
+                  label: `${product.productName} (${product.productCode})${
+                    product.saleUnitName ? ` · ${product.saleUnitName}` : ''
+                  }`,
+                }))}
+              />
             </Form.Item>
 
             {draftLines.length > 0 ? (
               <>
                 <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  Đã chọn ({draftLines.length})
+                  {t('reservations.selected', { count: draftLines.length })}
                 </Typography.Text>
                 {draftLines.map((line) => (
                   <Card
@@ -513,7 +490,7 @@ export function ReservationsPage() {
                         type="text"
                         danger
                         icon={<DeleteOutlined />}
-                        aria-label={`Xóa ${line.productName}`}
+                        aria-label={t('reservations.removeAria', { name: line.productName })}
                         onClick={() => setDraftLines((prev) => prev.filter((x) => x.key !== line.key))}
                       />
                     </div>
@@ -521,7 +498,7 @@ export function ReservationsPage() {
                       min={0.01}
                       step={1}
                       value={line.quantity}
-                      addonAfter={line.unitName || 'SL'}
+                      addonAfter={line.unitName || t('reservations.qtyUnit')}
                       style={{ width: '100%', marginTop: 10 }}
                       onChange={(value) =>
                         setDraftLines((prev) =>
@@ -532,7 +509,7 @@ export function ReservationsPage() {
                       }
                     />
                     <Input
-                      placeholder="Ghi chú (tuỳ chọn)"
+                      placeholder={t('reservations.noteOptional')}
                       value={line.customerNote}
                       style={{ marginTop: 8 }}
                       onChange={(e) =>
@@ -548,22 +525,22 @@ export function ReservationsPage() {
               </>
             ) : (
               <Empty
-                description="Chưa có thuốc — gõ tên ở trên rồi bấm +"
+                description={t('reservations.emptyDraft')}
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 style={{ marginBottom: 8 }}
               />
             )}
 
-            <Form.Item label="Ghi chú chung">
+            <Form.Item label={t('reservations.generalNotes')}>
               <Input.TextArea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </Form.Item>
 
             <Space style={{ width: '100%' }} direction="vertical">
               <Button type="primary" block size="large" loading={submitting} onClick={() => void submitCreate()}>
-                Gửi yêu cầu
+                {t('reservations.submit')}
               </Button>
               <Button block onClick={() => setCreateOpen(false)}>
-                Huỷ
+                {t('common.cancel')}
               </Button>
             </Space>
           </Form>
@@ -579,7 +556,7 @@ export function ReservationsPage() {
       ) : null}
 
       {items.length === 0 ? (
-        <Empty description="Chưa có yêu cầu đặt trước" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty description={t('reservations.empty')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
         <List
           dataSource={items}
@@ -598,11 +575,11 @@ export function ReservationsPage() {
                 <Space wrap>
                   <Typography.Text strong>{item.reservationNumber}</Typography.Text>
                   <Tag color={reservationStatusColor(item.status)}>
-                    {CUSTOMER_RESERVATION_STATUS_LABELS[item.status] ?? item.status}
+                    {reservationStatus(item.status)}
                   </Tag>
                 </Space>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {item.itemCount} sản phẩm · {dayjs(item.submittedAt).format('DD/MM/YYYY HH:mm')}
+                  {t('reservations.productCount', { count: item.itemCount })} · {dayjs(item.submittedAt).format('DD/MM/YYYY HH:mm')}
                 </Typography.Text>
               </Space>
             </Card>

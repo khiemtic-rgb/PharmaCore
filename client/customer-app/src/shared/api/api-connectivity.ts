@@ -12,7 +12,9 @@ export function isApiConnectivityMessage(message: string | null | undefined): bo
   if (!message) return false;
   return (
     /không kết nối được api/i.test(message) ||
+    /cannot reach the api/i.test(message) ||
     /api đang lỗi hoặc chưa chạy/i.test(message) ||
+    /api error or not running/i.test(message) ||
     /api port 5290/i.test(message) ||
     /ECONNREFUSED/i.test(message)
   );

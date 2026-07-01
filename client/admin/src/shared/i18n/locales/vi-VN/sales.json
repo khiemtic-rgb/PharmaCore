@@ -78,6 +78,10 @@
       "creditNotAllowed": "Không ghi nợ",
       "outstanding": "Đang nợ {{amount}}",
       "selectCustomerForCredit": "Chọn khách hàng để ghi nợ — có thể chọn ngay tại đây, không cần quay lại màn POS.",
+      "orderReminderTitle": "Lịch nhắc hết đơn thuốc",
+      "orderReminderHint": "Bật để tự tạo lịch nhắc uống hàng ngày cho khách và gợi ý mua lại khi hết thuốc.",
+      "orderReminderLabel": "Nhãn đơn",
+      "orderReminderDays": "Số ngày dùng thuốc",
       "customerVouchers": "Voucher khách",
       "voucherPlaceholder": "Chọn voucher (tuỳ chọn)",
       "loyaltyHasPoints": "Khách có {{points}} điểm (= {{value}}) · 1 điểm = {{amountPerPoint}}",
@@ -828,6 +832,10 @@
     }
   },
   "receiptSettings": {
+    "pageTabs": {
+      "pos": "Phiếu in & lô",
+      "customerApp": "App khách"
+    },
     "receiptCard": {
       "title": "Phiếu in (POS)",
       "storeName": "Tên cửa hàng",
@@ -847,12 +855,41 @@
       "title": "Quản lý lô (FEFO)",
       "save": "Lưu chế độ lô"
     },
+    "customerAppCard": {
+      "title": "Cài đặt app khách hàng",
+      "intro": "Tên, màu và thông tin hiển thị trên app mobile/PWA của khách. Thay đổi có hiệu lực sau khi khách tải lại app.",
+      "appName": "Tên app",
+      "appNameRequired": "Nhập tên app",
+      "shortName": "Tên rút gọn (header)",
+      "shortNameRequired": "Nhập tên rút gọn",
+      "tagline": "Slogan",
+      "supportPhone": "Hotline hỗ trợ",
+      "logoUrl": "Logo app",
+      "chooseLogo": "Chọn ảnh logo",
+      "logoHint": "PNG, JPG, WebP hoặc SVG — tối đa 5 MB.",
+      "resetLogo": "Dùng logo mặc định",
+      "logoUploadSuccess": "Đã tải logo lên",
+      "logoUploadFailed": "Không tải được logo",
+      "primaryColor": "Màu chính",
+      "secondaryColor": "Màu phụ",
+      "save": "Lưu cài đặt app",
+      "saveHint": "Thay đổi chỉ có hiệu lực sau khi bấm Lưu.",
+      "placeholders": {
+        "appName": "PharmaCare Demo",
+        "shortName": "PharmaCare",
+        "tagline": "Ví sức khỏe số của bạn",
+        "supportPhone": "0909123456",
+        "logoUrl": "/customer-app/icon.svg"
+      }
+    },
     "messages": {
       "loadFailed": "Không tải được cài đặt bán hàng",
       "receiptSaveSuccess": "Đã lưu cài đặt phiếu in",
       "receiptSaveFailed": "Không lưu được cài đặt phiếu in",
       "batchSaveSuccess": "Đã lưu chế độ quản lý lô",
-      "batchSaveFailed": "Không lưu được chế độ lô"
+      "batchSaveFailed": "Không lưu được chế độ lô",
+      "customerAppSaveSuccess": "Đã lưu cài đặt app khách",
+      "customerAppSaveFailed": "Không lưu được cài đặt app khách"
     },
     "defaults": {
       "storeName": "NHÀ THUỐC NOVIXA",

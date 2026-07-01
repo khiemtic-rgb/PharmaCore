@@ -14,7 +14,7 @@ export function buildSupplierPaymentCreateUrl(prefill: SupplierPaymentPrefill): 
   if (prefill.amount != null && prefill.amount > 0) {
     params.set('amount', String(Math.round(prefill.amount)));
   }
-  return `/procurement/supplier-payments?${params.toString()}`;
+  return `/receivables/supplier-payments?${params.toString()}`;
 }
 
 export function parseSupplierPaymentPrefill(searchParams: URLSearchParams): SupplierPaymentPrefill | null {

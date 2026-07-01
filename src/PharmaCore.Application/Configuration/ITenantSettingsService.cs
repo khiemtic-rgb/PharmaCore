@@ -22,4 +22,11 @@ public interface ITenantSettingsService
     Task<TenantDefaultMinStockDto> UpdateDefaultMinStockAsync(
         UpdateTenantDefaultMinStockRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<TenantCustomerAppSettingsDto> GetCustomerAppSettingsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<TenantCustomerAppSettingsDto> UpdateCustomerAppSettingsAsync(
+        UpdateTenantCustomerAppSettingsRequest request,
+        CancellationToken cancellationToken = default);
 }

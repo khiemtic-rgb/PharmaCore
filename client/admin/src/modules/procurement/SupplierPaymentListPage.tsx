@@ -174,7 +174,7 @@ export function SupplierPaymentListPage() {
     prefillHandled.current = true;
     if (!canWrite) {
       message.warning(t('messages.noWritePermission'));
-      navigate('/procurement/supplier-payments', { replace: true });
+      navigate('/receivables/supplier-payments', { replace: true });
       return;
     }
 
@@ -185,7 +185,7 @@ export function SupplierPaymentListPage() {
       ...prefill,
       purchaseOrderId: prefill.purchaseOrderId ?? linkedGrn?.purchaseOrderId,
     });
-    navigate('/procurement/supplier-payments', { replace: true });
+    navigate('/receivables/supplier-payments', { replace: true });
   }, [searchParams, referenceReady, goodsReceipts, canWrite, navigate, openCreate, t]);
 
   useEffect(() => {

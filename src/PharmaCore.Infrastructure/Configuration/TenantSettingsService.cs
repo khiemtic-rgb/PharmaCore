@@ -175,6 +175,123 @@ internal sealed class TenantSettingsService : ITenantSettingsService
         return new TenantDefaultMinStockDto(request.DefaultMinStockQty);
     }
 
+    public async Task<TenantCustomerAppSettingsDto> GetCustomerAppSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                tenant_name AS TenantName,
+                settings->'customer_app'->'branding' AS BrandingJson
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var row = await conn.QuerySingleAsync<(string TenantName, string? BrandingJson)>(
+            sql,
+            new { TenantId = _tenant.TenantId });
+        return ParseCustomerAppSettings(row.TenantName, row.BrandingJson);
+    }
+
+    public async Task<TenantCustomerAppSettingsDto> UpdateCustomerAppSettingsAsync(
+        UpdateTenantCustomerAppSettingsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.AppName))
+            throw new InvalidOperationException("Tên app không được để trống.");
+        if (string.IsNullOrWhiteSpace(request.ShortName))
+            throw new InvalidOperationException("Tên rút gọn không được để trống.");
+
+        var settings = new TenantCustomerAppSettingsDto(
+            request.AppName.Trim(),
+            request.ShortName.Trim(),
+            string.IsNullOrWhiteSpace(request.LogoUrl) ? "/customer-app/icon.svg" : request.LogoUrl.Trim(),
+            string.IsNullOrWhiteSpace(request.PrimaryColor) ? "#0F52BA" : request.PrimaryColor.Trim(),
+            string.IsNullOrWhiteSpace(request.SecondaryColor) ? "#3CB371" : request.SecondaryColor.Trim(),
+            request.SupportPhone?.Trim() ?? "",
+            request.Tagline?.Trim() ?? "");
+
+        var brandingJson = JsonSerializer.Serialize(new
+        {
+            app_name = settings.AppName,
+            short_name = settings.ShortName,
+            logo_url = settings.LogoUrl,
+            primary_color = settings.PrimaryColor,
+            secondary_color = settings.SecondaryColor,
+            support_phone = settings.SupportPhone,
+            tagline = settings.Tagline,
+        });
+
+        const string sql = """
+            UPDATE tenants
+            SET settings = jsonb_set(
+                jsonb_set(
+                    COALESCE(settings, '{}'::jsonb),
+                    '{customer_app}',
+                    COALESCE(settings->'customer_app', '{}'::jsonb),
+                    true
+                ),
+                '{customer_app,branding}',
+                @BrandingJson::jsonb,
+                true
+            ),
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new
+        {
+            TenantId = _tenant.TenantId,
+            BrandingJson = brandingJson,
+        });
+
+        return settings;
+    }
+
+    private static TenantCustomerAppSettingsDto ParseCustomerAppSettings(string tenantName, string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "null")
+        {
+            return new TenantCustomerAppSettingsDto(
+                tenantName,
+                tenantName,
+                "/customer-app/icon.svg",
+                "#0F52BA",
+                "#3CB371",
+                "",
+                "");
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            string Read(string key, string fallback) =>
+                root.TryGetProperty(key, out var el) && !string.IsNullOrWhiteSpace(el.GetString())
+                    ? el.GetString()!.Trim()
+                    : fallback;
+
+            return new TenantCustomerAppSettingsDto(
+                Read("app_name", tenantName),
+                Read("short_name", tenantName),
+                Read("logo_url", "/customer-app/icon.svg"),
+                Read("primary_color", "#0F52BA"),
+                Read("secondary_color", "#3CB371"),
+                Read("support_phone", ""),
+                Read("tagline", ""));
+        }
+        catch (JsonException)
+        {
+            return new TenantCustomerAppSettingsDto(
+                tenantName,
+                tenantName,
+                "/customer-app/icon.svg",
+                "#0F52BA",
+                "#3CB371",
+                "",
+                "");
+        }
+    }
+
     private static TenantReceiptSettingsDto? ParseReceiptJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json) || json == "null")

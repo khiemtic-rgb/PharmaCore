@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Dapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -215,6 +216,35 @@ app.UseAuthorization();
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
+    if (path.StartsWithSegments("/uploads/branding", out var brandingRemaining))
+    {
+        var segments = brandingRemaining.Value.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 2
+            || !Guid.TryParseExact(segments[0], "N", out _))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var filePath = Path.Combine(uploadsRoot, "branding", segments[0], segments[^1]);
+        if (!System.IO.File.Exists(filePath))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        context.Response.ContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => "application/octet-stream",
+        };
+        await context.Response.SendFileAsync(filePath);
+        return;
+    }
+
     if (path.StartsWithSegments("/uploads/products", out var remaining))
     {
         var segments = remaining.Value.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -247,6 +277,64 @@ app.Use(async (context, next) =>
 
         context.Response.ContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
         {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => "application/octet-stream",
+        };
+        await context.Response.SendFileAsync(filePath);
+        return;
+    }
+
+    if (path.StartsWithSegments("/uploads/health-records", out var healthRemaining))
+    {
+        var segments = healthRemaining.Value.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 3
+            || !Guid.TryParseExact(segments[0], "N", out var folderTenantId)
+            || !Guid.TryParseExact(segments[1], "N", out var folderAccountId))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        var claimTenant = context.User.FindFirst("tenant_id")?.Value;
+        if (!Guid.TryParse(claimTenant, out var userTenantId) || userTenantId != folderTenantId)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        var tokenType = context.User.FindFirst(CustomerAppAuthConstants.TokenTypeClaim)?.Value;
+        if (!string.Equals(tokenType, CustomerAppAuthConstants.TokenTypeValue, StringComparison.Ordinal))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        var accountClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? context.User.FindFirst("sub")?.Value;
+        if (!Guid.TryParse(accountClaim, out var accountId) || accountId != folderAccountId)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        var filePath = Path.Combine(uploadsRoot, "health-records", segments[0], segments[1], segments[^1]);
+        if (!System.IO.File.Exists(filePath))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        context.Response.ContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".pdf" => "application/pdf",
             ".png" => "image/png",
             ".webp" => "image/webp",
             ".jpg" or ".jpeg" => "image/jpeg",

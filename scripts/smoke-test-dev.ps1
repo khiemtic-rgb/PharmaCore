@@ -69,6 +69,53 @@ Test-Step 'Reminders list' {
     if ($null -eq $r.items) { throw 'no items array' }
 }
 
+Test-Step 'Branding (public)' {
+    $b = Invoke-RestMethod "$base/api/customer-app/branding?tenantCode=DEMO_PHARMACY"
+    if (-not $b.appName) { throw 'no appName' }
+}
+
+Test-Step 'Admin customer-app settings' {
+    $s = Invoke-RestMethod "$base/api/sales/settings/customer-app" -Headers $script:adminH
+    if (-not $s.appName) { throw 'no appName' }
+    if ($s.appName -ne (Invoke-RestMethod "$base/api/customer-app/branding?tenantCode=DEMO_PHARMACY").appName) {
+        throw 'admin branding out of sync with public branding'
+    }
+}
+
+Test-Step 'Active medications' {
+    $m = Invoke-RestMethod "$base/api/customer-app/active-medications" -Headers $script:custH
+    if ($null -eq $m.items) { throw 'no items array' }
+}
+
+Test-Step 'Repurchase suggestions' {
+    $rp = Invoke-RestMethod "$base/api/customer-app/repurchase-suggestions" -Headers $script:custH
+    if ($null -eq $rp.items) { throw 'no items array' }
+}
+
+Test-Step 'Notifications (server)' {
+    $n = Invoke-RestMethod "$base/api/customer-app/notifications" -Headers $script:custH
+    if ($null -eq $n.items) { throw 'no items array' }
+}
+
+Test-Step 'Family members' {
+    $f = Invoke-RestMethod "$base/api/customer-app/family" -Headers $script:custH
+    if ($null -eq $f.items) { throw 'no items array' }
+}
+
+Test-Step 'Medication adherence summary' {
+    Invoke-RestMethod "$base/api/customer-app/medication-adherence/summary" -Headers $script:custH | Out-Null
+}
+
+Test-Step 'Health records' {
+    $h = Invoke-RestMethod "$base/api/customer-app/health-records" -Headers $script:custH
+    if ($null -eq $h.items) { throw 'no items array' }
+}
+
+Test-Step 'Care reminders' {
+    $c = Invoke-RestMethod "$base/api/customer-app/care-reminders" -Headers $script:custH
+    if ($null -eq $c.items) { throw 'no items array' }
+}
+
 Test-Step 'CDP consents' {
     $c = Invoke-RestMethod "$base/api/customer-app/consents" -Headers $script:custH
     if ($null -eq $c.items) { throw 'no consents' }

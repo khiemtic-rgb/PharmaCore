@@ -14,7 +14,7 @@ public sealed class FilesController : ControllerBase
 {
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".webp",
+        ".jpg", ".jpeg", ".png", ".webp", ".svg",
     };
 
     private const long MaxFileBytes = 5 * 1024 * 1024;
@@ -34,18 +34,51 @@ public sealed class FilesController : ControllerBase
     [RequestFormLimits(MultipartBodyLengthLimit = MaxFileBytes)]
     public async Task<ActionResult<UploadFileResult>> Upload(IFormFile file, CancellationToken cancellationToken)
     {
+        try
+        {
+            return Ok(new UploadFileResult(await SaveImageAsync(file, "products", cancellationToken)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("upload-branding-logo")]
+    [Authorize(Policy = SalesPolicies.Write)]
+    [RequestSizeLimit(MaxFileBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxFileBytes)]
+    public async Task<ActionResult<UploadFileResult>> UploadBrandingLogo(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(new UploadFileResult(await SaveImageAsync(file, "branding", cancellationToken)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    private async Task<string> SaveImageAsync(
+        IFormFile file,
+        string folder,
+        CancellationToken cancellationToken)
+    {
         if (file.Length == 0)
-            return BadRequest(new { message = "Chọn file ảnh để tải lên." });
+            throw new InvalidOperationException("Chọn file ảnh để tải lên.");
 
         if (file.Length > MaxFileBytes)
-            return BadRequest(new { message = "Ảnh tối đa 5 MB." });
+            throw new InvalidOperationException("Ảnh tối đa 5 MB.");
 
         var extension = Path.GetExtension(file.FileName);
         if (string.IsNullOrWhiteSpace(extension) || !AllowedExtensions.Contains(extension))
-            return BadRequest(new { message = "Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP." });
+            throw new InvalidOperationException("Chỉ hỗ trợ ảnh JPG, PNG, WebP hoặc SVG.");
 
         var tenantFolder = _tenant.TenantId.ToString("N");
-        var directory = Path.Combine(_environment.ContentRootPath, "uploads", "products", tenantFolder);
+        var directory = Path.Combine(_environment.ContentRootPath, "uploads", folder, tenantFolder);
         Directory.CreateDirectory(directory);
 
         var fileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
@@ -56,7 +89,6 @@ public sealed class FilesController : ControllerBase
             await file.CopyToAsync(stream, cancellationToken);
         }
 
-        var url = $"/uploads/products/{tenantFolder}/{fileName}";
-        return Ok(new UploadFileResult(url));
+        return $"/uploads/{folder}/{tenantFolder}/{fileName}";
     }
 }

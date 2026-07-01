@@ -56,6 +56,16 @@ export type PosProductSearchItem = Req<
 
 export type ReceiptStoreSettings = Req<TenantReceiptSettingsDto, 'name'>;
 
+export type CustomerAppStoreSettings = {
+  appName: string;
+  shortName: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  supportPhone: string;
+  tagline: string;
+};
+
 export type PosBatchAllocationPreview = Req<
   PosBatchAllocationPreviewDto,
   'batchId' | 'batchNumber' | 'quantity' | 'bookQuantityAvailable'
@@ -246,6 +256,8 @@ export type PosCheckoutConfirm = {
   loyaltyPointsToRedeem?: number;
   loyaltyDiscountAmount?: number;
   customerVoucherId?: string;
+  orderReminderLabel?: string;
+  orderReminderDaysSupply?: number;
 };
 
 export interface PosCustomerVoucher {

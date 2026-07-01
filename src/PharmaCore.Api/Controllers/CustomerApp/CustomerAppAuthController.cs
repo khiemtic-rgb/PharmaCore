@@ -83,4 +83,29 @@ public sealed class CustomerAppAuthController : ControllerBase
         var profile = await _auth.GetProfileAsync(accountId, cancellationToken);
         return profile is null ? Unauthorized() : Ok(profile);
     }
+
+    [HttpPatch("locale")]
+    [Authorize(Policy = CustomerAppPolicies.Authenticated)]
+    [ProducesResponseType(typeof(CustomerProfileDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateLocale(
+        [FromBody] UpdateCustomerPreferredLocaleRequest request,
+        CancellationToken cancellationToken)
+    {
+        var accountIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(accountIdClaim, out var accountId))
+            return Unauthorized();
+
+        try
+        {
+            var profile = await _auth.UpdatePreferredLocaleAsync(
+                accountId,
+                request.PreferredLocale,
+                cancellationToken);
+            return profile is null ? Unauthorized() : Ok(profile);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

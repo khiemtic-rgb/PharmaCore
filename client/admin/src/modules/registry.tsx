@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import {
+  AccountBookOutlined,
   BarChartOutlined,
   DashboardOutlined,
   MedicineBoxOutlined,
@@ -10,19 +11,28 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import { commonT } from '@/shared/i18n';
-export type ModuleKey = 'dashboard' | 'catalog' | 'inventory' | 'procurement' | 'sales' | 'customer' | 'reports' | 'system';
+export type ModuleKey =
+  | 'dashboard'
+  | 'catalog'
+  | 'inventory'
+  | 'procurement'
+  | 'sales'
+  | 'receivables'
+  | 'customer'
+  | 'reports'
+  | 'system';
 
 /**
- * Module trên header — cùng thứ tự sidebar, theo luồng triển khai / vận hành:
- * Danh mục → Mua hàng → Kho → Bán hàng → Khách hàng → Báo cáo
+ * Module trên header POS dropdown — cùng thứ tự sidebar.
  */
 export const HEADER_MODULE_KEYS: ModuleKey[] = [
   'dashboard',
-  'catalog',
+  'sales',
   'procurement',
   'inventory',
-  'sales',
+  'receivables',
   'customer',
+  'catalog',
   'reports',
 ];
 
@@ -34,14 +44,21 @@ export interface ModuleMenuItem {
   enabled: boolean;
 }
 
-/** Bật module khi API backend sẵn sàng — thứ tự = luồng go-live rồi vận hành hàng ngày */
+/** Sidebar cấp 1 — thứ tự theo luồng vận hành nhà thuốc */
 export const moduleRegistry: ModuleMenuItem[] = [
   { key: 'dashboard', label: 'dashboard', path: '/', icon: <DashboardOutlined />, enabled: true },
-  { key: 'catalog', label: 'catalog', path: '/catalog/products', icon: <MedicineBoxOutlined />, enabled: true },
+  { key: 'sales', label: 'sales', path: '/sales/pos', icon: <ShopOutlined />, enabled: true },
   { key: 'procurement', label: 'procurement', path: '/procurement/suppliers', icon: <ShoppingOutlined />, enabled: true },
   { key: 'inventory', label: 'inventory', path: '/inventory/opening-balance', icon: <InboxOutlined />, enabled: true },
-  { key: 'sales', label: 'sales', path: '/sales/pos', icon: <ShopOutlined />, enabled: true },
+  {
+    key: 'receivables',
+    label: 'receivables',
+    path: '/receivables/customers',
+    icon: <AccountBookOutlined />,
+    enabled: true,
+  },
   { key: 'customer', label: 'customer', path: '/customer', icon: <TeamOutlined />, enabled: true },
+  { key: 'catalog', label: 'catalog', path: '/catalog/products', icon: <MedicineBoxOutlined />, enabled: true },
   { key: 'reports', label: 'reports', path: '/reports', icon: <BarChartOutlined />, enabled: true },
   { key: 'system', label: 'system', path: '/system/branches', icon: <SettingOutlined />, enabled: true },
 ];

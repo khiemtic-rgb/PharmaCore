@@ -52,6 +52,9 @@ internal sealed class CustomerPushRepository
                 mr.tenant_id AS TenantId,
                 mr.customer_id AS CustomerId,
                 mr.product_id AS ProductId,
+                mr.family_member_id AS FamilyMemberId,
+                fm.full_name AS FamilyMemberName,
+                COALESCE(fm.notify_caregiver, FALSE) AS NotifyCaregiver,
                 p.product_name AS ProductName,
                 mr.dosage_note AS DosageNote,
                 mr.remind_time AS RemindTime,
@@ -65,6 +68,9 @@ internal sealed class CustomerPushRepository
                 ON ca.customer_id = mr.customer_id
                AND ca.tenant_id = mr.tenant_id
                AND ca.status = 1
+            LEFT JOIN family_members fm
+                ON fm.id = mr.family_member_id
+               AND fm.tenant_id = mr.tenant_id
             WHERE mr.is_active = TRUE
               AND mr.next_remind_at IS NOT NULL
               AND mr.next_remind_at <= NOW()
@@ -106,14 +112,25 @@ internal sealed class CustomerPushRepository
         string title,
         string body,
         object payload,
+        CancellationToken cancellationToken) =>
+        InsertNotificationAsync(tenantId, customerId, title, body, payload, "system", null, cancellationToken);
+
+    public async Task InsertNotificationAsync(
+        Guid tenantId,
+        Guid customerId,
+        string title,
+        string body,
+        object payload,
+        string category,
+        string? href,
         CancellationToken cancellationToken)
     {
         const string sql = """
             INSERT INTO customer_notifications (
-                tenant_id, customer_id, channel, title, body, payload, sent_at
+                tenant_id, customer_id, channel, category, title, body, href, payload, sent_at
             )
             VALUES (
-                @TenantId, @CustomerId, 1, @Title, @Body, @Payload::jsonb, NOW()
+                @TenantId, @CustomerId, 1, @Category, @Title, @Body, @Href, @Payload::jsonb, NOW()
             )
             """;
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
@@ -121,8 +138,10 @@ internal sealed class CustomerPushRepository
         {
             TenantId = tenantId,
             CustomerId = customerId,
+            Category = category,
             Title = title,
             Body = body,
+            Href = href,
             Payload = JsonSerializer.Serialize(payload),
         });
     }
@@ -155,6 +174,9 @@ internal sealed class DueReminderPushRow
     public Guid TenantId { get; set; }
     public Guid CustomerId { get; set; }
     public Guid ProductId { get; set; }
+    public Guid? FamilyMemberId { get; set; }
+    public string? FamilyMemberName { get; set; }
+    public bool NotifyCaregiver { get; set; }
     public string ProductName { get; set; } = "";
     public string? DosageNote { get; set; }
     public TimeOnly RemindTime { get; set; }

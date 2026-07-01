@@ -48,9 +48,15 @@ internal sealed class MedicationReminderPushWorker : BackgroundService
             {
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 var push = scope.ServiceProvider.GetRequiredService<ICustomerPushService>();
-                var sent = await push.DispatchDueRemindersAsync(stoppingToken);
+                var medSent = await push.DispatchDueRemindersAsync(stoppingToken);
+                var engagementSent = await push.DispatchEngagementNotificationsAsync(stoppingToken);
+                var sent = medSent + engagementSent;
                 if (sent > 0)
-                    _logger.LogInformation("Sent {Count} medication reminder push notification(s).", sent);
+                    _logger.LogInformation(
+                        "Sent {Count} customer push notification(s) (medication={Med}, engagement={Engagement}).",
+                        sent,
+                        medSent,
+                        engagementSent);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

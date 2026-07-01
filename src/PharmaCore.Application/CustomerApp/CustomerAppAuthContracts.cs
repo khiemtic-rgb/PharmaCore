@@ -15,7 +15,10 @@ public sealed record CustomerProfileDto(
     Guid TenantId,
     string TenantCode,
     string FullName,
-    string Phone);
+    string Phone,
+    string? PreferredLocale);
+
+public sealed record UpdateCustomerPreferredLocaleRequest(string PreferredLocale);
 
 public sealed record CustomerLoginResponse(
     string AccessToken,

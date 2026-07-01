@@ -78,6 +78,10 @@
       "creditNotAllowed": "No credit",
       "outstanding": "Outstanding {{amount}}",
       "selectCustomerForCredit": "Select a customer for credit — you can do it here without returning to POS.",
+      "orderReminderTitle": "Medication refill reminder",
+      "orderReminderHint": "Creates daily medication reminders for the customer app and a repurchase suggestion when supply runs out.",
+      "orderReminderLabel": "Order label",
+      "orderReminderDays": "Days of supply",
       "customerVouchers": "Customer vouchers",
       "voucherPlaceholder": "Select voucher (optional)",
       "loyaltyHasPoints": "Customer has {{points}} pts (= {{value}}) · 1 pt = {{amountPerPoint}}",
@@ -828,6 +832,10 @@
     }
   },
   "receiptSettings": {
+    "pageTabs": {
+      "pos": "Receipt & batch",
+      "customerApp": "Customer app"
+    },
     "receiptCard": {
       "title": "Receipt (POS)",
       "storeName": "Store name",
@@ -847,12 +855,41 @@
       "title": "Batch management (FEFO)",
       "save": "Save batch mode"
     },
+    "customerAppCard": {
+      "title": "Customer app settings",
+      "intro": "Name, colors, and support info shown in the customer mobile/PWA app. Changes apply after the customer reloads the app.",
+      "appName": "App name",
+      "appNameRequired": "Enter app name",
+      "shortName": "Short name (header)",
+      "shortNameRequired": "Enter short name",
+      "tagline": "Tagline",
+      "supportPhone": "Support hotline",
+      "logoUrl": "App logo",
+      "chooseLogo": "Choose logo image",
+      "logoHint": "PNG, JPG, WebP or SVG — max 5 MB.",
+      "resetLogo": "Use default logo",
+      "logoUploadSuccess": "Logo uploaded",
+      "logoUploadFailed": "Could not upload logo",
+      "primaryColor": "Primary color",
+      "secondaryColor": "Secondary color",
+      "save": "Save app settings",
+      "saveHint": "Changes apply only after you click Save.",
+      "placeholders": {
+        "appName": "PharmaCare Demo",
+        "shortName": "PharmaCare",
+        "tagline": "Your digital health wallet",
+        "supportPhone": "0909123456",
+        "logoUrl": "/customer-app/icon.svg"
+      }
+    },
     "messages": {
       "loadFailed": "Could not load sales settings",
       "receiptSaveSuccess": "Receipt settings saved",
       "receiptSaveFailed": "Could not save receipt settings",
       "batchSaveSuccess": "Batch mode saved",
-      "batchSaveFailed": "Could not save batch mode"
+      "batchSaveFailed": "Could not save batch mode",
+      "customerAppSaveSuccess": "Customer app settings saved",
+      "customerAppSaveFailed": "Could not save customer app settings"
     },
     "defaults": {
       "storeName": "NOVIXA PHARMACY",

@@ -10,17 +10,23 @@ namespace PharmaCore.Infrastructure.CustomerApp;
 internal sealed class CustomerPushService : ICustomerPushService
 {
     private readonly CustomerPushRepository _repo;
+    private readonly CustomerEngagementRepository _engagement;
+    private readonly CustomerReminderRepository _reminders;
     private readonly CustomerAppConsentRepository _consents;
     private readonly CustomerAppPushOptions _options;
     private readonly ILogger<CustomerPushService> _logger;
 
     public CustomerPushService(
         CustomerPushRepository repo,
+        CustomerEngagementRepository engagement,
+        CustomerReminderRepository reminders,
         CustomerAppConsentRepository consents,
         IOptions<CustomerAppPushOptions> options,
         ILogger<CustomerPushService> logger)
     {
         _repo = repo;
+        _engagement = engagement;
+        _reminders = reminders;
         _consents = consents;
         _options = options.Value;
         _logger = logger;
@@ -124,7 +130,9 @@ internal sealed class CustomerPushService : ICustomerPushService
                     continue;
                 }
 
-                var title = "Nhắc uống thuốc";
+                var title = row.FamilyMemberId.HasValue && row.NotifyCaregiver && !string.IsNullOrWhiteSpace(row.FamilyMemberName)
+                    ? $"{row.FamilyMemberName} đến giờ uống thuốc"
+                    : "Nhắc uống thuốc";
                 var body = string.IsNullOrWhiteSpace(row.DosageNote)
                     ? row.ProductName
                     : $"{row.ProductName} — {row.DosageNote}";
@@ -171,7 +179,9 @@ internal sealed class CustomerPushService : ICustomerPushService
                         row.CustomerId,
                         title,
                         body,
-                        new { reminderId = row.ReminderId, channel = "app_push" },
+                        new { reminderId = row.ReminderId, channel = "app_push", familyMemberId = row.FamilyMemberId },
+                        "medication",
+                        "/reminders",
                         cancellationToken);
                     sentCount++;
                 }
@@ -185,6 +195,219 @@ internal sealed class CustomerPushService : ICustomerPushService
         }
 
         return sentCount;
+    }
+
+    public async Task<int> DispatchEngagementNotificationsAsync(CancellationToken cancellationToken = default)
+    {
+        var sent = 0;
+        sent += await DispatchCareReminderNotificationsAsync(cancellationToken);
+        sent += await DispatchRepurchaseNotificationsAsync(cancellationToken);
+        sent += await DispatchMissedAdherenceNotificationsAsync(cancellationToken);
+        return sent;
+    }
+
+    private async Task<int> DispatchCareReminderNotificationsAsync(CancellationToken cancellationToken)
+    {
+        var sent = 0;
+        var advanceRows = await _engagement.ListCareRemindersForAdvanceNoticeAsync(30, cancellationToken);
+        foreach (var row in advanceRows)
+        {
+            if (await TryDispatchCareReminderAsync(row, advance: true, cancellationToken))
+                sent++;
+            await _engagement.MarkCareReminderAdvanceNotifiedAsync(row.TenantId, row.CareReminderId, cancellationToken);
+        }
+
+        var dueRows = await _engagement.ListCareRemindersDueAsync(30, cancellationToken);
+        foreach (var row in dueRows)
+        {
+            if (await TryDispatchCareReminderAsync(row, advance: false, cancellationToken))
+                sent++;
+            await _engagement.MarkCareReminderDueNotifiedAsync(row.TenantId, row.CareReminderId, cancellationToken);
+        }
+
+        return sent;
+    }
+
+    private async Task<bool> TryDispatchCareReminderAsync(
+        CareReminderDispatchRow row,
+        bool advance,
+        CancellationToken cancellationToken)
+    {
+        var when = new DateTimeOffset(DateTime.SpecifyKind(row.RemindAt, DateTimeKind.Utc))
+            .ToOffset(TimeSpan.FromHours(7))
+            .ToString("dd/MM/yyyy HH:mm");
+        var title = advance
+            ? (string.IsNullOrWhiteSpace(row.FamilyMemberName)
+                ? $"Nhắc trước: {row.Title}"
+                : $"Nhắc trước cho {row.FamilyMemberName}: {row.Title}")
+            : (string.IsNullOrWhiteSpace(row.FamilyMemberName)
+                ? row.Title
+                : $"{row.FamilyMemberName} — {row.Title}");
+        var body = advance
+            ? $"Lịch vào {when}.{FormatCareNote(row.Note)}"
+            : $"Đến giờ {when}.{FormatCareNote(row.Note)}";
+
+        return await NotifyCustomerAsync(
+            row.TenantId,
+            row.CustomerId,
+            row.AccountId,
+            row.DeviceTokensJson,
+            title,
+            body,
+            "care",
+            "/health",
+            new { type = advance ? "care_reminder_advance" : "care_reminder_due", careReminderId = row.CareReminderId },
+            cancellationToken);
+    }
+
+    private async Task<int> DispatchRepurchaseNotificationsAsync(CancellationToken cancellationToken)
+    {
+        var sent = 0;
+        var rows = await _engagement.ListRepurchaseDueAsync(30, cancellationToken);
+        foreach (var row in rows)
+        {
+            var dateLabel = row.SuggestedForDate?.ToString("dd/MM/yyyy") ?? "hôm nay";
+            var title = "Đơn thuốc sắp hết";
+            var body = $"{row.OrderLabel} — dự kiến cần mua lại khoảng {dateLabel}.";
+            if (await NotifyCustomerAsync(
+                    row.TenantId,
+                    row.CustomerId,
+                    row.AccountId,
+                    row.DeviceTokensJson,
+                    title,
+                    body,
+                    "medication",
+                    "/medications",
+                    new { type = "repurchase_due", repurchaseId = row.RepurchaseId },
+                    cancellationToken))
+            {
+                sent++;
+            }
+
+            await _engagement.MarkRepurchaseNotifiedAsync(row.TenantId, row.RepurchaseId, cancellationToken);
+        }
+
+        return sent;
+    }
+
+    private async Task<int> DispatchMissedAdherenceNotificationsAsync(CancellationToken cancellationToken)
+    {
+        var sent = 0;
+        var utcNow = DateTimeOffset.UtcNow;
+        var candidates = await _engagement.ListMissedAdherenceCandidatesAsync(50, cancellationToken);
+        foreach (var row in candidates)
+        {
+            var summary = await _reminders.GetAdherenceSummaryAsync(row.TenantId, row.CustomerId, utcNow, cancellationToken);
+            if (summary.MissedStreakDays < 3)
+                continue;
+
+            var title = "Bạn bỏ liều vài ngày gần đây";
+            var body = $"Đã {summary.MissedStreakDays} ngày không ghi nhận uống thuốc. Mở Nhắc thuốc để cập nhật.";
+            if (await NotifyCustomerAsync(
+                    row.TenantId,
+                    row.CustomerId,
+                    row.AccountId,
+                    row.DeviceTokensJson,
+                    title,
+                    body,
+                    "medication",
+                    "/reminders",
+                    new { type = "adherence_missed", streakDays = summary.MissedStreakDays },
+                    cancellationToken))
+            {
+                sent++;
+            }
+
+            await _engagement.MarkAdherenceAlertDispatchedAsync(row.TenantId, row.CustomerId, cancellationToken);
+        }
+
+        return sent;
+    }
+
+    private static string FormatCareNote(string? note) =>
+        string.IsNullOrWhiteSpace(note) ? "" : $" {note.Trim()}";
+
+    private async Task<bool> NotifyCustomerAsync(
+        Guid tenantId,
+        Guid customerId,
+        Guid accountId,
+        string deviceTokensJson,
+        string title,
+        string body,
+        string category,
+        string href,
+        object payload,
+        CancellationToken cancellationToken)
+    {
+        await _repo.InsertNotificationAsync(
+            tenantId,
+            customerId,
+            title,
+            body,
+            payload,
+            category,
+            href,
+            cancellationToken);
+
+        if (!_options.Enabled
+            || string.IsNullOrWhiteSpace(_options.PublicKey)
+            || string.IsNullOrWhiteSpace(_options.PrivateKey))
+        {
+            return true;
+        }
+
+        if (!await _consents.HasGrantedConsentAsync(
+                tenantId,
+                customerId,
+                CustomerConsentChannels.AppPush,
+                CustomerConsentPurposes.CareReminder,
+                cancellationToken))
+            return true;
+
+        var subscriptions = ParseSubscriptions(deviceTokensJson);
+        if (subscriptions.Count == 0)
+            return true;
+
+        var notification = JsonSerializer.Serialize(new
+        {
+            title,
+            body,
+            data = new { url = href, category },
+        });
+
+        var staleEndpoints = new List<string>();
+        var delivered = false;
+        foreach (var subscription in subscriptions)
+        {
+            try
+            {
+                await SendPushAsync(subscription, notification, cancellationToken);
+                delivered = true;
+            }
+            catch (WebPushException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Gone
+                                              || ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                staleEndpoints.Add(subscription.Endpoint);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Engagement push failed for customer {CustomerId}", customerId);
+            }
+        }
+
+        if (staleEndpoints.Count > 0)
+        {
+            var remaining = subscriptions
+                .Where(s => !staleEndpoints.Contains(s.Endpoint, StringComparer.Ordinal))
+                .ToList();
+            await _repo.SaveDeviceTokensJsonAsync(
+                tenantId,
+                accountId,
+                SerializeSubscriptions(remaining),
+                cancellationToken);
+        }
+
+        return delivered;
     }
 
     public async Task SendStaffChatReplyPushAsync(
@@ -272,6 +495,8 @@ internal sealed class CustomerPushService : ICustomerPushService
                 title,
                 preview,
                 new { channel = "app_push", type = "staff_chat_reply" },
+                "chat",
+                "/chat",
                 cancellationToken);
         }
     }
@@ -367,6 +592,8 @@ internal sealed class CustomerPushService : ICustomerPushService
                 title,
                 body,
                 new { channel = "app_push", type = "customer_draft_order", draftNumber },
+                "order",
+                "/orders",
                 cancellationToken);
         }
     }

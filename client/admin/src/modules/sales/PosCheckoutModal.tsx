@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Alert, Button, Form, InputNumber, Modal, Select, Space, Switch, Tag, Tooltip, Typography, message } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tag, Tooltip, Typography, message } from 'antd';
 
 import { MinusCircleOutlined, PlusOutlined, UserAddOutlined } from '@ant-design/icons';
 
@@ -21,6 +21,7 @@ import {
 } from '@/shared/utils/money';
 
 import { PosSummaryRow } from '@/modules/sales/pos-summary-ui';
+import { defaultOrderReminderLabel } from '@/modules/sales/order-reminder-label';
 import { useTranslation } from 'react-i18next';
 import { useSalesEnums } from '@/shared/i18n/use-sales-enums';
 
@@ -323,6 +324,12 @@ export function PosCheckoutModal({
 
   const [redeemDiscountAmount, setRedeemDiscountAmount] = useState(0);
 
+  const [orderReminderEnabled, setOrderReminderEnabled] = useState(false);
+
+  const [orderReminderLabel, setOrderReminderLabel] = useState(() => defaultOrderReminderLabel());
+
+  const [orderReminderDaysSupply, setOrderReminderDaysSupply] = useState(30);
+
 
 
   const loyaltyDiscount =
@@ -363,9 +370,25 @@ export function PosCheckoutModal({
 
     setRedeemDiscountAmount(0);
 
+    setOrderReminderEnabled(false);
+
+    setOrderReminderLabel(defaultOrderReminderLabel());
+
+    setOrderReminderDaysSupply(30);
+
     setSelectedCustomerVoucherId(undefined);
 
   }, [open, totalAmount]);
+
+
+
+  const orderReminderConfirm = useMemo(() => {
+    if (!customerId || !orderReminderEnabled || orderReminderDaysSupply < 1) return {};
+    return {
+      orderReminderLabel: orderReminderLabel.trim() || defaultOrderReminderLabel(),
+      orderReminderDaysSupply: orderReminderDaysSupply,
+    };
+  }, [customerId, orderReminderEnabled, orderReminderDaysSupply, orderReminderLabel]);
 
 
 
@@ -613,6 +636,8 @@ export function PosCheckoutModal({
 
             ...(loyaltyDiscount > 0 ? { loyaltyDiscountAmount: loyaltyDiscount } : {}),
 
+            ...orderReminderConfirm,
+
           }),
 
         );
@@ -650,6 +675,8 @@ export function PosCheckoutModal({
           ...(selectedCustomerVoucherId ? { customerVoucherId: selectedCustomerVoucherId } : {}),
 
           ...(loyaltyDiscount > 0 ? { loyaltyDiscountAmount: loyaltyDiscount } : {}),
+
+          ...orderReminderConfirm,
 
         }),
 
@@ -970,6 +997,98 @@ export function PosCheckoutModal({
         ) : null}
 
       </div>
+
+
+
+      {customerId ? (
+
+        <div style={{ marginBottom: 16 }}>
+
+          <Space align="center" style={{ marginBottom: 8 }}>
+
+            <Typography.Text strong>{t('pos.checkout.orderReminderTitle')}</Typography.Text>
+
+            <Switch
+
+              checked={orderReminderEnabled}
+
+              disabled={busy}
+
+              checkedChildren={tc('actions.yes')}
+
+              unCheckedChildren={tc('actions.no')}
+
+              onChange={(checked) => {
+
+                setOrderReminderEnabled(checked);
+
+                if (checked && !orderReminderLabel.trim()) {
+
+                  setOrderReminderLabel(defaultOrderReminderLabel());
+
+                }
+
+              }}
+
+            />
+
+          </Space>
+
+          {orderReminderEnabled ? (
+
+            <Space direction="vertical" style={{ width: '100%' }} size={8}>
+
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+
+                {t('pos.checkout.orderReminderHint')}
+
+              </Typography.Text>
+
+              <Form.Item label={t('pos.checkout.orderReminderLabel')} style={{ marginBottom: 0 }}>
+
+                <Input
+
+                  maxLength={120}
+
+                  value={orderReminderLabel}
+
+                  disabled={busy}
+
+                  placeholder={defaultOrderReminderLabel()}
+
+                  onChange={(e) => setOrderReminderLabel(e.target.value)}
+
+                />
+
+              </Form.Item>
+
+              <Form.Item label={t('pos.checkout.orderReminderDays')} style={{ marginBottom: 0 }}>
+
+                <InputNumber
+
+                  min={1}
+
+                  max={730}
+
+                  value={orderReminderDaysSupply}
+
+                  disabled={busy}
+
+                  style={{ width: 160 }}
+
+                  onChange={(value) => setOrderReminderDaysSupply(Math.max(1, Number(value ?? 30)))}
+
+                />
+
+              </Form.Item>
+
+            </Space>
+
+          ) : null}
+
+        </div>
+
+      ) : null}
 
 
 

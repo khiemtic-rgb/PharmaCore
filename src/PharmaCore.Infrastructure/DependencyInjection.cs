@@ -72,7 +72,23 @@ public static class DependencyInjection
 
         services.AddScoped<CustomerReminderRepository>();
         services.AddScoped<ICustomerReminderService, CustomerReminderService>();
+        services.AddScoped<CustomerFamilyRepository>();
+        services.AddScoped<ICustomerFamilyService, CustomerFamilyService>();
+        services.AddScoped<CustomerHealthRepository>();
+        services.AddScoped<ICustomerHealthService, CustomerHealthService>();
+        services.AddScoped<CustomerCareReminderRepository>();
+        services.AddScoped<ICustomerCareReminderService, CustomerCareReminderService>();
+        services.AddScoped<CustomerRepurchaseRepository>();
+        services.AddScoped<ICustomerRepurchaseService, CustomerRepurchaseService>();
+        services.AddScoped<CustomerActiveMedicationRepository>();
+        services.AddScoped<ICustomerActiveMedicationService, CustomerActiveMedicationService>();
+        services.AddScoped<ICustomerMedicationAdherenceService, CustomerMedicationAdherenceService>();
+        services.AddScoped<ICustomerAiHealthService, CustomerAiHealthService>();
+        services.AddScoped<CustomerAppBrandingRepository>();
+        services.AddScoped<ICustomerAppBrandingService, CustomerAppBrandingService>();
 
+        services.AddScoped<CustomerNotificationRepository>();
+        services.AddScoped<ICustomerNotificationService, CustomerNotificationService>();
         services.AddScoped<CustomerCatalogRepository>();
         services.AddScoped<ICustomerCatalogService, CustomerCatalogService>();
 
@@ -80,6 +96,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerAppConsentService, CustomerAppConsentService>();
 
         services.AddScoped<CustomerPushRepository>();
+        services.AddScoped<CustomerEngagementRepository>();
         services.AddScoped<ICustomerPushService, CustomerPushService>();
         services.AddHostedService<MedicationReminderPushWorker>();
 
@@ -128,6 +145,7 @@ public static class DependencyInjection
         services.AddScoped<InventoryRepository>();
         services.AddScoped<IBatchResolver, BatchResolver>();
         services.AddScoped<ITenantSettingsService, TenantSettingsService>();
+        services.AddScoped<ITenantPlatformSettings, TenantPlatformSettingsService>();
         services.AddScoped<IIntegrationOutboxWriter, IntegrationOutboxWriter>();
         services.Configure<IntegrationOutboxOptions>(configuration.GetSection(IntegrationOutboxOptions.SectionName));
         services.AddHttpClient(

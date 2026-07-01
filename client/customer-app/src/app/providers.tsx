@@ -1,33 +1,26 @@
-import { App as AntApp, ConfigProvider } from 'antd';
-import viVN from 'antd/locale/vi_VN';
-import dayjs from 'dayjs';
-import 'dayjs/locale/vi';
+import { App as AntApp } from 'antd';
 import { AppRouter } from '@/app/router';
 import { AppErrorBoundary } from '@/app/AppErrorBoundary';
 import { AuthHydrationGate } from '@/shared/auth/AuthHydrationGate';
 import { ApiHealthProvider } from '@/shared/api/ApiHealthProvider';
-
-dayjs.locale('vi');
-
-const theme = {
-  token: {
-    colorPrimary: '#0f766e',
-    borderRadius: 10,
-  },
-};
+import { BrandingProvider } from '@/shared/config/BrandingProvider';
+import { LocaleProvider } from '@/shared/i18n/LocaleProvider';
+import '@/shared/i18n';
 
 export function AppProviders() {
   return (
     <AppErrorBoundary>
-      <ConfigProvider locale={viVN} theme={theme}>
-        <AntApp>
-          <ApiHealthProvider>
-            <AuthHydrationGate>
-              <AppRouter />
-            </AuthHydrationGate>
-          </ApiHealthProvider>
-        </AntApp>
-      </ConfigProvider>
+      <AntApp>
+        <ApiHealthProvider>
+          <BrandingProvider>
+            <LocaleProvider>
+              <AuthHydrationGate>
+                <AppRouter />
+              </AuthHydrationGate>
+            </LocaleProvider>
+          </BrandingProvider>
+        </ApiHealthProvider>
+      </AntApp>
     </AppErrorBoundary>
   );
 }

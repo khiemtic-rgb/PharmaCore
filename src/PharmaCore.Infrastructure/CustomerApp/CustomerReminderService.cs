@@ -42,6 +42,12 @@ internal sealed class CustomerReminderService : ICustomerReminderService
         if (!await _repo.ProductExistsAsync(tenantId, request.ProductId, cancellationToken))
             throw new InvalidOperationException("Sản phẩm không tồn tại hoặc không thuộc nhà thuốc.");
 
+        if (request.FamilyMemberId is Guid familyMemberId
+            && !await _repo.FamilyMemberBelongsToCustomerAsync(tenantId, customerId, familyMemberId, cancellationToken))
+        {
+            throw new InvalidOperationException("Người thân không hợp lệ hoặc không thuộc tài khoản của bạn.");
+        }
+
         await EnsureCareReminderConsentAsync(tenantId, customerId, cancellationToken);
 
         var remindTime = ReminderScheduleHelper.ParseRemindTime(request.RemindTime);
@@ -55,6 +61,7 @@ internal sealed class CustomerReminderService : ICustomerReminderService
             tenantId,
             customerId,
             request.ProductId,
+            request.FamilyMemberId,
             NormalizeDosageNote(request.DosageNote),
             remindTime,
             days,
@@ -83,6 +90,14 @@ internal sealed class CustomerReminderService : ICustomerReminderService
             && !await _repo.ProductExistsAsync(tenantId, productId, cancellationToken))
         {
             throw new InvalidOperationException("Sản phẩm không tồn tại hoặc không thuộc nhà thuốc.");
+        }
+
+        var familyMemberId = request.FamilyMemberId ?? existing.FamilyMemberId;
+
+        if (familyMemberId is Guid memberId
+            && !await _repo.FamilyMemberBelongsToCustomerAsync(tenantId, customerId, memberId, cancellationToken))
+        {
+            throw new InvalidOperationException("Người thân không hợp lệ hoặc không thuộc tài khoản của bạn.");
         }
 
         var remindTime = request.RemindTime is null
@@ -115,6 +130,7 @@ internal sealed class CustomerReminderService : ICustomerReminderService
             customerId,
             reminderId,
             productId,
+            familyMemberId,
             dosageNote,
             remindTime,
             days,
@@ -155,6 +171,7 @@ internal sealed class CustomerReminderService : ICustomerReminderService
         new(
             row.Id,
             row.ProductId,
+            row.FamilyMemberId,
             row.ProductCode,
             row.ProductName,
             row.DosageNote,

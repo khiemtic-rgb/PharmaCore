@@ -67,14 +67,41 @@ internal sealed class PlatformTenantRepository
             allow_negative_stock = false,
             loyalty_enabled = request.LoyaltyEnabled,
             batch_mode = "suggest",
+            platform = new
+            {
+                schema_version = 1,
+                vertical = "pharmacy",
+                enabled_modules = new[]
+                {
+                    "inventory", "procurement", "sales", "loyalty", "customer_app",
+                    "medication", "health_wallet", "reservations", "reports",
+                },
+                i18n = new
+                {
+                    default_locale = "vi-VN",
+                    supported_locales = new[] { "vi-VN" },
+                    fallback_locale = "vi-VN",
+                    admin_default_locale = "vi-VN",
+                    customer_app_default_locale = "vi-VN",
+                },
+                features = new
+                {
+                    batch_tracking = true,
+                    national_drug_catalog = true,
+                    order_level_repurchase = true,
+                    family_members = true,
+                    branch_price_overrides = true,
+                    branch_product_listings = false,
+                },
+            },
         });
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
 
         const string tenantSql = """
-            INSERT INTO tenants (id, tenant_code, tenant_name, country_code, default_currency, settings)
-            VALUES (@Id, @TenantCode, @TenantName, 'VN', 'VND', @Settings::jsonb)
+            INSERT INTO tenants (id, tenant_code, tenant_name, country_code, default_currency, business_vertical, settings)
+            VALUES (@Id, @TenantCode, @TenantName, 'VN', 'VND', 'pharmacy', @Settings::jsonb)
             """;
 
         await conn.ExecuteAsync(tenantSql, new

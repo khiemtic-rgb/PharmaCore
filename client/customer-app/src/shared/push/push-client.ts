@@ -1,3 +1,4 @@
+import i18n from '@/shared/i18n';
 import { waitForServiceWorkerRegistration } from '@/shared/push/sw-registration';
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -9,9 +10,7 @@ function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   if (outputArray.length !== 65 || outputArray[0] !== 0x04) {
-    throw new Error(
-      'VAPID public key không hợp lệ. Chạy lại API sau khi cập nhật CustomerAppPush:PublicKey/PrivateKey (cặp key phải khớp).',
-    );
+    throw new Error(i18n.t('push.vapidKeyInvalid'));
   }
   return outputArray;
 }
@@ -22,11 +21,11 @@ export function isPushSupported() {
 
 export async function requestNotificationPermission() {
   if (!('Notification' in window)) {
-    throw new Error('Trình duyệt không hỗ trợ thông báo.');
+    throw new Error(i18n.t('push.notificationsUnsupported'));
   }
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
-    throw new Error('Cần cho phép thông báo trong trình duyệt (biểu tượng 🔒 cạnh địa chỉ).');
+    throw new Error(i18n.t('push.permissionDenied'));
   }
   return permission;
 }
@@ -53,7 +52,7 @@ export async function subscribePush(publicKey: string) {
 
   const json = subscription.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
-    throw new Error('Không đọc được thông tin đăng ký push.');
+    throw new Error(i18n.t('push.subscriptionReadFailed'));
   }
 
   return {

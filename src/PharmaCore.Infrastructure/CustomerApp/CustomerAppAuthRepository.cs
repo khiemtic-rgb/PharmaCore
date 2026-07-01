@@ -36,7 +36,8 @@ internal sealed class CustomerAppAuthRepository
                 ca.tenant_id AS TenantId,
                 t.tenant_code AS TenantCode,
                 c.full_name AS FullName,
-                ca.phone AS Phone
+                ca.phone AS Phone,
+                ca.preferred_locale AS PreferredLocale
             FROM customer_accounts ca
             INNER JOIN customers c ON c.id = ca.customer_id AND c.deleted_at IS NULL
             INNER JOIN tenants t ON t.id = ca.tenant_id
@@ -90,7 +91,8 @@ internal sealed class CustomerAppAuthRepository
             tenantId,
             tenantCode,
             customer.FullName,
-            phone);
+            phone,
+            null);
     }
 
     public async Task<DateTime?> GetLatestOtpCreatedAtAsync(
@@ -232,7 +234,8 @@ internal sealed class CustomerAppAuthRepository
                 ca.tenant_id AS TenantId,
                 t.tenant_code AS TenantCode,
                 c.full_name AS FullName,
-                ca.phone AS Phone
+                ca.phone AS Phone,
+                ca.preferred_locale AS PreferredLocale
             FROM customer_accounts ca
             INNER JOIN customers c ON c.id = ca.customer_id AND c.deleted_at IS NULL
             INNER JOIN tenants t ON t.id = ca.tenant_id
@@ -241,6 +244,29 @@ internal sealed class CustomerAppAuthRepository
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         return await conn.QuerySingleOrDefaultAsync<CustomerAccountRecord>(sql, new { AccountId = accountId });
+    }
+
+    public async Task<bool> UpdatePreferredLocaleAsync(
+        Guid accountId,
+        string locale,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE customer_accounts ca
+            SET preferred_locale = @Locale
+            WHERE ca.id = @AccountId
+              AND ca.status = 1
+              AND EXISTS (
+                  SELECT 1
+                  FROM platform_locales pl
+                  WHERE pl.locale_code = @Locale
+                    AND pl.status = 1
+              )
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.ExecuteAsync(sql, new { AccountId = accountId, Locale = locale });
+        return rows > 0;
     }
 
     public static string HashOtp(string code) =>

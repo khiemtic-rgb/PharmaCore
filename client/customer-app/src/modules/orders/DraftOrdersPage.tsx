@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Alert, Button, Card, Empty, List, Popconfirm, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -18,13 +19,8 @@ import {
 } from '@/shared/api/customer-app.api';
 import {
   CUSTOMER_DRAFT_ORDER_STATUS,
-  CUSTOMER_DRAFT_ORDER_STATUS_LABELS,
-  CUSTOMER_PAYMENT_METHOD_LABELS,
   CUSTOMER_PURCHASE_STATUS,
-  CUSTOMER_PURCHASE_STATUS_LABELS,
-  CUSTOMER_RESERVATION_FULFILLMENT_LABELS,
   CUSTOMER_RESERVATION_STATUS,
-  CUSTOMER_RESERVATION_STATUS_LABELS,
   type CustomerDraftOrder,
   type CustomerDraftOrderListItem,
   type CustomerPurchaseDetail,
@@ -32,6 +28,7 @@ import {
   type CustomerReservationDetail,
   type CustomerReservationListItem,
 } from '@/shared/api/customer-app.types';
+import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
@@ -41,9 +38,7 @@ import {
   markSentDraftsSeen,
 } from '@/shared/hooks/draft-order-seen';
 
-function formatMoney(value: number) {
-  return value.toLocaleString('vi-VN') + 'đ';
-}
+import { formatMoney } from '@/shared/i18n/format-money';
 
 function isPlacedOrder(status: number): boolean {
   return (
@@ -54,15 +49,18 @@ function isPlacedOrder(status: number): boolean {
   );
 }
 
-function purchaseStatusLabel(item: CustomerPurchaseListItem): { label: string; color: string } {
+function purchaseStatusLabel(
+  item: CustomerPurchaseListItem,
+  labels: { purchaseStatus: (n: number) => string; partialRefund: string },
+): { label: string; color: string } {
   if (
     item.status === CUSTOMER_PURCHASE_STATUS.Completed &&
     item.totalRefunded > 0.0001
   ) {
-    return { label: 'Trả một phần', color: 'orange' };
+    return { label: labels.partialRefund, color: 'orange' };
   }
   return {
-    label: CUSTOMER_PURCHASE_STATUS_LABELS[item.status] ?? String(item.status),
+    label: labels.purchaseStatus(item.status) ?? String(item.status),
     color: item.status === CUSTOMER_PURCHASE_STATUS.Refunded ? 'warning' : 'success',
   };
 }
@@ -84,8 +82,11 @@ function OrderListCards({
   selectedId?: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+  const { draftOrderStatus } = useCustomerLabels();
+
   if (items.length === 0) {
-    return <Empty description="Chưa có đơn nào" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+    return <Empty description={t('ordersDetail.emptyPlaced')} image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   }
 
   return (
@@ -106,11 +107,11 @@ function OrderListCards({
             <Space wrap>
               <Typography.Text strong>{item.draftNumber}</Typography.Text>
               <Tag color={statusTagColor(item.status)}>
-                {CUSTOMER_DRAFT_ORDER_STATUS_LABELS[item.status] ?? item.status}
+                {draftOrderStatus(item.status)}
               </Tag>
             </Space>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {item.itemCount} sản phẩm · {formatMoney(item.totalAmount)}
+              {t('ordersDetail.productCount', { count: item.itemCount })} · {formatMoney(item.totalAmount)}
             </Typography.Text>
           </Space>
         </Card>
@@ -128,10 +129,13 @@ function PurchaseListCards({
   selectedId?: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+  const { purchaseStatus } = useCustomerLabels();
+
   if (items.length === 0) {
     return (
       <Empty
-        description="Chưa có đơn mua tại quầy"
+        description={t('ordersDetail.emptyPurchased')}
         image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
@@ -141,7 +145,10 @@ function PurchaseListCards({
     <List
       dataSource={items}
       renderItem={(item) => {
-        const status = purchaseStatusLabel(item);
+        const status = purchaseStatusLabel(item, {
+          purchaseStatus,
+          partialRefund: t('orders.partialRefund'),
+        });
         return (
           <Card
             size="small"
@@ -160,12 +167,12 @@ function PurchaseListCards({
                   <Tag color={status.color}>{status.label}</Tag>
                 </Space>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {dayjs(item.orderDate).format('DD/MM/YYYY HH:mm')} · {item.itemCount} sản phẩm ·{' '}
+                  {dayjs(item.orderDate).format('DD/MM/YYYY HH:mm')} · {t('ordersDetail.productCount', { count: item.itemCount })} ·{' '}
                   {formatMoney(item.totalAmount)}
                 </Typography.Text>
                 {item.id === selectedId ? (
                   <Typography.Text style={{ fontSize: 12, color: '#0f766e' }}>
-                    Đang xem — chi tiết phía trên
+                    {t('ordersDetail.viewingDetail')}
                   </Typography.Text>
                 ) : null}
               </Space>
@@ -185,6 +192,8 @@ function PurchaseListCards({
 }
 
 function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
+  const { t } = useTranslation();
+  const { purchaseStatus, paymentMethod } = useCustomerLabels();
   const status = purchaseStatusLabel({
     id: detail.id,
     orderNumber: detail.orderNumber,
@@ -195,10 +204,10 @@ function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
     outstanding: detail.outstanding,
     itemCount: detail.items.length,
     totalRefunded: detail.totalRefunded,
-  });
+  }, { purchaseStatus, partialRefund: t('orders.partialRefund') });
 
   return (
-    <Card size="small" title={`Hóa đơn ${detail.orderNumber}`} style={{ borderRadius: 12 }}>
+    <Card size="small" title={t('ordersDetail.invoiceTitle', { number: detail.orderNumber })} style={{ borderRadius: 12 }}>
       <Space wrap style={{ marginBottom: 12 }}>
         <Tag color={status.color}>{status.label}</Tag>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -220,7 +229,7 @@ function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
                   </span>
                   {line.returnedQuantity > 0 ? (
                     <Typography.Text type="warning" style={{ fontSize: 12 }}>
-                      Đã trả {line.returnedQuantity} {line.unitName}
+                      {t('ordersDetail.returnedQty', { qty: line.returnedQuantity, unit: line.unitName })}
                     </Typography.Text>
                   ) : null}
                 </Space>
@@ -232,35 +241,35 @@ function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
 
       <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
         <Typography.Text>
-          Tổng thanh toán: <strong>{formatMoney(detail.totalAmount)}</strong>
+          {t('ordersDetail.totalPayment')}: <strong>{formatMoney(detail.totalAmount)}</strong>
         </Typography.Text>
         {detail.discountAmount > 0 ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Giảm giá: {formatMoney(detail.discountAmount)}
+            {t('ordersDetail.discount')}: {formatMoney(detail.discountAmount)}
           </Typography.Text>
         ) : null}
         {detail.loyaltyDiscountAmount > 0 ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Giảm điểm: {formatMoney(detail.loyaltyDiscountAmount)}
+            {t('ordersDetail.loyaltyDiscount')}: {formatMoney(detail.loyaltyDiscountAmount)}
           </Typography.Text>
         ) : null}
         {detail.voucherDiscountAmount > 0 && detail.voucherCode ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Voucher {detail.voucherCode}: -{formatMoney(detail.voucherDiscountAmount)}
+            {t('ordersDetail.voucherDiscount', { code: detail.voucherCode })}: -{formatMoney(detail.voucherDiscountAmount)}
           </Typography.Text>
         ) : null}
         {detail.loyaltyPointsEarned ? (
           <Typography.Text type="success" style={{ fontSize: 12 }}>
-            +{detail.loyaltyPointsEarned} điểm thưởng
+            {t('ordersDetail.loyaltyPointsEarned', { points: detail.loyaltyPointsEarned })}
           </Typography.Text>
         ) : null}
         {detail.payments.length > 0 ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Thanh toán:{' '}
+            {t('ordersDetail.payment')}:{' '}
             {detail.payments
               .map(
                 (p) =>
-                  `${CUSTOMER_PAYMENT_METHOD_LABELS[p.paymentMethod] ?? p.paymentMethod}: ${formatMoney(p.amount)}`,
+                  `${paymentMethod(p.paymentMethod)}: ${formatMoney(p.amount)}`,
               )
               .join(' · ')}
           </Typography.Text>
@@ -268,21 +277,26 @@ function PurchaseDetailPanel({ detail }: { detail: CustomerPurchaseDetail }) {
         {detail.outstanding > 0.009 ? (
           <>
             <Typography.Text style={{ fontSize: 13 }}>
-              Đã thanh toán: <strong>{formatMoney(detail.amountPaid)}</strong>
+              {t('ordersDetail.paid')}: <strong>{formatMoney(detail.amountPaid)}</strong>
             </Typography.Text>
             <Typography.Text style={{ fontSize: 13, color: '#c2410c' }}>
-              Còn nợ: <strong>{formatMoney(detail.outstanding)}</strong>
+              {t('ordersDetail.outstanding')}: <strong>{formatMoney(detail.outstanding)}</strong>
             </Typography.Text>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Thanh toán phần nợ tại quầy — xem mục Công nợ của tôi.
+              {t('ordersDetail.payAtCounter')}
             </Typography.Text>
           </>
         ) : null}
         {detail.notes ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Ghi chú: {detail.notes}
+            {t('ordersDetail.notes')}: {detail.notes}
           </Typography.Text>
         ) : null}
+        <Link to="/reservations">
+          <Button type="primary" size="small" style={{ marginTop: 8 }}>
+            {t('ordersDetail.reorder')}
+          </Button>
+        </Link>
       </Space>
     </Card>
   );
@@ -306,10 +320,13 @@ function ReservationListCards({
   selectedId?: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+  const { reservationStatus, reservationFulfillment } = useCustomerLabels();
+
   if (items.length === 0) {
     return (
       <Empty
-        description="Chưa có yêu cầu đặt trước"
+        description={t('ordersDetail.emptyReservations')}
         image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
@@ -334,12 +351,12 @@ function ReservationListCards({
               <Space wrap>
                 <Typography.Text strong>{item.reservationNumber}</Typography.Text>
                 <Tag color={reservationStatusColor(item.status)}>
-                  {CUSTOMER_RESERVATION_STATUS_LABELS[item.status] ?? item.status}
+                  {reservationStatus(item.status)}
                 </Tag>
               </Space>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {dayjs(item.submittedAt).format('DD/MM/YYYY HH:mm')} · {item.itemCount} sản phẩm ·{' '}
-                {CUSTOMER_RESERVATION_FULFILLMENT_LABELS[item.fulfillmentType] ?? item.fulfillmentType}
+                {dayjs(item.submittedAt).format('DD/MM/YYYY HH:mm')} · {t('ordersDetail.productCount', { count: item.itemCount })} ·{' '}
+                {reservationFulfillment(item.fulfillmentType)}
               </Typography.Text>
             </Space>
             <RightOutlined
@@ -365,29 +382,32 @@ function ReservationDetailPanel({
   cancelling: boolean;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
+  const { reservationStatus, reservationFulfillment } = useCustomerLabels();
+
   return (
-    <Card size="small" title={`Yêu cầu ${detail.reservationNumber}`} style={{ borderRadius: 12 }}>
+    <Card size="small" title={t('ordersDetail.requestTitle', { number: detail.reservationNumber })} style={{ borderRadius: 12 }}>
       <Space wrap style={{ marginBottom: 12 }}>
         <Tag color={reservationStatusColor(detail.status)}>
-          {CUSTOMER_RESERVATION_STATUS_LABELS[detail.status] ?? detail.status}
+          {reservationStatus(detail.status)}
         </Tag>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          {CUSTOMER_RESERVATION_FULFILLMENT_LABELS[detail.fulfillmentType]}
+          {reservationFulfillment(detail.fulfillmentType)}
           {detail.addressSummary ? ` · ${detail.addressSummary}` : ''}
         </Typography.Text>
       </Space>
 
       {detail.salesOrderNumber ? (
         <Typography.Text type="success" style={{ fontSize: 13, display: 'block' }}>
-          Hóa đơn {detail.salesOrderNumber} — xem tab Đơn hàng đã mua
+          {t('ordersDetail.invoiceLinkPurchased', { number: detail.salesOrderNumber })}
         </Typography.Text>
       ) : detail.status === CUSTOMER_RESERVATION_STATUS.Collected ? (
         <Alert
           type="warning"
           showIcon
           style={{ marginBottom: 8 }}
-          message="Chưa có hóa đơn bán"
-          description="Nhà thuốc cần bán qua quầy để ghi nhận thanh toán và tồn kho."
+          message={t('ordersDetail.noInvoiceTitle')}
+          description={t('ordersDetail.noInvoiceDesc')}
         />
       ) : null}
 
@@ -411,19 +431,19 @@ function ReservationDetailPanel({
 
       {detail.notes ? (
         <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          Ghi chú: {detail.notes}
+          {t('ordersDetail.notes')}: {detail.notes}
         </Typography.Text>
       ) : null}
       {detail.staffNotes ? (
         <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-          Nhà thuốc: {detail.staffNotes}
+          {t('ordersDetail.pharmacy')}: {detail.staffNotes}
         </Typography.Text>
       ) : null}
 
       {detail.status === CUSTOMER_RESERVATION_STATUS.Pending ? (
-        <Popconfirm title="Hủy yêu cầu đặt trước?" onConfirm={onCancel}>
+        <Popconfirm title={t('ordersDetail.cancelReservationConfirm')} onConfirm={onCancel}>
           <Button danger block loading={cancelling} style={{ marginTop: 12 }}>
-            Hủy yêu cầu
+            {t('ordersDetail.cancelRequest')}
           </Button>
         </Popconfirm>
       ) : null}
@@ -448,14 +468,16 @@ function OrderDetailPanel({
   onCancel: () => void;
   onHide: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
-    <Card size="small" title={`Chi tiết ${detail.draftNumber}`} style={{ borderRadius: 12 }}>
+    <Card size="small" title={t('ordersDetail.detailTitle', { number: detail.draftNumber })} style={{ borderRadius: 12 }}>
       {detail.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent ? (
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Bạn có thể xác nhận đơn hàng (tuỳ chọn). Khi đến quầy, dược sĩ sẽ hỏi lại trước khi bán."
+          message={t('ordersDetail.confirmInfo')}
         />
       ) : null}
 
@@ -485,54 +507,56 @@ function OrderDetailPanel({
 
       <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
         <Typography.Text>
-          Tổng tiền: <strong>{formatMoney(detail.totalAmount)}</strong>
+          {t('ordersDetail.totalAmount')}: <strong>{formatMoney(detail.totalAmount)}</strong>
         </Typography.Text>
         {detail.expiresAt && detail.status !== CUSTOMER_DRAFT_ORDER_STATUS.Completed ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Hết hạn: {dayjs(detail.expiresAt).format('DD/MM/YYYY HH:mm')}
+            {t('ordersDetail.expiresAt')}: {dayjs(detail.expiresAt).format('DD/MM/YYYY HH:mm')}
           </Typography.Text>
         ) : null}
         {detail.completedAt ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Mua lúc: {dayjs(detail.completedAt).format('DD/MM/YYYY HH:mm')}
+            {t('ordersDetail.purchasedAt')}: {dayjs(detail.completedAt).format('DD/MM/YYYY HH:mm')}
           </Typography.Text>
         ) : null}
         {detail.notes ? (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Ghi chú: {detail.notes}
+            {t('ordersDetail.notes')}: {detail.notes}
           </Typography.Text>
         ) : null}
         {detail.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent ? (
           <Button type="primary" loading={confirming} onClick={onConfirm}>
-            Xác nhận đơn hàng (tuỳ chọn)
+            {t('ordersDetail.confirmOrder')}
           </Button>
         ) : null}
         {detail.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent ||
         detail.status === CUSTOMER_DRAFT_ORDER_STATUS.Confirmed ? (
           <Popconfirm
-            title="Hủy đơn hàng?"
-            description="Nhà thuốc sẽ được thông báo. Bạn có thể đặt lại sau nếu cần."
-            okText="Hủy đơn"
-            cancelText="Không"
+            title={t('ordersDetail.cancelOrderTitle')}
+            description={t('ordersDetail.cancelOrderDesc')}
+            okText={t('ordersDetail.cancelOrderOk')}
+            cancelText={t('ordersDetail.cancelOrderNo')}
             onConfirm={onCancel}
           >
             <Button danger loading={cancelling} disabled={confirming || hiding}>
-              Hủy đơn hàng
+              {t('ordersDetail.cancelOrder')}
             </Button>
           </Popconfirm>
         ) : null}
         {detail.status === CUSTOMER_DRAFT_ORDER_STATUS.Completed && detail.salesOrderNumber ? (
-          <Typography.Text type="success">Đã mua tại quầy — {detail.salesOrderNumber}</Typography.Text>
+          <Typography.Text type="success">
+            {t('ordersDetail.purchasedAtCounter', { number: detail.salesOrderNumber })}
+          </Typography.Text>
         ) : null}
         <Popconfirm
-          title="Ẩn đơn hàng khỏi app?"
-          description="Bạn sẽ không thấy đơn này trên app nữa. Nhà thuốc vẫn giữ lịch sử đơn."
-          okText="Ẩn khỏi app"
-          cancelText="Huỷ"
+          title={t('ordersDetail.hideTitle')}
+          description={t('ordersDetail.hideDesc')}
+          okText={t('ordersDetail.hideOk')}
+          cancelText={t('common.cancel')}
           onConfirm={onHide}
         >
           <Button danger loading={hiding} disabled={confirming}>
-            Ẩn khỏi app
+            {t('ordersDetail.hideFromApp')}
           </Button>
         </Popconfirm>
       </Space>
@@ -541,6 +565,7 @@ function OrderDetailPanel({
 }
 
 export function DraftOrdersPage() {
+  const { t } = useTranslation();
   const { online } = useApiHealth();
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -605,7 +630,7 @@ export function DraftOrdersPage() {
         });
       } else {
         setOrders([]);
-        setLoadError(getApiErrorMessage(draftResult.reason, 'Không tải được đơn hàng'));
+        setLoadError(getApiErrorMessage(draftResult.reason, t('ordersDetail.loadDraftFailed')));
       }
 
       if (purchaseResult.status === 'fulfilled') {
@@ -617,7 +642,7 @@ export function DraftOrdersPage() {
         });
       } else {
         setPurchases([]);
-        setPurchaseLoadError(getApiErrorMessage(purchaseResult.reason, 'Không tải được lịch sử mua'));
+        setPurchaseLoadError(getApiErrorMessage(purchaseResult.reason, t('ordersDetail.loadPurchaseFailed')));
       }
 
       if (reservationResult.status === 'fulfilled') {
@@ -629,13 +654,13 @@ export function DraftOrdersPage() {
         });
       } else {
         setReservations([]);
-        setReservationLoadError(getApiErrorMessage(reservationResult.reason, 'Không tải được đặt trước'));
+        setReservationLoadError(getApiErrorMessage(reservationResult.reason, t('ordersDetail.loadReservationFailed')));
       }
     } finally {
       setInitialLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadAll(false);
@@ -708,7 +733,7 @@ export function DraftOrdersPage() {
       .catch((error) => {
         if (!cancelled) {
           setDetail(null);
-          message.error(getApiErrorMessage(error, 'Không tải được chi tiết đơn'));
+          message.error(getApiErrorMessage(error, t('ordersDetail.detailLoadFailed')));
         }
       })
       .finally(() => {
@@ -733,7 +758,7 @@ export function DraftOrdersPage() {
       .catch((error) => {
         if (!cancelled) {
           setPurchaseDetail(null);
-          message.error(getApiErrorMessage(error, 'Không tải được chi tiết hóa đơn'));
+          message.error(getApiErrorMessage(error, t('ordersDetail.invoiceDetailLoadFailed')));
         }
       })
       .finally(() => {
@@ -772,7 +797,7 @@ export function DraftOrdersPage() {
       .catch((error) => {
         if (!cancelled) {
           setReservationDetail(null);
-          message.error(getApiErrorMessage(error, 'Không tải được chi tiết đặt trước'));
+          message.error(getApiErrorMessage(error, t('ordersDetail.reservationDetailLoadFailed')));
         }
       })
       .finally(() => {
@@ -794,10 +819,10 @@ export function DraftOrdersPage() {
     try {
       const updated = await confirmDraftOrder(selectedId);
       setDetail(updated);
-      message.success('Đã xác nhận đơn hàng — khi lấy thuốc dược sĩ sẽ xác nhận lại tại quầy');
+      message.success(t('ordersDetail.confirmSuccess'));
       await loadAll(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không xác nhận được đơn hàng'));
+      message.error(getApiErrorMessage(error, t('ordersDetail.confirmFailed')));
     } finally {
       setConfirming(false);
     }
@@ -809,10 +834,10 @@ export function DraftOrdersPage() {
     try {
       const updated = await cancelDraftOrder(selectedId);
       setDetail(updated);
-      message.success('Đã hủy đơn hàng — nhà thuốc đã được thông báo');
+      message.success(t('ordersDetail.cancelSuccess'));
       await loadAll(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không hủy được đơn hàng'));
+      message.error(getApiErrorMessage(error, t('ordersDetail.cancelFailed')));
     } finally {
       setCancelling(false);
     }
@@ -823,11 +848,11 @@ export function DraftOrdersPage() {
     setHiding(true);
     try {
       await hideDraftOrder(selectedId);
-      message.success('Đã ẩn đơn hàng khỏi app');
+      message.success(t('ordersDetail.hideSuccess'));
       setDetail(null);
       await loadAll(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không ẩn được đơn hàng'));
+      message.error(getApiErrorMessage(error, t('ordersDetail.hideFailed')));
     } finally {
       setHiding(false);
     }
@@ -839,10 +864,10 @@ export function DraftOrdersPage() {
     try {
       const updated = await cancelReservation(selectedReservationId);
       setReservationDetail(updated);
-      message.success('Đã hủy yêu cầu');
+      message.success(t('ordersDetail.cancelReservationSuccess'));
       await loadAll(true);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không hủy được yêu cầu'));
+      message.error(getApiErrorMessage(error, t('ordersDetail.cancelReservationFailed')));
     } finally {
       setCancellingReservation(false);
     }
@@ -868,10 +893,10 @@ export function DraftOrdersPage() {
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <BackToHomeButton />
       <Typography.Title level={5} style={{ margin: 0 }}>
-        Đơn hàng
+        {t('orders.title')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-        Dược sĩ soạn đơn — bạn xác nhận (tuỳ chọn) rồi đến quầy thanh toán.
+        {t('orders.intro')}
       </Typography.Paragraph>
 
       <Card
@@ -880,10 +905,10 @@ export function DraftOrdersPage() {
         styles={{ body: { padding: '10px 14px' } }}
       >
         <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-          <Typography.Text style={{ fontSize: 13 }}>Cần thuốc chưa có sẵn? Gửi yêu cầu đặt trước.</Typography.Text>
+          <Typography.Text style={{ fontSize: 13 }}>{t('orders.reserveHint')}</Typography.Text>
           <Link to="/reservations">
             <Button type="primary" size="small">
-              Đặt thuốc trước
+              {t('ordersDetail.reserveButton')}
             </Button>
           </Link>
         </Space>
@@ -893,11 +918,14 @@ export function DraftOrdersPage() {
         <Alert
           type="info"
           showIcon
-          message="Đơn thuốc mới"
+          message={t('ordersDetail.newDraftTitle')}
           description={
             newDraftBanner.length === 1
-              ? `${newDraftBanner[0].draftNumber} — tổng tạm tính ${formatMoney(newDraftBanner[0].totalAmount)}.`
-              : `Bạn có ${newDraftBanner.length} đơn mới chờ xem.`
+              ? t('ordersDetail.newDraftSingle', {
+                  number: newDraftBanner[0].draftNumber,
+                  amount: formatMoney(newDraftBanner[0].totalAmount),
+                })
+              : t('ordersDetail.newDraftMultiple', { count: newDraftBanner.length })
           }
           closable
           onClose={() => {
@@ -911,11 +939,17 @@ export function DraftOrdersPage() {
         <Alert
           type="error"
           showIcon
-          message={activeTab === 'placed' ? 'Không tải được đơn hàng' : activeTab === 'purchased' ? 'Không tải được lịch sử mua' : 'Không tải được đặt trước'}
+          message={
+            activeTab === 'placed'
+              ? t('ordersDetail.loadFailedPlaced')
+              : activeTab === 'purchased'
+                ? t('ordersDetail.loadFailedPurchased')
+                : t('ordersDetail.loadFailedReservations')
+          }
           description={pageError}
           action={
             <Button size="small" onClick={() => void loadAll(true)}>
-              Thử lại
+              {t('common.retry')}
             </Button>
           }
         />
@@ -923,7 +957,7 @@ export function DraftOrdersPage() {
 
       {waitingForApi ? (
         <div style={{ textAlign: 'center', padding: 32 }}>
-          <Spin tip="Đang chờ API — tự tải lại khi kết nối trở lại" />
+          <Spin tip={t('common.waitingApi')} />
         </div>
       ) : null}
 
@@ -935,12 +969,12 @@ export function DraftOrdersPage() {
             items={[
               {
                 key: 'placed',
-                label: `Đơn hàng đặt${placedOrders.length > 0 ? ` (${placedOrders.length})` : ''}`,
+                label: `${t('orders.tabPlaced')}${placedOrders.length > 0 ? ` (${placedOrders.length})` : ''}`,
                 children: (
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     {selectedId && detailLoading ? (
                       <Card size="small" style={{ borderRadius: 12, textAlign: 'center', padding: 16 }}>
-                        <Spin tip="Đang tải chi tiết đơn…" />
+                        <Spin tip={t('ordersDetail.loadingDetail')} />
                       </Card>
                     ) : null}
                     {detail && activeTab === 'placed' && isPlacedOrder(detail.status) ? (
@@ -960,15 +994,15 @@ export function DraftOrdersPage() {
               },
               {
                 key: 'reservations',
-                label: `Đặt trước${reservations.length > 0 ? ` (${reservations.length})` : ''}`,
+                label: `${t('orders.tabReservations')}${reservations.length > 0 ? ` (${reservations.length})` : ''}`,
                 children: (
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-                      Yêu cầu thuốc chưa có sẵn — không phải hóa đơn bán. Hóa đơn thanh toán tại quầy nằm ở tab Đã mua.
+                      {t('orders.reservationsIntro')}
                     </Typography.Paragraph>
                     {selectedReservationId && reservationDetailLoading ? (
                       <Card size="small" style={{ borderRadius: 12, textAlign: 'center', padding: 16 }}>
-                        <Spin tip="Đang tải chi tiết…" />
+                        <Spin tip={t('ordersDetail.loadingReservationDetail')} />
                       </Card>
                     ) : null}
                     {reservationDetail && activeTab === 'reservations' ? (
@@ -988,15 +1022,15 @@ export function DraftOrdersPage() {
               },
               {
                 key: 'purchased',
-                label: `Đơn hàng đã mua${purchases.length > 0 ? ` (${purchases.length})` : ''}`,
+                label: `${t('orders.tabPurchased')}${purchases.length > 0 ? ` (${purchases.length})` : ''}`,
                 children: (
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-                      Chạm một hóa đơn để xem chi tiết sản phẩm và thanh toán.
+                      {t('orders.purchasedIntro')}
                     </Typography.Paragraph>
                     {selectedPurchaseId && purchaseDetailLoading ? (
                       <Card size="small" style={{ borderRadius: 12, textAlign: 'center', padding: 16 }}>
-                        <Spin tip="Đang tải chi tiết hóa đơn…" />
+                        <Spin tip={t('ordersDetail.loadingInvoiceDetail')} />
                       </Card>
                     ) : null}
                     {purchaseDetail && activeTab === 'purchased' ? (
@@ -1017,7 +1051,7 @@ export function DraftOrdersPage() {
         </Spin>
       ) : null}
 
-      <Link to="/">← Về trang chủ</Link>
+      <Link to="/">{t('orders.backHomeLink')}</Link>
     </Space>
   );
 }

@@ -310,7 +310,13 @@ export function SalesOrderListPage() {
     [customers, draftCustomerId],
   );
 
-  const confirmCompleteDraft = async ({ payments, loyaltyDiscountAmount }: PosCheckoutConfirm) => {
+  const confirmCompleteDraft = async ({
+    payments,
+    loyaltyDiscountAmount,
+    customerVoucherId,
+    orderReminderLabel,
+    orderReminderDaysSupply,
+  }: PosCheckoutConfirm) => {
     if (!detail) {
       message.error(t('messages.draftNotFound'));
       throw new Error('missing-draft');
@@ -322,6 +328,13 @@ export function SalesOrderListPage() {
         customerId: draftCustomerId ?? detail.customerId ?? null,
         ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0
           ? { loyaltyDiscountAmount }
+          : {}),
+        ...(customerVoucherId ? { customerVoucherId } : {}),
+        ...(orderReminderDaysSupply != null && orderReminderDaysSupply >= 1
+          ? {
+              orderReminderLabel: orderReminderLabel ?? null,
+              orderReminderDaysSupply,
+            }
           : {}),
       });
       setDetail(updated);

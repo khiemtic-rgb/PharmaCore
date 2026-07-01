@@ -23,6 +23,8 @@ public interface ICustomerPushService
 
     Task<int> DispatchDueRemindersAsync(CancellationToken cancellationToken = default);
 
+    Task<int> DispatchEngagementNotificationsAsync(CancellationToken cancellationToken = default);
+
     Task SendStaffChatReplyPushAsync(
         Guid tenantId,
         Guid customerId,

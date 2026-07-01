@@ -13,6 +13,7 @@ import {
 } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 import {
   fetchLoyaltySummary,
@@ -25,14 +26,13 @@ import type {
   LoyaltyProgramSummary,
   LoyaltyTransaction,
 } from '@/shared/api/customer-app.types';
-import { LOYALTY_TX_LABELS } from '@/shared/api/customer-app.types';
+import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
+import { formatMoney } from '@/shared/i18n/format-money';
 import { formatPoints } from '@/shared/utils/points';
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat('vi-VN').format(value);
-}
-
 export function LoyaltyPage() {
+  const { t } = useTranslation();
+  const { loyaltyTx } = useCustomerLabels();
   const [tab, setTab] = useState<'overview' | 'history' | 'vouchers'>('overview');
   const [loading, setLoading] = useState(true);
   const [program, setProgram] = useState<LoyaltyProgramSummary | null>(null);
@@ -51,11 +51,11 @@ export function LoyaltyPage() {
       setTransactions(tx.items);
       setVouchers(voucherList.items);
     } catch (error) {
-      message.error(getApiErrorMessage(error, 'Không tải được dữ liệu loyalty'));
+      message.error(getApiErrorMessage(error, t('loyalty.loadFailed')));
     } finally {
       if (showSpinner) setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadData();
@@ -89,7 +89,7 @@ export function LoyaltyPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <BackToHomeButton />
         <Button icon={<ReloadOutlined />} onClick={() => void loadData(false)} loading={loading}>
-          Làm mới
+          {t('loyalty.refresh')}
         </Button>
       </div>
       <Segmented
@@ -97,9 +97,9 @@ export function LoyaltyPage() {
         value={tab}
         onChange={(v) => setTab(v as typeof tab)}
         options={[
-          { label: 'Tổng quan', value: 'overview' },
-          { label: 'Lịch sử', value: 'history' },
-          { label: 'Voucher', value: 'vouchers' },
+          { label: t('loyalty.tabOverview'), value: 'overview' },
+          { label: t('loyalty.tabHistory'), value: 'history' },
+          { label: t('loyalty.tabVouchers'), value: 'vouchers' },
         ]}
         style={{ marginBottom: 16 }}
       />
@@ -111,44 +111,46 @@ export function LoyaltyPage() {
               {program.programName}
             </Typography.Title>
             <Typography.Title level={2} style={{ margin: '8px 0', color: '#0f766e' }}>
-              {formatPoints(program.pointsBalance)} điểm
+              {t('loyalty.points', { value: formatPoints(program.pointsBalance) })}
             </Typography.Title>
             <Typography.Text type="secondary">
-              Tích lũy: {formatPoints(program.lifetimePoints)} điểm
+              {t('loyalty.lifetimePoints', { value: formatPoints(program.lifetimePoints) })}
             </Typography.Text>
             {program.currentTier ? (
               <div style={{ marginTop: 16 }}>
-                <Tag color="cyan">Hạng {program.currentTier.tierName}</Tag>
+                <Tag color="cyan">{t('loyalty.tier', { name: program.currentTier.tierName })}</Tag>
                 {program.currentTier.discountPercent > 0 ? (
-                  <Tag>Giảm {program.currentTier.discountPercent}%</Tag>
+                  <Tag>{t('loyalty.discount', { percent: program.currentTier.discountPercent })}</Tag>
                 ) : null}
               </div>
             ) : null}
             {program.nextTier ? (
               <div style={{ marginTop: 16 }}>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  Còn {program.nextTier.minPoints - program.pointsBalance} điểm để lên{' '}
-                  {program.nextTier.tierName}
+                  {t('loyalty.pointsToNext', {
+                    points: program.nextTier.minPoints - program.pointsBalance,
+                    tier: program.nextTier.tierName,
+                  })}
                 </Typography.Text>
                 <Progress percent={tierProgress} showInfo={false} strokeColor="#0f766e" />
               </div>
             ) : null}
           </Card>
         ) : (
-          <Empty description="Chưa tham gia chương trình tích điểm" />
+          <Empty description={t('loyalty.noProgram')} />
         )
       )}
 
       {tab === 'history' && (
         <List
           dataSource={transactions}
-          locale={{ emptyText: 'Chưa có giao dịch điểm' }}
+          locale={{ emptyText: t('loyalty.emptyHistory') }}
           renderItem={(item) => (
             <List.Item>
               <List.Item.Meta
                 title={
                   <span>
-                    {LOYALTY_TX_LABELS[item.transactionType] ?? 'Giao dịch'}{' '}
+                    {loyaltyTx(item.transactionType) ?? t('loyalty.transaction')}{' '}
                     <Typography.Text strong style={{ color: item.points >= 0 ? '#0f766e' : '#dc2626' }}>
                       {item.points > 0 ? '+' : ''}
                       {formatPoints(item.points)}
@@ -172,36 +174,42 @@ export function LoyaltyPage() {
       {tab === 'vouchers' && (
         <>
           <Typography.Paragraph type="secondary" style={{ fontSize: 13, marginBottom: 12 }}>
-            Voucher trong ví — đưa mã cho dược sĩ khi thanh toán tại quầy (POS).
+            {t('loyalty.voucherIntro')}
           </Typography.Paragraph>
           <List
           dataSource={vouchers}
-          locale={{ emptyText: 'Chưa có voucher' }}
+          locale={{ emptyText: t('loyalty.emptyVouchers') }}
           renderItem={(item) => (
             <List.Item>
               <List.Item.Meta
                 title={
                   <span>
                     {item.voucherName}{' '}
-                    {item.isUsed ? <Tag>Đã dùng</Tag> : item.isExpired ? <Tag color="red">Hết hạn</Tag> : <Tag color="green">Khả dụng</Tag>}
+                    {item.isUsed ? (
+                      <Tag>{t('loyalty.used')}</Tag>
+                    ) : item.isExpired ? (
+                      <Tag color="red">{t('loyalty.expired')}</Tag>
+                    ) : (
+                      <Tag color="green">{t('loyalty.available')}</Tag>
+                    )}
                   </span>
                 }
                 description={
                   <>
                     <div>
-                      Mã: <strong>{item.voucherCode}</strong>
+                      {t('loyalty.code')}: <strong>{item.voucherCode}</strong>
                     </div>
                     <div>
-                      Giảm{' '}
+                      {t('loyalty.discountLabel')}{' '}
                       {item.discountType === 1
                         ? `${item.discountValue}%`
-                        : `${formatMoney(item.discountValue)}đ`}
+                        : formatMoney(item.discountValue)}
                       {item.minOrderAmount > 0
-                        ? ` · Đơn từ ${formatMoney(item.minOrderAmount)}đ`
+                        ? ` · ${t('loyalty.minOrder', { amount: formatMoney(item.minOrderAmount) })}`
                         : ''}
                     </div>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      HSD: {dayjs(item.validTo).format('DD/MM/YYYY')}
+                      {t('loyalty.validTo')}: {dayjs(item.validTo).format('DD/MM/YYYY')}
                     </Typography.Text>
                   </>
                 }

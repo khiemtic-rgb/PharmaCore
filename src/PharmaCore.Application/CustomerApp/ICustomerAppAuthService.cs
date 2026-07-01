@@ -19,5 +19,10 @@ public interface ICustomerAppAuthService
         Guid accountId,
         CancellationToken cancellationToken = default);
 
+    Task<CustomerProfileDto?> UpdatePreferredLocaleAsync(
+        Guid accountId,
+        string preferredLocale,
+        CancellationToken cancellationToken = default);
+
     Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default);
 }

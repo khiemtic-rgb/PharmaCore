@@ -772,7 +772,13 @@ export function PosPage() {
     }
   };
 
-  const confirmCheckout = async ({ payments, loyaltyDiscountAmount, customerVoucherId }: PosCheckoutConfirm) => {
+  const confirmCheckout = async ({
+    payments,
+    loyaltyDiscountAmount,
+    customerVoucherId,
+    orderReminderLabel,
+    orderReminderDaysSupply,
+  }: PosCheckoutConfirm) => {
     if (!warehouseId) {
       message.warning(t('pos.messages.selectWarehouseFirst'));
       throw new Error('missing-warehouse');
@@ -791,10 +797,22 @@ export function PosPage() {
     const hideLoading = message.loading(t('pos.messages.creatingSale'), 0);
     try {
       let order: SalesOrderDetail;
+      const orderReminder =
+        orderReminderDaysSupply != null && orderReminderDaysSupply >= 1
+          ? { label: orderReminderLabel, daysSupply: orderReminderDaysSupply }
+          : undefined;
       if (editingDraftId) {
         order = await completeDraftSale(editingDraftId, {
           payments,
-          ...buildDraftCompletePayload(customerId, cart, orderDiscount, undefined, loyaltyDiscountAmount, customerVoucherId),
+          ...buildDraftCompletePayload(
+            customerId,
+            cart,
+            orderDiscount,
+            undefined,
+            loyaltyDiscountAmount,
+            customerVoucherId,
+            orderReminder,
+          ),
         });
       } else {
         order = await createSale(
@@ -807,6 +825,7 @@ export function PosPage() {
             payments,
             loyaltyDiscountAmount,
             customerVoucherId,
+            orderReminder,
           ),
         );
       }
@@ -1349,7 +1368,7 @@ export function PosPage() {
             pagination={false}
             dataSource={cart}
             columns={columns}
-            scroll={{ y: 'calc(100vh - 210px)' }}
+            scroll={{ y: 440 }}
             tableLayout="fixed"
             className="pos-cart-table"
           />

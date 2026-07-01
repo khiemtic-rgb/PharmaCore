@@ -32,6 +32,7 @@
       "users": "Staff",
       "roles": "Roles",
       "posSettings": "Receipts & POS",
+      "customerAppSettings": "Customer app",
       "auditLog": "Audit log"
     }
   },

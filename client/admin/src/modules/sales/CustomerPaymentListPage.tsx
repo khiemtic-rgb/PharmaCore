@@ -143,7 +143,7 @@ function CustomerPaymentListPageInner() {
     prefillHandled.current = true;
     if (!canWrite) {
       message.warning(t('messages.noPermission'));
-      navigate('/sales/customer-payments', { replace: true });
+      navigate('/receivables/customer-payments', { replace: true });
       return;
     }
 
@@ -151,7 +151,7 @@ function CustomerPaymentListPageInner() {
     setEditingId(null);
     setEditingRow(null);
     setFormOpen(true);
-    navigate('/sales/customer-payments', { replace: true });
+    navigate('/receivables/customer-payments', { replace: true });
   }, [searchParams, referenceReady, canWrite, navigate, t]);
 
   const customerSuggestions = useMemo(() => {

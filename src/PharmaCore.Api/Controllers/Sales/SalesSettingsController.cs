@@ -55,4 +55,25 @@ public sealed class SalesSettingsController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpGet("customer-app")]
+    [Authorize(Policy = SalesPolicies.Read)]
+    public async Task<ActionResult<TenantCustomerAppSettingsDto>> GetCustomerApp(CancellationToken cancellationToken) =>
+        Ok(await _settings.GetCustomerAppSettingsAsync(cancellationToken));
+
+    [HttpPut("customer-app")]
+    [Authorize(Policy = SalesPolicies.Write)]
+    public async Task<ActionResult<TenantCustomerAppSettingsDto>> UpdateCustomerApp(
+        [FromBody] UpdateTenantCustomerAppSettingsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _settings.UpdateCustomerAppSettingsAsync(request, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

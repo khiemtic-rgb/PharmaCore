@@ -1,4 +1,5 @@
 import type { MedicationReminder } from '@/shared/api/customer-app.types';
+import i18n from '@/shared/i18n';
 
 type ReminderRaw = Record<string, unknown>;
 
@@ -33,7 +34,7 @@ export function normalizeReminderId(id: string): string {
 export function normalizeReminder(raw: ReminderRaw): MedicationReminder {
   const id = readString(raw, 'id', 'Id');
   if (!id) {
-    throw new Error('Thiếu id lịch nhắc từ API');
+    throw new Error(i18n.t('reminders.missingId'));
   }
 
   const nextRemindAt = raw.nextRemindAt ?? raw.NextRemindAt;
@@ -41,6 +42,7 @@ export function normalizeReminder(raw: ReminderRaw): MedicationReminder {
   return {
     id: normalizeReminderId(id),
     productId: readString(raw, 'productId', 'ProductId'),
+    familyMemberId: (readString(raw, 'familyMemberId', 'FamilyMemberId') || null) as string | null,
     productCode: readString(raw, 'productCode', 'ProductCode'),
     productName: readString(raw, 'productName', 'ProductName'),
     dosageNote: (raw.dosageNote ?? raw.DosageNote ?? null) as string | null,
@@ -59,7 +61,7 @@ export function normalizeReminderList(raw: unknown): MedicationReminder[] {
   const normalized = rows.map((row) => normalizeReminder(row as ReminderRaw));
   const ids = new Set(normalized.map((item) => item.id));
   if (ids.size !== normalized.length) {
-    throw new Error('API trả về id lịch nhắc bị trùng');
+    throw new Error(i18n.t('reminders.duplicateId'));
   }
   return normalized;
 }

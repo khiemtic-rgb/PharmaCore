@@ -32,6 +32,7 @@
       "users": "Nhân viên",
       "roles": "Vai trò",
       "posSettings": "Phiếu in & POS",
+      "customerAppSettings": "App khách",
       "auditLog": "Nhật ký"
     }
   },

@@ -1,17 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchServerNotifications } from '@/shared/api/customer-app.api';
 import {
   subscribeCustomerNotifications,
   unreadCustomerNotificationCount,
 } from '@/shared/notifications/customer-notifications';
 
-export function useCustomerNotificationCount() {
-  const [count, setCount] = useState(unreadCustomerNotificationCount);
+const SERVER_POLL_MS = 60_000;
 
-  useEffect(() => {
-    const refresh = () => setCount(unreadCustomerNotificationCount());
-    refresh();
-    return subscribeCustomerNotifications(refresh);
+export function useCustomerNotificationCount() {
+  const [count, setCount] = useState(0);
+
+  const refresh = useCallback(async () => {
+    const localUnread = unreadCustomerNotificationCount();
+    try {
+      const { unreadCount } = await fetchServerNotifications(1);
+      setCount(localUnread + unreadCount);
+    } catch {
+      setCount(localUnread);
+    }
   }, []);
 
+  useEffect(() => {
+    void refresh();
+    const onLocalChange = () => void refresh();
+    const onServerChange = () => void refresh();
+    const unsubLocal = subscribeCustomerNotifications(onLocalChange);
+    window.addEventListener('server-notifications-changed', onServerChange);
+    const timer = window.setInterval(() => void refresh(), SERVER_POLL_MS);
+    return () => {
+      unsubLocal();
+      window.removeEventListener('server-notifications-changed', onServerChange);
+      window.clearInterval(timer);
+    };
+  }, [refresh]);
+
   return count;
+}
+
+export function notifyServerNotificationsChanged() {
+  window.dispatchEvent(new CustomEvent('server-notifications-changed'));
 }
