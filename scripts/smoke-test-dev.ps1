@@ -214,6 +214,12 @@ Test-Step 'Voucher admin list' {
     if ($null -eq $v.items) { throw 'no items array' }
 }
 
+Test-Step 'System audit log' {
+    $audit = Invoke-RestMethod "$base/api/system/audit-log?page=1&pageSize=5" -Headers $script:adminH
+    if ($null -eq $audit.items) { throw 'no items array' }
+    if ($audit.total -lt 1) { throw 'expected audit history' }
+}
+
 Write-Host "`n--- Summary ---" -ForegroundColor Cyan
 Write-Host "Passed: $passed"
 Write-Host "Draft orders (customer): $script:draftCount"

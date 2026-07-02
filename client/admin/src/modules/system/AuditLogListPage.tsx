@@ -52,6 +52,8 @@ export function AuditLogListPage() {
       setItems(result.items);
       setTotal(result.total);
     } catch (error) {
+      setItems([]);
+      setTotal(0);
       message.error(apiErrorMessage(error, t('messages.loadFailed')));
     } finally {
       setLoading(false);

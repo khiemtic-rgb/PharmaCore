@@ -71,7 +71,28 @@ internal sealed class AuditLogQueryService : IAuditLogQuery
         });
 
         var total = await multi.ReadSingleAsync<int>();
-        var items = (await multi.ReadAsync<AuditLogListItemDto>()).ToList();
+        var rows = (await multi.ReadAsync<AuditLogRow>()).ToList();
+        var items = rows.Select(r => new AuditLogListItemDto(
+            r.Id,
+            r.UserId,
+            r.Username,
+            r.EntityType,
+            r.EntityId,
+            r.Action,
+            r.PayloadJson,
+            new DateTimeOffset(DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc)))).ToList();
         return new PagedAuditLogsResult(items, total, page, pageSize);
+    }
+
+    private sealed class AuditLogRow
+    {
+        public Guid Id { get; init; }
+        public Guid? UserId { get; init; }
+        public string? Username { get; init; }
+        public string EntityType { get; init; } = "";
+        public Guid? EntityId { get; init; }
+        public string Action { get; init; } = "";
+        public string? PayloadJson { get; init; }
+        public DateTime CreatedAt { get; init; }
     }
 }
