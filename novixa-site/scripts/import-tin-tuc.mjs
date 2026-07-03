@@ -7,7 +7,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
+import { loadDotEnv } from './load-env.mjs';
 import { generateNewsImage } from './news-image-lib.mjs';
+import { generateNewsHeroImage } from './lib/openai-news.mjs';
+
+loadDotEnv();
+import { generateNewsHeroImage } from './lib/openai-news.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -247,11 +252,18 @@ async function main() {
 
     writeMarkdown(item, filename);
     const slug = filename.replace(/\.md$/, '');
-    await generateNewsImage({
+    const img = await generateNewsHeroImage({
       slug,
       title: item.title,
       description: item.description ?? '',
     });
+    if (!img.ok) {
+      await generateNewsImage({
+        slug,
+        title: item.title,
+        description: item.description ?? '',
+      });
+    }
 
     if (exists) {
       updated++;

@@ -396,17 +396,20 @@ export async function generateAllNewsImages({ forceSvg = false } = {}) {
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
 
   if (!forceSvg) {
+    if (process.env.OPENAI_API_KEY?.trim()) {
+      const { generateAllAiNewsImages } = await import('./ai-news-image.mjs');
+      const aiResult = await generateAllAiNewsImages({ force });
+      if (aiResult.errors.length === 0) return aiResult.ok + aiResult.skipped;
+      console.warn('Một số bài OpenAI lỗi — thử CF hoặc SVG cho bài thiếu.');
+    }
     const { hasCfAiCredentials } = await import('./cf-ai-config.mjs');
     if (hasCfAiCredentials()) {
       const { generateAllCfNewsImages } = await import('./cf-ai-news-image.mjs');
       const cfResult = await generateAllCfNewsImages({ force });
       if (cfResult.errors.length === 0) return cfResult.ok + cfResult.skipped;
-      console.warn('Một số bài CF AI lỗi — thử OpenAI hoặc SVG cho bài thiếu.');
-    } else if (process.env.OPENAI_API_KEY?.trim()) {
-      const { generateAllAiNewsImages } = await import('./ai-news-image.mjs');
-      const aiResult = await generateAllAiNewsImages({ force });
-      if (aiResult.errors.length === 0) return aiResult.ok + aiResult.skipped;
-      console.warn('Một số bài OpenAI lỗi — fallback SVG cho bài thiếu ảnh.');
+      console.warn('Một số bài CF AI lỗi — fallback SVG cho bài thiếu ảnh.');
+    } else if (!process.env.OPENAI_API_KEY?.trim()) {
+      console.warn('Chưa có OPENAI_API_KEY hoặc CF credentials — dùng SVG.');
     }
   }
 

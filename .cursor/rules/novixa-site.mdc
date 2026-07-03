@@ -23,7 +23,8 @@ Website giới thiệu **Novixa** tại `novixa-site/` — deploy tách, **khôn
 | `src/content/tin-tuc/*.md` | Bài tin tức |
 | `src/lib/publishedNews.ts` | Ẩn bài có `pubDate` tương lai (giờ VN) |
 | `import/tin-tuc.xlsx` + `npm run import:news` | Import tin hàng loạt |
-| `scripts/import-tin-tuc.mjs` | Logic import |
+| `scripts/import-tin-tuc.mjs` | Import tin hàng loạt |
+| `scripts/auto-publish-news.mjs` | ChatGPT viết bài + OpenAI ảnh (lịch `news-content-plan.mjs`) |
 
 ## Quy tắc khi sửa
 
@@ -40,4 +41,4 @@ Website giới thiệu **Novixa** tại `novixa-site/` — deploy tách, **khôn
 - Hotline: 0984.660.399 | Facebook: facebook.com/novixa68
 - Fanpage auto-post: `scripts/post-fanpage-today.mjs` — secrets `FB_PAGE_ID`, `FB_PAGE_ACCESS_TOKEN`
 - SEO tin: JSON-LD Article, sitemap, ảnh OG `public/images/tin-tuc/{slug}.png`
-- Ảnh tin: ưu tiên **Cloudflare Workers AI Flux** (`CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`), fallback OpenAI/SVG — `generate:news-images`
+- Ảnh tin: ưu tiên **OpenAI** (`OPENAI_API_KEY`), fallback CF Flux/SVG — `publish:news` / `generate:news-images`

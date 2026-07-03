@@ -13,6 +13,8 @@
     "preview": "astro preview --host localhost --port 4321",
     "astro": "astro",
     "import:news": "node scripts/import-tin-tuc.mjs",
+    "publish:news": "node scripts/auto-publish-news.mjs",
+    "publish:news:status": "node scripts/news-content-status.mjs",
     "generate:news-images": "node scripts/generate-news-images.mjs",
     "generate:news-images:cf": "node scripts/generate-news-images-cf.mjs",
     "generate:news-images:ai": "node scripts/generate-news-images-ai.mjs",

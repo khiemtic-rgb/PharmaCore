@@ -53,7 +53,31 @@ novixa-site/
 
 ## Thêm tin tức
 
-### Cách 1 — Excel / CSV (khuyến nghị)
+### Cách 1 — Tự động ChatGPT + OpenAI ảnh (giống Kit Technology)
+
+Lịch biên tập: `scripts/lib/news-content-plan.mjs` — mỗi ngày 1 bài mới (từ 11/7/2026).
+
+**GitHub Secret:** `OPENAI_API_KEY` (bắt buộc). Tuỳ chọn: `OPENAI_MODEL` (mặc định `gpt-4o-mini`), `OPENAI_IMAGE_MODEL` (mặc định `gpt-image-1` → fallback `dall-e-3`).
+
+Workflow `novixa-scheduled-publish.yml` mỗi đêm (~00:05 VN):
+
+1. `npm run publish:news` — ChatGPT viết bài + OpenAI sinh ảnh OG
+2. Import Excel (nếu có `import/tin-tuc.xlsx`)
+3. Đăng fanpage + deploy
+
+```powershell
+cd novixa-site
+# Xem lịch sắp tới
+npm run publish:news:status
+
+# Chạy tay (cần OPENAI_API_KEY trong .env)
+npm run publish:news
+
+# Một bài cụ thể, đăng ngay
+$env:ARTICLE_ID="nv-loyalty"; $env:FORCE_PUBLISH="1"; npm run publish:news
+```
+
+### Cách 2 — Excel / CSV (nhập tay / chỉnh sửa)
 
 1. Đặt file vào `import/tin-tuc.xlsx` (hoặc `tin-tuc.csv`).
 2. Cột: `title` hoặc `description` (tiêu đề), `pubDate`, `slug` (tuỳ chọn), `content`.
@@ -73,7 +97,7 @@ git push
 
 GitHub Actions `novixa-scheduled-publish.yml` chạy import + deploy hàng ngày. Tuỳ chọn: secret `CF_DEPLOY_HOOK` (Cloudflare Pages → Deploy hooks).
 
-### Cách 2 — Markdown tay
+### Cách 3 — Markdown tay
 
 Tạo file `src/content/tin-tuc/ten-bai.md`:
 
@@ -122,11 +146,12 @@ Mỗi bài tin có:
 | **robots.txt** | Trỏ sitemap |
 | **CTA cuối bài** | Link Giải pháp + Liên hệ |
 
-Sinh ảnh (ưu tiên **Cloudflare Workers AI Flux** — free):
+Sinh ảnh (ưu tiên **OpenAI** khi có `OPENAI_API_KEY`, sau đó CF Flux, cuối cùng SVG):
 
 | Lệnh | Mô tả |
 |------|--------|
-| `npm run generate:news-images` | CF Flux (nếu có creds) → OpenAI → SVG |
+| `npm run publish:news` | ChatGPT viết bài + OpenAI ảnh (theo lịch ngày) |
+| `npm run generate:news-images` | OpenAI → CF Flux → SVG |
 | `npm run generate:news-images:cf` | Chỉ Cloudflare Flux Schnell |
 | `npm run generate:news-images:ai` | Chỉ OpenAI (có phí) |
 | `npm run generate:news-images:svg` | Chỉ SVG (miễn phí, 8 layout/bài) |
