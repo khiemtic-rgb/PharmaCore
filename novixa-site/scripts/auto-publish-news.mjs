@@ -141,7 +141,10 @@ async function main() {
   }
 
   if (plans.length === 0) {
-    console.log('Không có bài lên lịch cho ngày này.');
+    const hint = articleId
+      ? `Không tìm thấy bài "${articleId}" trong lịch (news-content-plan.mjs).`
+      : `Không có bài lên lịch cho ngày ${date}. Chạy thử: ARTICLE_ID=nv-loyalty FORCE_PUBLISH=1`;
+    console.log(hint);
     return;
   }
 

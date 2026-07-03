@@ -40,12 +40,19 @@ jobs:
           OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
           PUBLISH_DATE: ${{ vars.PUBLISH_DATE }}
           ARTICLE_ID: ${{ github.event.inputs.article_id || vars.ARTICLE_ID }}
-          FORCE_PUBLISH: ${{ github.event.inputs.force_publish == 'true' && '1' || '' }}
+          FORCE_PUBLISH: ${{ github.event.inputs.force_publish != 'false' && github.event_name == 'workflow_dispatch' && '1' || '' }}
         run: |
           npm ci
+          echo "ARTICLE_ID=${ARTICLE_ID:-<empty>}"
+          echo "FORCE_PUBLISH=${FORCE_PUBLISH:-<empty>}"
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Thiếu OPENAI_API_KEY trong GitHub Secrets"
+            exit 1
+          fi
           npm run publish:news
 
       - name: Import tin từ Excel (nếu có)
+        if: ${{ github.event.inputs.article_id == '' && vars.ARTICLE_ID == '' }}
         working-directory: novixa-site
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
