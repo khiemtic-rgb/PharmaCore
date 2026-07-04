@@ -1,46 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-04T15:49:16.737Z",
+  "generatedAt": "2026-07-04T21:41:14.029Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 131,
-    "todayPageViews": 161,
-    "todayRequests": 376,
-    "last24hVisitors": 139,
-    "last24hPageViews": 167,
-    "last24hRequests": 398
+    "todayVisitors": 0,
+    "todayPageViews": 0,
+    "todayRequests": 0,
+    "last24hVisitors": 147,
+    "last24hPageViews": 174,
+    "last24hRequests": 423
   },
   "hourly": [
-    {
-      "time": "2026-07-03T16:00:00Z",
-      "visitors": 5,
-      "requests": 5
-    },
-    {
-      "time": "2026-07-03T17:00:00Z",
-      "visitors": 4,
-      "requests": 6
-    },
-    {
-      "time": "2026-07-03T18:00:00Z",
-      "visitors": 3,
-      "requests": 6
-    },
-    {
-      "time": "2026-07-03T19:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
-    {
-      "time": "2026-07-03T20:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
-    {
-      "time": "2026-07-03T21:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
     {
       "time": "2026-07-03T22:00:00Z",
       "visitors": 1,
@@ -123,17 +93,31 @@
     },
     {
       "time": "2026-07-04T15:00:00Z",
-      "visitors": 2,
-      "requests": 5
+      "visitors": 3,
+      "requests": 22
+    },
+    {
+      "time": "2026-07-04T16:00:00Z",
+      "visitors": 1,
+      "requests": 2
+    },
+    {
+      "time": "2026-07-04T17:00:00Z",
+      "visitors": 3,
+      "requests": 4
+    },
+    {
+      "time": "2026-07-04T18:00:00Z",
+      "visitors": 3,
+      "requests": 3
+    },
+    {
+      "time": "2026-07-04T20:00:00Z",
+      "visitors": 11,
+      "requests": 19
     }
   ],
   "daily": [
-    {
-      "date": "2026-06-28",
-      "visitors": 106,
-      "pageViews": 228,
-      "requests": 605
-    },
     {
       "date": "2026-06-29",
       "visitors": 148,
@@ -166,70 +150,70 @@
     },
     {
       "date": "2026-07-04",
-      "visitors": 131,
-      "pageViews": 161,
-      "requests": 376
+      "visitors": 147,
+      "pageViews": 174,
+      "requests": 421
     }
   ],
   "topPages": [
     {
       "path": "/vi/tin-tuc/pos-nha-thuoc-5-tinh-nang-khong-the-thieu/",
-      "views": 93
+      "views": 94
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 45
+      "views": 51
     },
     {
       "path": "/vi/",
-      "views": 27
-    },
-    {
-      "path": "/robots.txt",
-      "views": 18
+      "views": 30
     },
     {
       "path": "/",
-      "views": 18
+      "views": 25
+    },
+    {
+      "path": "/robots.txt",
+      "views": 19
     },
     {
       "path": "/api/stats",
-      "views": 15
+      "views": 16
     },
     {
       "path": "/vi",
-      "views": 13
-    },
-    {
-      "path": "/sitemap-index.xml",
-      "views": 12
-    },
-    {
-      "path": "/vi/thong-ke/",
-      "views": 12
+      "views": 15
     },
     {
       "path": "/images/logo.png",
-      "views": 11
+      "views": 15
+    },
+    {
+      "path": "/vi/thong-ke/",
+      "views": 13
     },
     {
       "path": "/images/tin-tuc/pos-nha-thuoc-5-tinh-nang-khong-the-thieu.png",
-      "views": 10
-    },
-    {
-      "path": "/_astro/Footer.B_fICVJK.css",
-      "views": 10
+      "views": 12
     },
     {
       "path": "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
+      "views": 10
+    },
+    {
+      "path": "/sitemap-index.xml",
       "views": 9
     },
     {
       "path": "/images/tin-tuc/canh-bao-hang-can-date-quy-trinh-5-buoc.png",
-      "views": 8
+      "views": 9
     },
     {
       "path": "/_astro/Footer.D_gZUTcD.css",
+      "views": 9
+    },
+    {
+      "path": "/images/banner.png",
       "views": 8
     }
   ]
