@@ -6,7 +6,11 @@ client/**/node_modules/
 client/**/dist/
 .dev/
 tests/
-docs/
+docs/*
+!docs/novixa/
+!docs/novixa/**
+!docs/novixa-deploy.md
+!docs/novixa-production.env.example
 .env
 .env.*
 !.env.example
