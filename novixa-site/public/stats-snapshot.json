@@ -1,31 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-05T16:17:58.590Z",
+  "generatedAt": "2026-07-05T21:42:31.419Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 129,
-    "todayPageViews": 138,
-    "todayRequests": 287,
-    "last24hVisitors": 137,
-    "last24hPageViews": 149,
-    "last24hRequests": 316
+    "todayVisitors": 0,
+    "todayPageViews": 0,
+    "todayRequests": 0,
+    "last24hVisitors": 134,
+    "last24hPageViews": 144,
+    "last24hRequests": 306
   },
   "hourly": [
-    {
-      "time": "2026-07-04T17:00:00Z",
-      "visitors": 3,
-      "requests": 4
-    },
-    {
-      "time": "2026-07-04T18:00:00Z",
-      "visitors": 3,
-      "requests": 3
-    },
-    {
-      "time": "2026-07-04T20:00:00Z",
-      "visitors": 11,
-      "requests": 19
-    },
     {
       "time": "2026-07-04T23:00:00Z",
       "visitors": 2,
@@ -105,15 +90,34 @@
       "time": "2026-07-05T15:00:00Z",
       "visitors": 2,
       "requests": 2
+    },
+    {
+      "time": "2026-07-05T16:00:00Z",
+      "visitors": 4,
+      "requests": 5
+    },
+    {
+      "time": "2026-07-05T17:00:00Z",
+      "visitors": 3,
+      "requests": 4
+    },
+    {
+      "time": "2026-07-05T18:00:00Z",
+      "visitors": 2,
+      "requests": 2
+    },
+    {
+      "time": "2026-07-05T19:00:00Z",
+      "visitors": 1,
+      "requests": 2
+    },
+    {
+      "time": "2026-07-05T21:00:00Z",
+      "visitors": 3,
+      "requests": 3
     }
   ],
   "daily": [
-    {
-      "date": "2026-06-29",
-      "visitors": 148,
-      "pageViews": 208,
-      "requests": 424
-    },
     {
       "date": "2026-06-30",
       "visitors": 128,
@@ -146,15 +150,15 @@
     },
     {
       "date": "2026-07-05",
-      "visitors": 129,
-      "pageViews": 138,
-      "requests": 287
+      "visitors": 133,
+      "pageViews": 143,
+      "requests": 303
     }
   ],
   "topPages": [
     {
       "path": "/vi/tin-tuc/crm-cho-nha-thuoc-bat-dau-tu-dau-lieu-khach-hang/",
-      "views": 92
+      "views": 93
     },
     {
       "path": "/cdn-cgi/rum",
@@ -166,22 +170,22 @@
     },
     {
       "path": "/",
-      "views": 21
-    },
-    {
-      "path": "/images/logo.png",
       "views": 17
     },
     {
-      "path": "/vi/",
+      "path": "/images/logo.png",
       "views": 14
     },
     {
       "path": "/sitemap-index.xml",
-      "views": 12
+      "views": 14
     },
     {
       "path": "/api/stats",
+      "views": 12
+    },
+    {
+      "path": "/vi/",
       "views": 12
     },
     {
@@ -197,19 +201,19 @@
       "views": 8
     },
     {
-      "path": "/vi",
-      "views": 6
-    },
-    {
-      "path": "/sitemap.xml",
-      "views": 6
-    },
-    {
       "path": "/vi/thong-ke/",
       "views": 6
     },
     {
-      "path": "/config.json",
+      "path": "/vi",
+      "views": 4
+    },
+    {
+      "path": "/_astro/thong-ke.astro_astro_type_script_index_0_lang.Ci291ITp.js",
+      "views": 4
+    },
+    {
+      "path": "/.well-known/security.txt",
       "views": 4
     }
   ]
