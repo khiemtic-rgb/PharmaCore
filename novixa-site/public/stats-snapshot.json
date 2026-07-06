@@ -1,51 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-06T14:08:52.477Z",
+  "generatedAt": "2026-07-06T22:46:29.981Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 105,
-    "todayPageViews": 120,
-    "todayRequests": 226,
+    "todayVisitors": 0,
+    "todayPageViews": 0,
+    "todayRequests": 0,
     "last24hVisitors": 112,
-    "last24hPageViews": 127,
-    "last24hRequests": 247
+    "last24hPageViews": 140,
+    "last24hRequests": 273
   },
   "hourly": [
-    {
-      "time": "2026-07-05T15:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-05T16:00:00Z",
-      "visitors": 4,
-      "requests": 5
-    },
-    {
-      "time": "2026-07-05T17:00:00Z",
-      "visitors": 3,
-      "requests": 4
-    },
-    {
-      "time": "2026-07-05T18:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-05T19:00:00Z",
-      "visitors": 1,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-05T21:00:00Z",
-      "visitors": 3,
-      "requests": 3
-    },
-    {
-      "time": "2026-07-05T22:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
     {
       "time": "2026-07-05T23:00:00Z",
       "visitors": 1,
@@ -115,15 +80,49 @@
       "time": "2026-07-06T13:00:00Z",
       "visitors": 3,
       "requests": 3
+    },
+    {
+      "time": "2026-07-06T14:00:00Z",
+      "visitors": 5,
+      "requests": 18
+    },
+    {
+      "time": "2026-07-06T15:00:00Z",
+      "visitors": 2,
+      "requests": 4
+    },
+    {
+      "time": "2026-07-06T16:00:00Z",
+      "visitors": 4,
+      "requests": 5
+    },
+    {
+      "time": "2026-07-06T17:00:00Z",
+      "visitors": 4,
+      "requests": 5
+    },
+    {
+      "time": "2026-07-06T18:00:00Z",
+      "visitors": 2,
+      "requests": 2
+    },
+    {
+      "time": "2026-07-06T19:00:00Z",
+      "visitors": 2,
+      "requests": 3
+    },
+    {
+      "time": "2026-07-06T20:00:00Z",
+      "visitors": 1,
+      "requests": 1
+    },
+    {
+      "time": "2026-07-06T21:00:00Z",
+      "visitors": 5,
+      "requests": 7
     }
   ],
   "daily": [
-    {
-      "date": "2026-06-30",
-      "visitors": 128,
-      "pageViews": 211,
-      "requests": 587
-    },
     {
       "date": "2026-07-01",
       "visitors": 150,
@@ -156,31 +155,31 @@
     },
     {
       "date": "2026-07-06",
-      "visitors": 105,
-      "pageViews": 120,
-      "requests": 226
+      "visitors": 112,
+      "pageViews": 140,
+      "requests": 271
     }
   ],
   "topPages": [
     {
       "path": "/vi/tin-tuc/bao-cao-doanh-thu-real-time-doc-so-lieu-dung/",
-      "views": 86
-    },
-    {
-      "path": "/cdn-cgi/rum",
-      "views": 24
+      "views": 87
     },
     {
       "path": "/robots.txt",
-      "views": 20
+      "views": 22
     },
     {
       "path": "/",
-      "views": 16
+      "views": 21
+    },
+    {
+      "path": "/cdn-cgi/rum",
+      "views": 20
     },
     {
       "path": "/sitemap-index.xml",
-      "views": 14
+      "views": 15
     },
     {
       "path": "/vi/",
@@ -195,23 +194,23 @@
       "views": 10
     },
     {
-      "path": "/api/stats",
+      "path": "/vi/tin-tuc/bao-cao-doanh-thu-real-time-doc-so-lieu-dung",
       "views": 7
     },
     {
-      "path": "/vi/tin-tuc/bao-cao-doanh-thu-real-time-doc-so-lieu-dung",
-      "views": 7
+      "path": "/api/stats",
+      "views": 6
     },
     {
       "path": "/images/banner.png",
       "views": 6
     },
     {
-      "path": "/_astro/Footer.D_gZUTcD.css",
+      "path": "/vi",
       "views": 4
     },
     {
-      "path": "/.well-known/security.txt",
+      "path": "/_astro/Footer.D_gZUTcD.css",
       "views": 4
     },
     {
@@ -219,7 +218,7 @@
       "views": 4
     },
     {
-      "path": "/vi/thong-ke/",
+      "path": "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
       "views": 3
     }
   ]
