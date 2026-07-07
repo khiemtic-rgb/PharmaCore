@@ -7,97 +7,156 @@ const f = m.footer;
 const co = m.company;
 const year = new Date().getFullYear();
 const hasFacebook = Boolean(c.facebookUrl?.trim());
+const columns = [
+  {
+    title: 'Nền tảng',
+    links: [
+      { href: '/vi#nen-tang', label: 'Nền tảng' },
+      { href: '/vi#giai-phap', label: 'Giải pháp' },
+      { href: '/vi#mo-rong-chuoi', label: 'Khách hàng' },
+      { href: '/vi/tin-tuc', label: 'Tin tức' },
+    ],
+  },
+  {
+    title: 'Tài liệu',
+    links: [
+      { href: '/vi/tin-tuc', label: 'Tài liệu' },
+      { href: '/vi/ve-chung-toi', label: 'Chính sách' },
+      { href: '/vi/ve-chung-toi', label: 'Điều khoản' },
+    ],
+  },
+];
 ---
 
 <footer class="site-footer">
-  <div class="container footer-inner">
+  <div class="container footer-grid">
     <div class="footer-brand">
-      <p class="footer-name">{m.meta.siteName}</p>
-      <p class="footer-tagline">{m.meta.tagline}</p>
-      <p class="footer-contact">
-        <a href={`tel:${c.phoneTel}`}>{c.phoneDisplay}</a>
-        ·
-        <a href={`mailto:${c.emailAddress}`}>{c.emailAddress}</a>
-      </p>
+      <a href="/vi" class="footer-logo">
+        <span class="logo-mark">N</span>
+        <span>Novixa</span>
+      </a>
+      <p>Nền tảng vận hành nhà thuốc thông minh.</p>
+      <div class="footer-legal">
+        <p class="footer-provider">
+          {co.providerLabel}{' '}
+          <a class="footer-link" href={co.providerUrl} target="_blank" rel="noopener noreferrer">
+            {co.providerName}
+          </a>
+        </p>
+        <p>{co.legalName}</p>
+        <p>{co.addressShort}</p>
+        <p>{co.taxIdLabel}: {co.taxId}</p>
+      </div>
+      <p class="footer-note">{f.erpNote}</p>
+      <p class="muted">© {year} {f.rights}</p>
+    </div>
+
+    {
+      columns.map((column) => (
+        <div class="footer-column">
+          <h2>{column.title}</h2>
+          {column.links.map((link) => (
+            <a class="footer-link" href={link.href}>{link.label}</a>
+          ))}
+        </div>
+      ))
+    }
+
+    <div class="footer-column">
+      <h2>Liên hệ</h2>
+      <a class="footer-link" href={`tel:${c.phoneTel}`}>Hotline: {c.phoneDisplay}</a>
+      <a class="footer-link" href={`mailto:${c.emailAddress}`}>Email: {c.emailAddress}</a>
       {
         hasFacebook && (
-          <p class="footer-social-link">
-            <a class="footer-link" href={c.facebookUrl} target="_blank" rel="noopener noreferrer">
-              {c.facebookPageName || c.facebookLabel}
-            </a>
-          </p>
+          <a class="footer-link" href={c.facebookUrl} target="_blank" rel="noopener noreferrer">
+            Facebook
+          </a>
         )
       }
+      <a class="footer-link" href="/vi/lien-he">LinkedIn</a>
     </div>
-
-    <div class="footer-legal">
-      <p class="footer-provider">
-        {co.providerLabel}{' '}
-        <a class="footer-link" href={co.providerUrl} target="_blank" rel="noopener noreferrer">
-          {co.providerName}
-        </a>
-      </p>
-      <p>{co.legalName}</p>
-      <p>{co.addressShort}</p>
-      <p>{co.taxIdLabel}: {co.taxId}</p>
-    </div>
-
-    <p class="footer-note">{f.erpNote}</p>
-    <p class="footer-bottom">© {year} {f.rights}</p>
   </div>
 </footer>
 
 <style>
   .site-footer {
-    background: var(--color-text);
-    color: #cbd5e1;
-    padding: 2.75rem 0 1.75rem;
-    margin-top: 3rem;
+    background: #071d34;
+    color: #d9e6f3;
+    padding: clamp(3rem, 7vw, 4.5rem) 0 2rem;
     font-size: 0.9rem;
   }
 
-  .footer-brand {
-    margin-bottom: 1.25rem;
+  .footer-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .footer-name {
-    margin: 0 0 0.25rem;
-    font-size: 1.2rem;
-    font-weight: 700;
+  .footer-brand p {
+    max-width: 24ch;
+    margin: 1rem 0 0;
+    color: #a9bfd5;
+  }
+
+  .footer-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
     color: #fff;
-  }
-
-  .footer-tagline {
-    margin: 0 0 0.65rem;
-    color: #cbd5e1;
-  }
-
-  .footer-contact {
-    margin: 0;
-  }
-
-  .footer-contact a,
-  .footer-link {
-    color: #93c5fd;
+    font-size: 1.15rem;
+    font-weight: 800;
     text-decoration: none;
   }
 
-  .footer-contact a:hover,
-  .footer-link:hover {
+  .footer-logo:hover {
+    text-decoration: none;
+  }
+
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-green));
     color: #fff;
   }
 
-  .footer-social-link {
-    margin: 0.5rem 0 0;
+  .footer-column {
+    display: grid;
+    align-content: start;
+    gap: 0.7rem;
+  }
+
+  .footer-column h2 {
+    margin: 0 0 0.35rem;
+    color: #fff;
+    font-size: 0.95rem;
+  }
+
+  .footer-link {
+    color: #a9bfd5;
+    text-decoration: none;
+  }
+
+  .footer-link:hover {
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .muted {
+    color: #7892aa !important;
+    font-size: 0.85rem;
   }
 
   .footer-legal {
     margin-top: 1.25rem;
     padding-top: 1rem;
-    border-top: 1px solid #334155;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    color: #7892aa;
     font-size: 0.78rem;
     line-height: 1.55;
-    color: #64748b;
   }
 
   .footer-legal p {
@@ -105,18 +164,24 @@ const hasFacebook = Boolean(c.facebookUrl?.trim());
   }
 
   .footer-provider {
-    color: #94a3b8;
+    color: #a9bfd5;
   }
 
   .footer-note {
     margin: 1rem 0 0;
-    color: #94a3b8;
+    color: #7892aa;
     font-size: 0.82rem;
   }
 
-  .footer-bottom {
-    margin: 0.75rem 0 0;
-    color: #64748b;
-    font-size: 0.82rem;
+  @media (max-width: 900px) {
+    .footer-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .footer-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
