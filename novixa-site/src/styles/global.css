@@ -962,9 +962,26 @@ svg {
   font-size: 1.35rem;
 }
 
+.prose h3 {
+  margin: 1.35rem 0 0.35rem;
+  color: var(--color-primary);
+  font-size: 1.05rem;
+}
+
 .prose p,
 .prose li {
   color: var(--color-text);
+}
+
+.about-prose {
+  max-width: 78ch;
+}
+
+.about-lead {
+  color: var(--color-primary) !important;
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .prose table {
