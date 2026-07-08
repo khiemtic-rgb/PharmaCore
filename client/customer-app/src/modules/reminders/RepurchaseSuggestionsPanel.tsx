@@ -21,18 +21,36 @@ function isVisibleSuggestion(item: RepurchaseSuggestion) {
   return item.status === 'pending';
 }
 
-export function RepurchaseSuggestionsPanel({ onAccepted }: { onAccepted?: () => void }) {
+export function RepurchaseSuggestionsPanel({
+  onAccepted,
+  suggestions,
+  familyMembers: externalFamilyMembers,
+  suggestionsLoading,
+}: {
+  onAccepted?: () => void;
+  suggestions?: RepurchaseSuggestion[];
+  familyMembers?: FamilyMember[];
+  suggestionsLoading?: boolean;
+}) {
   const { t } = useTranslation();
   const { familyRelationship } = useCustomerLabels();
+  const controlled = suggestions !== undefined;
   const [items, setItems] = useState<RepurchaseSuggestion[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!controlled);
   const [actingId, setActingId] = useState<string | null>(null);
   const [acceptModalOpen, setAcceptModalOpen] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
+  const visibleItems = controlled
+    ? suggestions.filter(isVisibleSuggestion)
+    : items;
+  const resolvedFamilyMembers = externalFamilyMembers ?? familyMembers;
+  const panelLoading = controlled ? Boolean(suggestionsLoading) : loading;
+
   const load = useCallback(async () => {
+    if (controlled) return;
     setLoading(true);
     try {
       const [rows, family] = await Promise.all([fetchRepurchaseSuggestions(), fetchFamilyMembers()]);
@@ -43,11 +61,12 @@ export function RepurchaseSuggestionsPanel({ onAccepted }: { onAccepted?: () => 
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [controlled, t]);
 
   useEffect(() => {
+    if (controlled) return;
     void load();
-  }, [load]);
+  }, [controlled, load]);
 
   const patchItem = (updated: RepurchaseSuggestion) => {
     setItems((prev) => {
@@ -114,12 +133,12 @@ export function RepurchaseSuggestionsPanel({ onAccepted }: { onAccepted?: () => 
     }
   };
 
-  const familyOptions = familyMembers.map((member) => ({
+  const familyOptions = resolvedFamilyMembers.map((member) => ({
     value: member.id,
     label: `${member.fullName} (${familyRelationship(member.relationship) ?? FAMILY_RELATIONSHIP_LABELS[member.relationship]})`,
   }));
 
-  if (loading) {
+  if (panelLoading) {
     return (
       <div style={{ textAlign: 'center', padding: 16 }}>
         <Spin size="small" />
@@ -127,7 +146,7 @@ export function RepurchaseSuggestionsPanel({ onAccepted }: { onAccepted?: () => 
     );
   }
 
-  if (items.length === 0) return null;
+  if (visibleItems.length === 0) return null;
 
   return (
     <>
@@ -140,7 +159,7 @@ export function RepurchaseSuggestionsPanel({ onAccepted }: { onAccepted?: () => 
             {t('reminders.repurchasePanelDesc')}
           </Typography.Paragraph>
         </div>
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <Card key={item.id} size="small" style={{ borderRadius: 12 }}>
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
               <div>

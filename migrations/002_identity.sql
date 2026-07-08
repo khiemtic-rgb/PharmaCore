@@ -1,4 +1,4 @@
--- PharmaCore: Identity module (11 tables)
+﻿-- KitPlatform: Identity module (11 tables)
 
 CREATE TABLE tenants (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

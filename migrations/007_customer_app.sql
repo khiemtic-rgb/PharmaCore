@@ -1,4 +1,4 @@
--- PharmaCore: Customer App & Retention module (10 tables)
+﻿-- KitPlatform: Customer App & Retention module (10 tables)
 
 CREATE TABLE customer_accounts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

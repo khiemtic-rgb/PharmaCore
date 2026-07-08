@@ -1,0 +1,117 @@
+Novixa — Sales Deck V1 · Outline for PowerPoint
+Import: PowerPoint → Home → New Slide → Slides from Outline → chọn file .txt (hoặc mở .pptx có sẵn)
+Mỗi dòng IN HOA đầu block = tiêu đề slide mới; dòng tab = bullet
+
+NOVIXA
+	Smart Pharmacy Solutions
+	Nền tảng quản trị nhà thuốc thế hệ mới
+	Founding Early Access · 2026
+	novixa.vn
+
+VẤN ĐỀ THỊ TRƯỜNG
+	Nhà thuốc GPP đang vận hành bằng nhiều mảnh
+	Excel + POS rẻ → không theo lô / HSD
+	Bán và kho không cùng một nguồn dữ liệu
+	Khách quay lại — không có CRM / app gắn quầy
+	Báo cáo trễ, quyết định nhập hàng mù
+
+HỆ QUẢ NẾU KHÔNG THAY ĐỔI
+	Bán nhầm lô / cận date → Hủy hàng, mất niềm tin
+	Thất thoát tồn → % doanh thu bay hàng tháng
+	Nhập thiếu / thừa → Vốn lưu đọng, thiếu hàng hot
+	Chuỗi không so sánh được → Mở rộng chậm
+
+NOVIXA LÀ GÌ?
+	Novixa = ERP nhà thuốc + POS + CRM + App khách
+	Mua hàng → Tồn lô (FEFO) → Bán POS → Khách hàng → Báo cáo
+	Không phải: POS thu ngân đơn giản · kế toán thay thế · tư vấn y khoa
+
+AI PHÙ HỢP?
+	Phù hợp: Nhà thuốc GPP — 1–10 cửa
+	Phù hợp: Gom quầy + lô + khách trên một hệ
+	Phù hợp: Sẵn sàng migrate + training
+	Chưa phù hợp: Chỉ cần thu ngân, không quan tâm lô/HSD
+
+KIẾN TRÚC SẢN PHẨM (PHASE 1)
+	Admin ERP — Chủ, quản lý, dược sĩ — V1
+	POS — Thu ngân quầy — V1
+	Staff mobile — Bán di động — V1
+	App khách — Khách hàng NT — V1
+	Báo cáo Wave 1 — Quản lý — V1
+
+STORY 1: NHẬP HÀNG → TỒN LÔ
+	PO → GRN → Tồn theo lô & HSD
+	Biết hàng từ đâu, còn bao nhiêu
+	Thuế GTGT cơ bản trên mua hàng (Phase 1)
+	Nền tảng cho FEFO khi bán
+
+STORY 2: BÁN FEFO TẠI QUẦY
+	POS — nhanh, đúng lô
+	Quét barcode · chiết khấu · đa hình thức TT
+	Xuất kho ưu tiên hết hạn trước
+	Ca làm việc · in bill · trả hàng
+
+STORY 3: CẢNH BÁO & KIỂM SOÁT
+	Tồn thấp — chủ động nhập
+	Cận date / HSD — giảm hủy
+	Kiểm kê chu kỳ — workflow duyệt
+
+STORY 4: KHÁCH HÀNG & O2O
+	App khách + CRM
+	OTP · tích điểm / voucher
+	Đặt trước — nhận tại quầy (O2O)
+	Chat dược sĩ (consent — không thay tư vấn y khoa)
+
+STORY 5: BÁO CÁO QUẢN LÝ
+	9 báo cáo Wave 1 — doanh thu, tồn, GRN, ca
+	Quyết định trong ngày
+	Xuất CSV · in màn hình
+
+SO SÁNH POSITIONING
+	Novixa: ERP nhà thuốc · Lô FEFO · App + O2O · Scale chuỗi
+	POS rẻ / Excel: Thu ngân · Không lô · Khó scale
+
+ROADMAP (TRUTH IN LABELING)
+	Có sẵn V1: POS, kho lô, mua hàng, app, loyalty, O2O, báo cáo
+	Pilot: Tra cứu thuốc QG (mock)
+	Roadmap: HĐĐT / thuế sâu (Phase 2)
+	Roadmap: AI copilot (2026+)
+
+TUÂN THỦ GPP (VẬN HÀNH)
+	Hỗ trợ: Lô, HSD, FEFO, kiểm kê, audit log
+	Phần mềm quản lý — không thay trách nhiệm GPP đạt chuẩn
+	Không thay tư vấn sử dụng thuốc tại quầy
+
+TRIỂN KHAI NOVIXA
+	Cloud SaaS — admin.novixa.vn · app.novixa.vn
+	Multi-tenant · dữ liệu cách ly theo nhà thuốc
+	Migrate + training có hỗ trợ (founding)
+	Go-live mục tiêu: ≤ 4 tuần từ ký
+
+FOUNDING EARLY ACCESS
+	299.000đ / tháng × 4 tháng đầu
+	Đầy đủ Phase 1: POS · kho lô · app · loyalty · O2O · báo cáo
+	Bonus: Migrate + tồn đầu + training (case study)
+	Cam kết HĐ tối thiểu 6 tháng · ~2 slot / tháng
+
+TIMELINE SAU KHI THAM GIA
+	Tháng 1–4: 299k/th · vận hành thật
+	Tháng 3: Báo cáo sử dụng · hẹn chốt gói
+	Tháng 5: Chọn gói — không tự nâng giá
+	Sau đó: Giá theo catalog đã thống nhất
+
+QUY TRÌNH BẮT ĐẦU
+	Đăng ký / Demo → Khảo sát → Ký HĐ founding
+	Onboard 4 tuần → Go-live POS → Hypercare
+	CTA: novixa.vn/vi/lien-he — ghi FOUNDING
+
+FAQ NHANH
+	HĐĐT? → Roadmap Phase 2
+	So với POS rẻ? → ERP vs thu ngân — ROI lô/tồn
+	Sợ migrate? → Founding gồm hỗ trợ + training
+	Bảo mật? → HTTPS, tenant isolation
+
+CẢM ƠN / LIÊN HỆ
+	Novixa · Smart Pharmacy Solutions
+	novixa.vn
+	Form liên hệ — ghi FOUNDING để ưu tiên

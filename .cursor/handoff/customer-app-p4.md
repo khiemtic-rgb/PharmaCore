@@ -1,6 +1,6 @@
-# PharmaCore — Customer App Phase 4
+﻿# KitPlatform — Customer App Phase 4
 
-> Chat title: **PharmaCore · Customer App — P4: Polish**
+> Chat title: **KitPlatform · Customer App — P4: Polish**
 > Base commit: `39e5fbd` (sau P3 push)
 
 ## ĐÃ XONG (P4)

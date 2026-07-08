@@ -1,4 +1,4 @@
--- PharmaCore: Sales shifts (open/close register, opening cash)
+﻿-- KitPlatform: Sales shifts (open/close register, opening cash)
 
 CREATE TABLE sales_shifts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

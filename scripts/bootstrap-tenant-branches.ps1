@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Tao them chi nhanh + kho cho tenant da ton tai (scale 10x10).
 
@@ -92,3 +92,4 @@ for ($i = 0; $i -lt $BranchCount; $i++) {
 }
 
 Write-Host "=== Done: created=$created skipped=$skipped ===" -ForegroundColor Green
+

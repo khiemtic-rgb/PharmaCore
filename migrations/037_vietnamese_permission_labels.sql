@@ -51,10 +51,12 @@ ON CONFLICT (permission_code) DO UPDATE
 SET permission_name = EXCLUDED.permission_name, module_name = EXCLUDED.module_name;
 
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT '11111111-1111-1111-1111-111111111501', p.id
-FROM permissions p
-WHERE p.permission_code IN ('procurement.read', 'system.read', 'system.write')
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.role_code = 'ADMIN'
+  AND p.permission_code IN ('procurement.read', 'system.read', 'system.write')
   AND NOT EXISTS (
     SELECT 1 FROM role_permissions rp
-    WHERE rp.role_id = '11111111-1111-1111-1111-111111111501' AND rp.permission_id = p.id
+    WHERE rp.role_id = r.id AND rp.permission_id = p.id
   );

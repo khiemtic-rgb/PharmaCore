@@ -1,6 +1,6 @@
-# Chuyển khách hàng Sapo → Novixa
+﻿# Chuyển khách hàng Sapo → Novixa
 
-Nguồn: E:\PharmaCore\import\xuan-hoa\danh-sach-khach-hang-sapo.xlsx
+Nguồn: E:\KitPlatform\import\xuan-hoa\danh-sach-khach-hang-sapo.xlsx
 Sheet: KHACH HANG
 Dòng Sapo: 3329
 KH export: 3326
@@ -61,4 +61,4 @@ Cảnh báo (648):
 - Dòng 588 (CUZN02747): không có SĐT — dùng placeholder S-CUZN02747
 - … và 598 dòng khác
 
-File: E:\PharmaCore\import\xuan-hoa\khach-hang-novixa.csv
+File: E:\KitPlatform\import\xuan-hoa\khach-hang-novixa.csv

@@ -11,6 +11,8 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import { commonT } from '@/shared/i18n';
+import { ADMIN_MODULE_PLATFORM_CODES } from '@/shared/platform/platform-feature-map';
+
 export type ModuleKey =
   | 'dashboard'
   | 'catalog'
@@ -42,24 +44,69 @@ export interface ModuleMenuItem {
   path: string;
   icon: ReactNode;
   enabled: boolean;
+  /** KIT Platform module code — ẩn sidebar khi tenant tắt module (migration 051). */
+  platformModule?: string;
 }
 
 /** Sidebar cấp 1 — thứ tự theo luồng vận hành nhà thuốc */
 export const moduleRegistry: ModuleMenuItem[] = [
   { key: 'dashboard', label: 'dashboard', path: '/', icon: <DashboardOutlined />, enabled: true },
-  { key: 'sales', label: 'sales', path: '/sales/pos', icon: <ShopOutlined />, enabled: true },
-  { key: 'procurement', label: 'procurement', path: '/procurement/suppliers', icon: <ShoppingOutlined />, enabled: true },
-  { key: 'inventory', label: 'inventory', path: '/inventory/opening-balance', icon: <InboxOutlined />, enabled: true },
+  {
+    key: 'sales',
+    label: 'sales',
+    path: '/sales/pos',
+    icon: <ShopOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.sales,
+  },
+  {
+    key: 'procurement',
+    label: 'procurement',
+    path: '/procurement/suppliers',
+    icon: <ShoppingOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.procurement,
+  },
+  {
+    key: 'inventory',
+    label: 'inventory',
+    path: '/inventory/opening-balance',
+    icon: <InboxOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.inventory,
+  },
   {
     key: 'receivables',
     label: 'receivables',
     path: '/receivables/customers',
     icon: <AccountBookOutlined />,
     enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.receivables,
   },
-  { key: 'customer', label: 'customer', path: '/customer', icon: <TeamOutlined />, enabled: true },
-  { key: 'catalog', label: 'catalog', path: '/catalog/products', icon: <MedicineBoxOutlined />, enabled: true },
-  { key: 'reports', label: 'reports', path: '/reports', icon: <BarChartOutlined />, enabled: true },
+  {
+    key: 'customer',
+    label: 'customer',
+    path: '/customer',
+    icon: <TeamOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.customer,
+  },
+  {
+    key: 'catalog',
+    label: 'catalog',
+    path: '/catalog/products',
+    icon: <MedicineBoxOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.catalog,
+  },
+  {
+    key: 'reports',
+    label: 'reports',
+    path: '/reports',
+    icon: <BarChartOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.reports,
+  },
   { key: 'system', label: 'system', path: '/system/branches', icon: <SettingOutlined />, enabled: true },
 ];
 

@@ -30,23 +30,6 @@ CREATE TRIGGER trg_procurement_vat_treatments_updated
 ALTER TABLE purchase_orders
     ADD COLUMN IF NOT EXISTS vat_treatment_id UUID REFERENCES procurement_vat_treatments(id);
 
--- Demo tenant: KCT tách biệt + các mức thuế suất VN
-INSERT INTO procurement_vat_treatments (
-    id, tenant_id, treatment_code, treatment_name, rate_percent, is_not_subject, sort_order
-)
-VALUES
-    ('11111111-1111-1111-1111-111111111801', '11111111-1111-1111-1111-111111111101',
-     'kct', 'Không chịu thuế GTGT (KCT)', 0, true, 0),
-    ('11111111-1111-1111-1111-111111111802', '11111111-1111-1111-1111-111111111101',
-     'vat_0', 'Thuế suất 0%', 0, false, 1),
-    ('11111111-1111-1111-1111-111111111803', '11111111-1111-1111-1111-111111111101',
-     'vat_5', 'Thuế suất 5%', 5, false, 2),
-    ('11111111-1111-1111-1111-111111111804', '11111111-1111-1111-1111-111111111101',
-     'vat_8', 'Thuế suất 8%', 8, false, 3),
-    ('11111111-1111-1111-1111-111111111805', '11111111-1111-1111-1111-111111111101',
-     'vat_10', 'Thuế suất 10%', 10, false, 4)
-ON CONFLICT (tenant_id, treatment_code) DO NOTHING;
-
 INSERT INTO procurement_vat_treatments (tenant_id, treatment_code, treatment_name, rate_percent, is_not_subject, sort_order)
 SELECT t.id, v.code, v.name, v.rate, v.kct, v.ord
 FROM tenants t

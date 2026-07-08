@@ -1,20 +1,22 @@
-@echo off
+﻿@echo off
 
 chcp 65001 >nul
 
 cd /d "%~dp0"
 
-title PharmaCore Dev (API + Admin + Customer)
+title KitPlatform Dev (API + Admin + Customer)
 
 
 
-echo === PharmaCore: mot lenh — API + Admin + Customer ===
+echo === KitPlatform: mot lenh — API + Admin + Customer ===
 
 echo API:      http://localhost:5290
 
 echo Admin:    http://localhost:5173  (admin / Admin@123)
 
 echo Customer: http://localhost:5174  (0909123456 / OTP 000000)
+
+echo Staff POS: http://localhost:5175  (cung tai khoan admin)
 
 echo.
 

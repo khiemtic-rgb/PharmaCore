@@ -12,29 +12,36 @@ import type { MedicationReminder } from '@/shared/api/customer-app.types';
 type Props = {
   onResponded?: () => void;
   compact?: boolean;
+  dueItems?: MedicationReminder[];
+  dueLoading?: boolean;
 };
 
-export function DueRemindersPanel({ onResponded, compact }: Props) {
+export function DueRemindersPanel({ onResponded, compact, dueItems, dueLoading }: Props) {
   const { t } = useTranslation();
-  const [items, setItems] = useState<MedicationReminder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const controlled = dueItems !== undefined;
+  const [internalItems, setInternalItems] = useState<MedicationReminder[]>([]);
+  const [internalLoading, setInternalLoading] = useState(!controlled);
   const [actingId, setActingId] = useState<string | null>(null);
+  const items = controlled ? dueItems : internalItems;
+  const loading = controlled ? Boolean(dueLoading) : internalLoading;
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (controlled) return;
+    setInternalLoading(true);
     try {
       const rows = await fetchDueReminders();
-      setItems(rows);
+      setInternalItems(rows);
     } catch (error) {
       message.error(getApiErrorMessage(error, t('reminders.dueTitle')));
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
     }
-  }, [t]);
+  }, [controlled, t]);
 
   useEffect(() => {
+    if (controlled) return;
     void load();
-  }, [load]);
+  }, [controlled, load]);
 
   const respond = async (id: string, action: 'taken' | 'skipped' | 'snooze') => {
     setActingId(id);
@@ -47,7 +54,9 @@ export function DueRemindersPanel({ onResponded, compact }: Props) {
             ? t('common.skipped')
             : t('common.snooze15'),
       );
-      await load();
+      if (!controlled) {
+        await load();
+      }
       onResponded?.();
     } catch (error) {
       message.error(getApiErrorMessage(error));

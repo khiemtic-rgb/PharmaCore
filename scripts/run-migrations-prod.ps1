@@ -1,12 +1,12 @@
-<#
+﻿<#
 .SYNOPSIS
   Chạy schema migrations Production — không seed demo, không dữ liệu mẫu loyalty/CDP.
 
 .PARAMETER ConnectionString
-  PostgreSQL URI, ví dụ postgresql://pharmacore:***@db-host:5432/pharmacore_nt_a
+  PostgreSQL URI, ví dụ postgresql://KitPlatform:***@db-host:5432/KitPlatform_nt_a
 
 .EXAMPLE
-  .\scripts\run-migrations-prod.ps1 -ConnectionString "postgresql://pharmacore:secret@localhost:5432/pharmacore_nt_a"
+  .\scripts\run-migrations-prod.ps1 -ConnectionString "postgresql://KitPlatform:secret@localhost:5432/KitPlatform_nt_a"
 
 .NOTES
   Sau script này, chạy bootstrap cho từng nhà thuốc:
@@ -97,10 +97,28 @@ $files = @(
     "063_p9_engagement_notifications.sql",
     "064_p10b_customer_app_i18n.sql",
     "065_customer_engagement_analytics.sql",
+    "066_customer_otp_pilot_admin.sql",
+    "067_platform_events.sql",
+    "068_assessment_engine.sql",
+    "070_stock_movements_tenant_index.sql",
+    "071_kit_schemas_foundation.sql",
+    "072_kit_core_iam_tenant.sql",
+    "073_kit_org_workspace.sql",
+    "074_kit_common_storage_party.sql",
+    "075_kit_metadata.sql",
+    "076_kit_event_audit_notify.sql",
+    "077_kit_workflow_integration_ai.sql",
+    "078_pack_clinic_crm.sql",
+    "079_kit_pack_registry_workspace_party_backfill.sql",
+    "080_kit_workspace_pack_rls.sql",
+    "081_kit_kernel_rls_workspace.sql",
+    "082_pack_pharmacy_schema.sql",
+    "083_pack_survey_schema.sql",
+    "084_kit_provision_pharmacy_survey_workspace.sql",
     "seed-prod\001_base_permissions.sql"
 )
 
-Write-Host "=== PharmaCore PRODUCTION Migrations (no demo seed) ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform PRODUCTION Migrations (no demo seed) ===" -ForegroundColor Cyan
 Write-Host "Database: $ConnectionString"
 Write-Host "psql: $psql"
 
@@ -127,3 +145,4 @@ $tableCount = & $psql $ConnectionString -t -A -c "SELECT COUNT(*)::text FROM inf
 $permCount = & $psql $ConnectionString -t -A -c "SELECT COUNT(*)::text FROM permissions"
 Write-Host "=== XONG! $tableCount bang, $permCount quyen (chua co tenant) ===" -ForegroundColor Green
 Write-Host "Tiep theo: .\scripts\bootstrap-first-tenant.ps1 cho moi nha thuoc." -ForegroundColor Yellow
+

@@ -20,6 +20,7 @@ import {
   type PushSubscriptionStatus,
 } from '@/shared/api/customer-app.types';
 import { useAuthStore } from '@/shared/auth/auth.store';
+import { clearCustomerCachedData } from '@/shared/api/customer-session-cleanup';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
@@ -324,6 +325,7 @@ export function ProfilePage() {
     } catch {
       // vẫn xóa session local
     } finally {
+      clearCustomerCachedData();
       clearSession();
       message.success(t('profile.logoutSuccess'));
       navigate('/login', { replace: true });

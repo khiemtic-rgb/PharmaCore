@@ -4,6 +4,7 @@ import type {
   CustomerAdminListItem,
   CustomerDetail,
   CustomerLoyaltySummary,
+  CustomerPilotOtpStatus,
   LoyaltyProgramSummary,
   LoyaltyTier,
   LoyaltyTransaction,
@@ -104,6 +105,16 @@ export async function fetchCustomers(params?: {
 export async function fetchCustomer(customerId: string): Promise<CustomerDetail> {
   const { data } = await http.get<Record<string, unknown>>(`/customers/${customerId}`);
   return normalizeDetail(data);
+}
+
+export async function fetchCustomerPilotOtp(customerId: string): Promise<CustomerPilotOtpStatus> {
+  const { data } = await http.get<Record<string, unknown>>(`/customers/${customerId}/pilot-otp`);
+  return {
+    enabled: Boolean(data.enabled ?? data.Enabled),
+    code: (data.code ?? data.Code) != null ? String(data.code ?? data.Code) : null,
+    expiresAt: (data.expiresAt ?? data.ExpiresAt) as string | null,
+    createdAt: (data.createdAt ?? data.CreatedAt) as string | null,
+  };
 }
 
 export async function fetchNextCustomerCode(): Promise<string> {

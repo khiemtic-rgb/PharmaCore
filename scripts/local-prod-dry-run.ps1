@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Dry-run deploy tren may dev: build artifacts nhu production (khong can VPS).
 
@@ -38,3 +38,4 @@ Write-Host "  admin/         - mo index.html qua static server (can CORS/API rie
 Write-Host "  customer-app/"
 Write-Host ""
 Write-Host "Khi co VPS: copy publish\ + set env + migrate DB (xem publish\DEPLOY.txt)"
+

@@ -1,4 +1,4 @@
--- PharmaCore: Procurement module (6 tables)
+﻿-- KitPlatform: Procurement module (6 tables)
 
 CREATE TABLE suppliers (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

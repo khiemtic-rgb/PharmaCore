@@ -1,24 +1,31 @@
 import axios from 'axios';
 import { http } from '@/shared/api/http';
+import { apiOfflineHint } from '@/shared/api/api-network';
 import i18n from '@/shared/i18n';
 import type {
   CreateMedicationReminderRequest,
+  CustomerChatMessage,
   CustomerChatMessageList,
   CustomerChatThread,
   CustomerConsent,
   CustomerLoginResponse,
+  CustomerOtpSentResponse,
   CustomerProfile,
   CustomerVoucherList,
+  FamilyMember,
   LoyaltySummary,
+  MedicationReminder,
   MedicationReminderList,
   PushSubscriptionStatus,
   PagedLoyaltyTransactions,
+  RepurchaseSuggestion,
   UpdateMedicationReminderRequest,
 } from '@/shared/api/customer-app.types';
+import { CUSTOMER_APP_CHAT_CONSENT } from '@/shared/api/customer-app.types';
 import { normalizeReminder, normalizeReminderList } from '@/shared/api/reminder-normalize';
 
 export async function requestOtp(phone: string, tenantCode: string) {
-  const { data } = await http.post<{ expiresInSeconds: number; message: string }>('/auth/request-otp', {
+  const { data } = await http.post<CustomerOtpSentResponse>('/auth/request-otp', {
     phone,
     tenantCode,
   });
@@ -669,6 +676,23 @@ export async function deleteHealthRecord(id: string) {
   await http.delete(`/health-records/${id}`);
 }
 
+export async function updateHealthRecord(
+  id: string,
+  payload: {
+    familyMemberId?: string | null;
+    recordType: string;
+    title: string;
+    summary?: string | null;
+    providerName?: string | null;
+    recordedAt: string;
+    attachmentsJson?: string;
+    metadataJson?: string;
+  },
+) {
+  const { data } = await http.put<Record<string, unknown>>(`/health-records/${id}`, payload);
+  return normalizeHealthRecord(data);
+}
+
 export async function uploadHealthRecordAttachment(file: File) {
   const form = new FormData();
   form.append('file', file);
@@ -769,9 +793,13 @@ function normalizeActiveMedication(row: Record<string, unknown>) {
   };
 }
 
-export async function fetchActiveMedications() {
+export async function fetchActiveMedications(params?: { familyMemberId?: string; forSelf?: boolean }) {
+  const query: Record<string, string | boolean> = {};
+  if (params?.familyMemberId) query.familyMemberId = params.familyMemberId;
+  if (params?.forSelf) query.forSelf = true;
   const { data } = await http.get<{ items?: Record<string, unknown>[]; Items?: Record<string, unknown>[] }>(
     '/active-medications',
+    { params: query },
   );
   const rows = data.items ?? data.Items ?? [];
   return rows.map(normalizeActiveMedication);
@@ -865,11 +893,141 @@ export async function askAiHealth(question: string, productId?: string) {
   };
 }
 
+function listItems(data: Record<string, unknown>): Record<string, unknown>[] {
+  return (data.items ?? data.Items ?? []) as Record<string, unknown>[];
+}
+
+/** Gộp 4 API Home — 1 round-trip. */
+export async function fetchHomeSummary() {
+  const { data } = await http.get<Record<string, unknown>>('/overview/home-summary');
+  const loyaltyRaw = (data.loyalty ?? data.Loyalty) as Record<string, unknown> | null | undefined;
+  const programsRaw = (loyaltyRaw?.programs ?? loyaltyRaw?.Programs ?? []) as Record<string, unknown>[];
+
+  return {
+    loyalty: {
+      programs: programsRaw.map((p) => ({
+        programId: String(p.programId ?? p.ProgramId ?? ''),
+        programName: String(p.programName ?? p.ProgramName ?? ''),
+        pointsBalance: Number(p.pointsBalance ?? p.PointsBalance ?? 0),
+      })),
+    } as LoyaltySummary,
+    draftOrders: listItems((data.draftOrders ?? data.DraftOrders ?? {}) as Record<string, unknown>).map(
+      normalizeDraftOrderListItem,
+    ),
+    repurchaseSuggestions: listItems(
+      (data.repurchaseSuggestions ?? data.RepurchaseSuggestions ?? {}) as Record<string, unknown>,
+    ).map(normalizeRepurchase),
+    adherence: (() => {
+      const adherenceRaw = (data.adherence ?? data.Adherence) as Record<string, unknown> | undefined;
+      return {
+      dueCount: Number(adherenceRaw?.dueCount ?? adherenceRaw?.DueCount ?? 0),
+      takenToday: Number(adherenceRaw?.takenToday ?? adherenceRaw?.TakenToday ?? 0),
+      skippedToday: Number(adherenceRaw?.skippedToday ?? adherenceRaw?.SkippedToday ?? 0),
+      scheduledToday: Number(adherenceRaw?.scheduledToday ?? adherenceRaw?.ScheduledToday ?? 0),
+      missedStreakDays: Number(adherenceRaw?.missedStreakDays ?? adherenceRaw?.MissedStreakDays ?? 0),
+      showMissedAlert: Boolean(adherenceRaw?.showMissedAlert ?? adherenceRaw?.ShowMissedAlert ?? false),
+      };
+    })(),
+  };
+}
+
+/** Gộp 3 API tab Đơn hàng — 1 round-trip. */
+export async function fetchOrdersOverview() {
+  const { data } = await http.get<Record<string, unknown>>('/overview/orders');
+  const draftsRaw = (data.draftOrders ?? data.DraftOrders) as Record<string, unknown> | undefined;
+  const purchasesRaw = (data.purchases ?? data.Purchases) as Record<string, unknown> | undefined;
+  const reservationsRaw = (data.reservations ?? data.Reservations) as Record<string, unknown> | null | undefined;
+
+  return {
+    draftOrders: listItems(draftsRaw ?? {}).map(normalizeDraftOrderListItem),
+    purchases: listItems(purchasesRaw ?? {}).map(normalizePurchaseListItem),
+    reservations: reservationsRaw ? listItems(reservationsRaw).map(normalizeReservationListItem) : [],
+    hasReservationsModule: reservationsRaw != null,
+  };
+}
+
+export type RemindersOverview = {
+  reminders: MedicationReminder[];
+  adherence: {
+    dueCount: number;
+    takenToday: number;
+    skippedToday: number;
+    scheduledToday: number;
+    missedStreakDays: number;
+    showMissedAlert: boolean;
+  };
+  dueReminders: MedicationReminder[];
+  repurchaseSuggestions: RepurchaseSuggestion[];
+  familyMembers: FamilyMember[];
+};
+
+/** Gộp 5 API tab Nhắc thuốc — 1 round-trip. */
+export async function fetchRemindersOverview(): Promise<RemindersOverview> {
+  const { data } = await http.get<Record<string, unknown>>('/overview/reminders');
+  const remindersRaw = (data.reminders ?? data.Reminders) as Record<string, unknown> | undefined;
+  const dueRaw = (data.due ?? data.Due) as Record<string, unknown> | undefined;
+  const repurchaseRaw = (data.repurchaseSuggestions ?? data.RepurchaseSuggestions) as
+    | Record<string, unknown>
+    | undefined;
+  const familyRaw = (data.family ?? data.Family) as Record<string, unknown> | undefined;
+  const adherenceRaw = (data.adherence ?? data.Adherence) as Record<string, unknown> | undefined;
+
+  return {
+    reminders: normalizeReminderList(remindersRaw ?? {}),
+    adherence: {
+      dueCount: Number(adherenceRaw?.dueCount ?? adherenceRaw?.DueCount ?? 0),
+      takenToday: Number(adherenceRaw?.takenToday ?? adherenceRaw?.TakenToday ?? 0),
+      skippedToday: Number(adherenceRaw?.skippedToday ?? adherenceRaw?.SkippedToday ?? 0),
+      scheduledToday: Number(adherenceRaw?.scheduledToday ?? adherenceRaw?.ScheduledToday ?? 0),
+      missedStreakDays: Number(adherenceRaw?.missedStreakDays ?? adherenceRaw?.MissedStreakDays ?? 0),
+      showMissedAlert: Boolean(adherenceRaw?.showMissedAlert ?? adherenceRaw?.ShowMissedAlert ?? false),
+    },
+    dueReminders: normalizeReminderList(dueRaw ?? {}),
+    repurchaseSuggestions: listItems(repurchaseRaw ?? {}).map(normalizeRepurchase),
+    familyMembers: listItems(familyRaw ?? {}).map(normalizeFamilyMember),
+  };
+}
+
+export type ChatOverview = {
+  consents: CustomerConsent[];
+  messages: CustomerChatMessage[];
+  hasMore: boolean;
+  thread: CustomerChatThread;
+  chatConsentGranted: boolean;
+};
+
+/** Gộp consents + messages + mark-read — 1 round-trip. */
+export async function fetchChatOverview(): Promise<ChatOverview> {
+  const { data } = await http.get<Record<string, unknown>>('/overview/chat');
+  const consentsRaw = (data.consents ?? data.Consents ?? []) as Record<string, unknown>[];
+  const messagesRaw = (data.messages ?? data.Messages) as Record<string, unknown> | undefined;
+  const threadRaw = (data.thread ?? data.Thread) as Record<string, unknown> | undefined;
+  const consents = consentsRaw.map(normalizeConsent);
+  const chatConsent = consents.find(
+    (c) =>
+      c.channel === CUSTOMER_APP_CHAT_CONSENT.channel &&
+      c.purpose === CUSTOMER_APP_CHAT_CONSENT.purpose,
+  );
+
+  return {
+    consents,
+    messages: listItems(messagesRaw ?? {}).map((row) => normalizeChatMessage(row)),
+    hasMore: Boolean(messagesRaw?.hasMore ?? messagesRaw?.HasMore),
+    thread: {
+      threadId: String(threadRaw?.threadId ?? threadRaw?.ThreadId ?? ''),
+      unreadCount: Number(threadRaw?.unreadCount ?? threadRaw?.UnreadCount ?? 0),
+      lastMessageAt: (threadRaw?.lastMessageAt ?? threadRaw?.LastMessageAt) as string | null,
+      lastMessagePreview: (threadRaw?.lastMessagePreview ?? threadRaw?.LastMessagePreview) as string | null,
+    },
+    chatConsentGranted: chatConsent?.granted ?? false,
+  };
+}
+
 export function getApiErrorMessage(error: unknown, fallback?: string) {
   const generic = fallback ?? i18n.t('errors.generic');
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return i18n.t('errors.apiOffline');
+      return apiOfflineHint();
     }
     const data = error.response.data;
     if (typeof data === 'string' && data.trim()) return data;
@@ -881,7 +1039,7 @@ export function getApiErrorMessage(error: unknown, fallback?: string) {
       return i18n.t('errors.apiServerError');
     }
     if (error.response.status === 502 || error.response.status === 503) {
-      return i18n.t('errors.apiOffline');
+      return apiOfflineHint();
     }
     return i18n.t('errors.httpStatus', { fallback: generic, status: error.response.status });
   }

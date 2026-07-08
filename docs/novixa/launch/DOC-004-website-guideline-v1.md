@@ -1,4 +1,4 @@
-# Novixa — Website Guideline V1 (Founding Mode)
+﻿# Novixa — Website Guideline V1 (Founding Mode)
 
 **Mã:** DOC-004 · **Tier:** T2/T3 · **Trạng thái:** Draft · **Version:** 1.0  
 **Phạm vi:** `novixa.vn` · giai đoạn **Founding 2026** — chưa Scale (full pricing catalog)
@@ -168,12 +168,12 @@ Chủ đề ưu tiên (DOC-007 aligned — **1 bài/tuần** founding):
 |----------|---------|
 | Repo | `novixa-site/` |
 | Build | `npm run build` → `dist/` |
-| Host | Cloudflare Pages (project `pharmacore`) |
+| Host | Cloudflare Pages (project `KitPlatform`) |
 | i18n | `src/i18n/vi.json` |
 | Stats nội bộ | `/vi/thong-ke` + GHA `novixa-update-stats.yml` |
 | Analytics | Cloudflare Web Analytics (dashboard) |
 
-**Tách biệt ERP:** website **không** gọi API PharmaCore production.
+**Tách biệt ERP:** website **không** gọi API KitPlatform production.
 
 ---
 

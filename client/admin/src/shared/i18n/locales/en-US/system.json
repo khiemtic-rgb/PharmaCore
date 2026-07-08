@@ -33,7 +33,55 @@
       "roles": "Roles",
       "posSettings": "Receipts & POS",
       "customerAppSettings": "Customer app",
-      "auditLog": "Audit log"
+      "platformPack": "KIT Platform / Pack",
+      "auditLog": "Audit log",
+      "assessmentLeads": "Surveys"
+    }
+  },
+  "assessmentLeads": {
+    "title": "Assessment surveys",
+    "hint": "Visible only on Novixa operator deployments. Individual pharmacy tenants do not see this section.",
+    "refresh": "Refresh",
+    "noLead": "No lead",
+    "detailTitle": "Survey detail",
+    "filters": {
+      "all": "All",
+      "withLead": "With pharmacy info"
+    },
+    "columns": {
+      "startedAt": "Started",
+      "status": "Status",
+      "org": "Pharmacy",
+      "contact": "Contact",
+      "score": "Score",
+      "progress": "Progress",
+      "actions": "View"
+    },
+    "status": {
+      "draft": "In progress",
+      "completed": "Completed",
+      "lead_captured": "Lead captured",
+      "report_ready": "Report ready"
+    },
+    "detail": {
+      "template": "Template",
+      "completedAt": "Completed at",
+      "answers": "answers",
+      "leadSection": "Pharmacy lead",
+      "org": "Pharmacy name",
+      "name": "Contact name",
+      "phone": "Phone",
+      "email": "Email",
+      "note": "Note",
+      "consent": "Marketing consent",
+      "consentYes": "Yes",
+      "consentNo": "No",
+      "scores": "Category scores",
+      "insights": "Insights"
+    },
+    "messages": {
+      "loadFailed": "Failed to load surveys",
+      "detailFailed": "Failed to load survey detail"
     }
   },
   "branches": {
@@ -222,6 +270,48 @@
     },
     "discountLevels": {
       "none": "No discount"
+    }
+  },
+  "platformPack": {
+    "title": "KIT Platform — Solution Pack",
+    "intro": "Configure modules and features for this tenant (Novixa Pharmacy Pack by default).",
+    "introDetail": "Changes apply immediately to Admin menus and APIs. Only ADMIN can save.",
+    "readOnlyHint": "View only — only ADMIN can edit pack/modules.",
+    "fields": {
+      "vertical": "Business vertical",
+      "enabledModules": "Enabled modules",
+      "features": "Feature flags"
+    },
+    "validation": {
+      "verticalRequired": "Select a vertical",
+      "modulesRequired": "Select at least one module"
+    },
+    "actions": {
+      "save": "Save pack configuration"
+    },
+    "messages": {
+      "loadFailed": "Could not load platform settings",
+      "saveFailed": "Could not save platform settings",
+      "saveSuccess": "KIT Platform / Pack updated",
+      "ignoredModules": "Ignored unknown modules: {{codes}}"
+    },
+    "verticals": {
+      "pharmacy": "Pharmacy",
+      "pharmacy_chain": "Pharmacy chain",
+      "supplement_store": "Supplement store",
+      "medical_equipment_store": "Medical equipment",
+      "clinic": "Clinic (roadmap)",
+      "lab": "Lab (roadmap)",
+      "medical_spa": "Medical spa (roadmap)",
+      "hybrid": "Hybrid"
+    },
+    "features": {
+      "batch_tracking": "Batch / expiry (FEFO)",
+      "national_drug_catalog": "National drug lookup",
+      "order_level_repurchase": "Order-level repurchase",
+      "family_members": "Family members",
+      "branch_price_overrides": "Branch price overrides",
+      "branch_product_listings": "Branch product listings"
     }
   }
 }

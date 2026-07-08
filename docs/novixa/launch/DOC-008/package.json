@@ -1,0 +1,13 @@
+{
+  "name": "novixa-deck-screenshots",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture-deck-screenshots.mjs",
+    "export": "python export-sales-deck-pptx.py",
+    "build-deck": "npm run capture && npm run export"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
+}

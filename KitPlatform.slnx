@@ -1,0 +1,15 @@
+﻿<Solution>
+  <Project Path="src/KitPlatform.Api/KitPlatform.Api.csproj" />
+  <Project Path="src/KitPlatform.Application/KitPlatform.Application.csproj" />
+  <Project Path="src/KitPlatform.Domain/KitPlatform.Domain.csproj" />
+  <Project Path="src/KitPlatform.Infrastructure/KitPlatform.Infrastructure.csproj" />
+  <Project Path="src/Packs/Pharmacy/KitPlatform.Packs.Pharmacy.Application/KitPlatform.Packs.Pharmacy.Application.csproj" />
+  <Project Path="src/Packs/Pharmacy/KitPlatform.Packs.Pharmacy.Infrastructure/KitPlatform.Packs.Pharmacy.Infrastructure.csproj" />
+  <Project Path="src/Packs/Clinic/KitPlatform.Packs.Clinic.Application/KitPlatform.Packs.Clinic.Application.csproj" />
+  <Project Path="src/Packs/Clinic/KitPlatform.Packs.Clinic.Infrastructure/KitPlatform.Packs.Clinic.Infrastructure.csproj" />
+  <Project Path="src/Packs/Survey/KitPlatform.Packs.Survey.Application/KitPlatform.Packs.Survey.Application.csproj" />
+  <Project Path="src/Packs/Survey/KitPlatform.Packs.Survey.Infrastructure/KitPlatform.Packs.Survey.Infrastructure.csproj" />
+  <Project Path="tests/KitPlatform.Application.Tests/KitPlatform.Application.Tests.csproj" />
+  <Project Path="tests/KitPlatform.Platform.Tests/KitPlatform.Platform.Tests.csproj" />
+  <Project Path="tests/KitPlatform.Api.Tests/KitPlatform.Api.Tests.csproj" />
+</Solution>

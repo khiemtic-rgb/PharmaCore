@@ -855,6 +855,21 @@
       "title": "Quản lý lô (FEFO)",
       "save": "Lưu chế độ lô"
     },
+    "customerAppLinkCard": {
+      "title": "Link & QR app khách",
+      "intro": "In QR dán quầy — khách quét bằng camera điện thoại sẽ vào app và không cần gõ mã nhà thuốc.",
+      "copy": "Sao chép",
+      "copySuccess": "Đã sao chép link",
+      "copyFailed": "Không sao chép được link",
+      "downloadQr": "Tải ảnh QR",
+      "downloadSuccess": "Đã tải ảnh QR",
+      "downloadFailed": "Không tải được ảnh QR",
+      "loadFailed": "Không tải được cấu hình nền tảng",
+      "missingTenant": "Không xác định được mã nhà thuốc — đăng nhập lại admin.",
+      "missingAppUrl": "Chưa cấu hình Platform__CustomerAppUrl trên server.",
+      "qrCaption": "Quét để vào app · {{tenant}}",
+      "qrHint": "Khách chỉ cần nhập SĐT và mã OTP (pilot: nhân viên đọc mã từ admin)."
+    },
     "customerAppCard": {
       "title": "Cài đặt app khách hàng",
       "intro": "Tên, màu và thông tin hiển thị trên app mobile/PWA của khách. Thay đổi có hiệu lực sau khi khách tải lại app.",
@@ -1018,7 +1033,7 @@
     "create": "Tạo voucher",
     "paginationTotal": "{{count}} voucher",
     "loadFailed": "Không tải được danh sách voucher",
-    "loadErrorHint": "Kiểm tra API đang chạy tại http://localhost:5290 — chạy .\\scripts\\restart-api.ps1 nếu cần.",
+    "loadErrorHint": "Kiểm tra API backend và bấm Thử lại. Nếu vẫn lỗi: trên VPS chạy systemctl restart KitPlatform-api.",
     "retry": "Thử lại",
     "columns": {
       "actions": "Thao tác",

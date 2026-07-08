@@ -1,23 +1,23 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: pharmacore-db
+    container_name: kitplatform-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pharmacore
-      POSTGRES_PASSWORD: pharmacore_dev_2026
-      POSTGRES_DB: pharmacore
+      POSTGRES_USER: kitplatform
+      POSTGRES_PASSWORD: kitplatform_dev_2026
+      POSTGRES_DB: kitplatform
     ports:
       - "5432:5432"
     volumes:
-      - pharmacore_pgdata:/var/lib/postgresql/data
+      - kitplatform_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pharmacore -d pharmacore"]
+      test: ["CMD-SHELL", "pg_isready -U kitplatform -d kitplatform"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  pharmacore_pgdata:
+  kitplatform_pgdata:

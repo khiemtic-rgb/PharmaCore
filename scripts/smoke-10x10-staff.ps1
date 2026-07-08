@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   UAT buoc 5: xac minh user thu ngan tung chi nhanh chi thay kho cua minh.
 
@@ -111,3 +111,4 @@ $fail = @($results | Where-Object { -not $_.Ok }).Count
 Write-Host "Passed: $passed / $($results.Count)  Failed: $fail"
 if ($fail -gt 0) { exit 1 }
 exit 0
+

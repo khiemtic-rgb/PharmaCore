@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Build artifacts cho triển khai Production (API + admin SPA + customer SPA).
 
@@ -28,21 +28,22 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
 $apiBase = $ApiBaseUrl.TrimEnd("/")
-Write-Host "=== PharmaCore production build ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform production build ===" -ForegroundColor Cyan
 Write-Host "API base: $apiBase"
 
 $out = Join-Path $root $OutputRoot
 $apiOut = Join-Path $out "api"
 $adminOut = Join-Path $out "admin"
 $customerOut = Join-Path $out "customer-app"
+$staffOut = Join-Path $out "staff-app"
 
 if (Test-Path $out) {
     Remove-Item -Recurse -Force $out
 }
-New-Item -ItemType Directory -Force -Path $apiOut, $adminOut, $customerOut | Out-Null
+New-Item -ItemType Directory -Force -Path $apiOut, $adminOut, $customerOut, $staffOut | Out-Null
 
-Write-Host "`n[1/4] dotnet publish API (Release)..." -ForegroundColor Yellow
-dotnet publish "src\PharmaCore.Api\PharmaCore.Api.csproj" `
+Write-Host "`n[1/5] dotnet publish API (Release)..." -ForegroundColor Yellow
+dotnet publish "src\KitPlatform.Api\KitPlatform.Api.csproj" `
     -c Release `
     -o $apiOut `
     --no-self-contained
@@ -62,21 +63,25 @@ function Invoke-NpmBuild([string]$ClientDir, [string]$DestDir) {
     Pop-Location
 }
 
-Write-Host "`n[2/4] npm build admin..." -ForegroundColor Yellow
+Write-Host "`n[2/5] npm build admin..." -ForegroundColor Yellow
 Invoke-NpmBuild "client\admin" $adminOut
 
-Write-Host "`n[3/4] npm build customer-app..." -ForegroundColor Yellow
+Write-Host "`n[3/5] npm build customer-app..." -ForegroundColor Yellow
 Invoke-NpmBuild "client\customer-app" $customerOut
 
-Write-Host "`n[4/4] Ghi deploy notes..." -ForegroundColor Yellow
+Write-Host "`n[4/5] npm build staff-app (POS mobile)..." -ForegroundColor Yellow
+Invoke-NpmBuild "client\staff-app" $staffOut
+
+Write-Host "`n[5/5] Ghi deploy notes..." -ForegroundColor Yellow
 $notes = @"
-PharmaCore production artifacts
+KitPlatform production artifacts
 Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 Thư mục:
   api/           - ASP.NET Core (ASPNETCORE_ENVIRONMENT=Production)
   admin/         - Static SPA quản trị
   customer-app/  - Static SPA khách hàng
+  staff-app/     - Static SPA quầy bán (POS mobile)
 
 Biến môi trường API (bắt buộc):
   ConnectionStrings__Default
@@ -85,6 +90,7 @@ Biến môi trường API (bắt buộc):
   CustomerAppSms__ApiKey         (tuỳ chọn)
   Cors__AllowedOrigins__0        https://admin.domain
   Cors__AllowedOrigins__1        https://app.domain
+  Cors__AllowedOrigins__2        https://pos.domain
   CustomerAppPush__PublicKey     (nếu bật push)
   CustomerAppPush__PrivateKey
 
@@ -105,7 +111,7 @@ Sinh VAPID (Production):
 Chạy API:
   cd api
   `$env:ASPNETCORE_ENVIRONMENT='Production'
-  dotnet PharmaCore.Api.dll
+  dotnet KitPlatform.Api.dll
 
 Frontend build dùng VITE_API_BASE_URL=$apiBase
 "@
@@ -113,3 +119,4 @@ Set-Content -Path (Join-Path $out "DEPLOY.txt") -Value $notes -Encoding UTF8
 
 Write-Host "`nDone → $out" -ForegroundColor Green
 Write-Host "Đọc DEPLOY.txt trước khi triển khai." -ForegroundColor Green
+

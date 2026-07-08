@@ -108,6 +108,14 @@
       "loadFailed": "Không tải được hồ sơ khách hàng"
     }
   },
+  "pilotOtp": {
+    "title": "Mã OTP app khách (pilot)",
+    "activeMessage": "Khách vừa yêu cầu đăng nhập — đọc mã này cho khách",
+    "expiresAt": "Hết hạn lúc {{time}}",
+    "hint": "Mã tự ẩn sau khi khách nhập đúng hoặc hết hạn (~5 phút). Tắt tính năng này khi đã có SMS gateway.",
+    "waiting": "Chưa có mã OTP",
+    "waitingHint": "Khi khách bấm «Gửi mã OTP» trên app, mã 6 số sẽ hiện tại đây (tự cập nhật mỗi vài giây)."
+  },
   "formDrawer": {
     "titleEdit": "Sửa khách hàng",
     "titleQuickCreate": "Thêm khách nhanh",

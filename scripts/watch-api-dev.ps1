@@ -1,4 +1,4 @@
-# Watchdog dev: tu khoi dong lai API neu port 5290 mat phan hoi.
+﻿# Watchdog dev: tu khoi dong lai API neu port 5290 mat phan hoi.
 $ErrorActionPreference = "SilentlyContinue"
 . (Join-Path $PSScriptRoot "api-dev.ps1")
 
@@ -13,3 +13,4 @@ while ($true) {
         # Log loi lan restart tiep theo
     }
 }
+

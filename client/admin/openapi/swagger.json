@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.4",
   "info": {
-    "title": "PharmaCore",
+    "title": "KitPlatform",
     "description": "ERP Nhà thuốc đa quốc gia",
     "version": "v1"
   },
@@ -6476,7 +6476,7 @@
     "/": {
       "get": {
         "tags": [
-          "PharmaCore.Api"
+          "KitPlatform.Api"
         ],
         "responses": {
           "200": {

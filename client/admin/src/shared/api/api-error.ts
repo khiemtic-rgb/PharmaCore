@@ -1,10 +1,13 @@
 import { isAxiosError } from 'axios';
-import { commonT } from '@/shared/i18n';
+import { apiOfflineMessage, apiServerErrorMessage } from '@/shared/api/api-network';
 
 export function apiErrorMessage(error: unknown, fallback: string) {
   if (isAxiosError(error)) {
     if (!error.response) {
-      return commonT()('errors.apiOffline');
+      return apiOfflineMessage();
+    }
+    if (error.response.status >= 502) {
+      return apiServerErrorMessage();
     }
     const detail = error.response.data;
     if (typeof detail === 'string' && detail.trim()) return detail;

@@ -18,7 +18,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('PharmaCore customer app error:', error, info.componentStack);
+    console.error('KitPlatform customer app error:', error, info.componentStack);
   }
 
   render() {

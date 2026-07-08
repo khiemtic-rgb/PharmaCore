@@ -3,7 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import enUS from '@/shared/i18n/locales/en-US.json';
 import viVN from '@/shared/i18n/locales/vi-VN.json';
 
-export const CUSTOMER_LOCALE_STORAGE_KEY = 'pharmacore-customer-locale';
+export const CUSTOMER_LOCALE_STORAGE_KEY = 'kitplatform-customer-locale';
 export const CUSTOMER_LOCALES = ['vi-VN', 'en-US'] as const;
 export type CustomerLocale = (typeof CUSTOMER_LOCALES)[number];
 

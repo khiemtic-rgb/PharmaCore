@@ -1,0 +1,22 @@
+﻿[Unit]
+Description=KitPlatform API (Novixa)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/kit-platform/api
+EnvironmentFile=/etc/kit-platform/api.env
+ExecStart=/usr/bin/dotnet /var/www/kit-platform/api/KitPlatform.Api.dll
+Restart=always
+RestartSec=5
+SyslogIdentifier=kit-platform-api
+
+# Hardening (adjust if uploads path needs broader access)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

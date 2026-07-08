@@ -1,4 +1,4 @@
-# Novixa — Founding Early Access Program Terms V1
+﻿# Novixa — Founding Early Access Program Terms V1
 
 **Mã:** NVX-GTM-08 / DOC-008 · **Tier:** T2 · **Trạng thái:** Draft · **Version:** 1.0
 
@@ -11,7 +11,7 @@
 
 **Novixa Founding Early Access** — giai đoạn vận hành thật tại quầy nhà thuốc với ưu đãi giới hạn, đổi lại phản hồi sản phẩm và (tuỳ thỏa thuận) tham gia case study.
 
-**Nhà cung cấp:** Novixa (Smart Pharmacy Solutions) — nền tảng phần mềm PharmaCore.
+**Nhà cung cấp:** Novixa (Smart Pharmacy Solutions) — nền tảng phần mềm KitPlatform.
 
 ---
 
@@ -144,7 +144,7 @@ Chi tiết: [gpp-operational-context-v1.md](../06-compliance/gpp-operational-con
 
 ## 9. Sở hữu trí tuệ & case study
 
-- Phần mềm Novixa/PharmaCore thuộc quyền Novixa
+- Phần mềm Novixa/KitPlatform thuộc quyền Novixa
 - Dữ liệu danh mục, khách, giao dịch do khách nhập — thuộc khách
 - **Case study:** Novixa được quyền dùng logo/tên/quote/số liệu đã **duyệt bằng văn bản** cho marketing; khách có quyền yêu cầu ẩn danh một phần
 

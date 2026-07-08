@@ -384,7 +384,7 @@
       "loadFailed": "Could not load supplier payments",
       "detailLoadFailed": "Could not load payment details — using list data",
       "saveFailed": "Could not save payment",
-      "apiEditUnsupported": "API does not support editing payments yet. Restart PharmaCore.Api after build.",
+      "apiEditUnsupported": "API does not support editing payments yet. Restart KitPlatform.Api after build.",
       "postFailed": "Could not post payment",
       "cancelFailed": "Could not cancel payment",
       "noWritePermission": "You do not have permission to record payments",

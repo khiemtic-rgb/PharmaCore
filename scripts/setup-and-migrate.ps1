@@ -1,13 +1,13 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [string]$PostgresPassword,
 
     [string]$PostgresUser = "postgres",
     [string]$DbHost = "localhost",
     [int]$DbPort = 5432,
-    [string]$AppUser = "pharmacore",
-    [string]$AppPassword = "pharmacore_dev_2026",
-    [string]$Database = "pharmacore"
+    [string]$AppUser = "kitplatform",
+    [string]$AppPassword = "kitplatform_dev_2026",
+    [string]$Database = "kitplatform"
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +28,7 @@ if (-not $psql) {
     exit 1
 }
 
-Write-Host "=== PharmaCore: Setup + Migrate ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform: Setup + Migrate ===" -ForegroundColor Cyan
 Write-Host "psql: $psql"
 
 $env:PGPASSWORD = $PostgresPassword
@@ -139,3 +139,5 @@ foreach ($file in $migrationFiles) {
 $tableCount = & $psql $conn -t -A -c "SELECT COUNT(*)::text FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
 Write-Host "=== XONG! $tableCount bang + demo data ===" -ForegroundColor Green
 Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
+
+

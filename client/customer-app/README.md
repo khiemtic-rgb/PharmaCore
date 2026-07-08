@@ -1,4 +1,4 @@
-# PharmaCore Customer App
+﻿# KitPlatform Customer App
 
 App web khách hàng (PWA-friendly) — gọi API `/api/customer-app/*`.
 

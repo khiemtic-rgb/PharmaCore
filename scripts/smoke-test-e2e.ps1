@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5290'
 $passed = 0
 $failed = @()
@@ -23,7 +23,7 @@ function Get-JsonError($err) {
     return $err.Exception.Message
 }
 
-Write-Host "`n=== PharmaCore E2E dev test ===" -ForegroundColor Cyan
+Write-Host "`n=== KitPlatform E2E dev test ===" -ForegroundColor Cyan
 
 # Demo IDs
 $customerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01'
@@ -203,3 +203,4 @@ if ($failed.Count -gt 0) {
     exit 1
 }
 Write-Host "`nAll E2E checks passed." -ForegroundColor Green
+

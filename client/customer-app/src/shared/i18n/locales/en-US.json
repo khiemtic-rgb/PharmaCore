@@ -15,9 +15,9 @@
     "delete": "Delete",
     "new": "New",
     "waitingApi": "Waiting for API — will reload when connection returns",
-    "checkingApi": "Checking API connection…",
-    "apiOffline": "API unavailable — page will reload when connection returns",
-    "apiOfflineDesc": "Watchdog will restart the API (~8s). Use run-dev.bat or npm run dev.",
+    "checkingApi": "Checking connection…",
+    "apiOffline": "Cannot reach server — try again shortly",
+    "apiOfflineDesc": "Check your connection and try again. Contact the pharmacy if the issue persists.",
     "checkNow": "Check now",
     "reconnecting": "Reconnecting…",
     "familyMember": "Family member",
@@ -265,6 +265,14 @@
       "vaccination": "Vaccination",
       "other": "Other"
     },
+    "careReminderType": {
+      "visit": "Follow-up visit",
+      "lab": "Lab test",
+      "medication": "Medication / treatment",
+      "exercise": "Exercise",
+      "nutrition": "Nutrition",
+      "other": "Other"
+    },
     "notificationCategory": {
       "order": "Order",
       "medication": "Medication",
@@ -289,11 +297,16 @@
     "changePhone": "Change phone number",
     "invalidPhone": "Enter a valid phone number",
     "tenantRequired": "Enter pharmacy code",
+    "tenantLocked": "Pharmacy: {{tenant}}",
     "otpSent": "OTP sent",
     "otpSendFailed": "Could not send OTP",
     "welcome": "Hello {{name}}!",
     "otpInvalid": "OTP is incorrect or expired",
-    "booting": "Starting…"
+    "booting": "Starting…",
+    "pilotCodeTitle": "Your sign-in code",
+    "pilotCodeHint": "Use only on this device. Do not share with others.",
+    "pilotCodeExpires": "Expires in {{seconds}}s",
+    "pilotCodeExpired": "Code expired — resend OTP"
   },
   "medications": {
     "title": "Active medications",
@@ -311,7 +324,11 @@
     "apiUnavailableDesc": "Restart API (scripts\\restart-api.ps1) to enable My Medication. Refill suggestions below still work.",
     "empty": "No active medications yet",
     "addReminder": "Add reminder",
-    "viewOrders": "View orders"
+    "viewOrders": "View orders",
+    "filterLabel": "Filter by person",
+    "filterAll": "All",
+    "filterSelf": "Self",
+    "forPerson": "For: {{name}}"
   },
   "pharmacy": {
     "loadFailed": "Could not load pharmacy info",
@@ -362,7 +379,8 @@
     "loadFailed": "Could not load messages",
     "consentEnabled": "Pharmacist chat enabled — you can send messages",
     "consentEnableFailed": "Could not enable chat consent",
-    "sendFailed": "Could not send message"
+    "sendFailed": "Could not send message",
+    "send": "Send"
   },
   "ai": {
     "title": "Health Copilot",
@@ -556,7 +574,11 @@
     "recordDeleted": "Record deleted",
     "deleteFailed": "Could not delete",
     "careDone": "Marked as completed",
-    "updateFailed": "Could not update"
+    "updateFailed": "Could not update",
+    "editRecord": "Edit",
+    "modalEditRecord": "Edit record",
+    "recordUpdated": "Record updated",
+    "careReminderType": "Reminder type"
   },
   "repurchase": {
     "loadFailed": "Could not load refill reminders",
@@ -652,8 +674,8 @@
   },
   "errors": {
     "generic": "Something went wrong",
-    "apiOffline": "Cannot reach the API. Run run-dev.bat or .\\scripts\\restart-api.ps1 first.",
-    "apiServerError": "API error or not running. Run .\\scripts\\restart-api.ps1 (or run-dev.bat) and try again.",
+    "apiOffline": "Cannot reach the server. Check your connection and try again.",
+    "apiServerError": "The server is busy. Please try again in a moment.",
     "vapidInvalid": "Invalid VAPID key. Restart the API (scripts\\restart-api.ps1) to load CustomerAppPush.",
     "httpStatus": "{{fallback}} (HTTP {{status}})"
   },

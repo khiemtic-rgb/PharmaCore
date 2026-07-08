@@ -1,4 +1,4 @@
-# Novixa — Mô hình triển khai V1
+﻿# Novixa — Mô hình triển khai V1
 
 **Mã:** NVX-OPS-01 · **Tier:** T2/T3 · **Trạng thái:** Draft · **Version:** 1.0
 
@@ -40,7 +40,7 @@ Marketing **novixa.vn** deploy riêng trên **Cloudflare Pages** — không DB E
 │  tenant_id trên mọi bảng nghiệp vụ  │
 └─────────────────────────────────────┘
          ↑ JWT tenant context
-    PharmaCore.Api (1 instance)
+    KitPlatform.Api (1 instance)
 ```
 
 **Thêm tenant:** `https://admin.novixa.vn/setup` + `Platform__ProvisioningKey`
@@ -56,7 +56,7 @@ Marketing **novixa.vn** deploy riêng trên **Cloudflare Pages** — không DB E
 ### 4.1 Build (máy dev / CI)
 
 ```powershell
-cd E:\PharmaCore
+cd E:\KitPlatform
 .\scripts\deploy-production.ps1 -ApiBaseUrl "https://api.novixa.vn"
 ```
 
@@ -71,7 +71,7 @@ Output: `publish/` (api + admin + customer-app + staff-app)
 ### 4.3 Bootstrap lần đầu (VPS Ubuntu 24.04)
 
 ```bash
-sudo CERTBOT_EMAIL=care@novixa.vn bash /tmp/pharmacore-upload/deploy/ubuntu/bootstrap-vps.sh
+sudo CERTBOT_EMAIL=care@novixa.vn bash /tmp/kit-platform-upload/deploy/ubuntu/bootstrap-vps.sh
 ```
 
 Script tự động:
@@ -79,15 +79,15 @@ Script tự động:
 - Cài .NET 10, nginx, PostgreSQL, UFW
 - Tạo DB `novixa_prod`, secrets
 - Chạy migrations production (không seed demo)
-- Tạo `/etc/pharmacore/api.env`
+- Tạo `/etc/kit-platform/api.env`
 - SMS OTP stub (pilot)
-- systemd `pharmacore-api`
+- systemd `kit-platform-api`
 - Certbot SSL (nếu DNS đã trỏ)
 
 ### 4.4 Cập nhật release (đã bootstrap)
 
 1. Upload artifact mới  
-2. Restart `pharmacore-api`  
+2. Restart `kit-platform-api`  
 3. Chạy migration nếu có (`run-migrations-prod.sh`)  
 4. Smoke test: login admin, POS, health API  
 
@@ -100,7 +100,7 @@ Chi tiết runbook: NVX-OPS-02 *(Planned)*
 | Hạng mục | Giá trị |
 |----------|---------|
 | Host | Cloudflare Pages |
-| Project | `pharmacore` (root `novixa-site`) |
+| Project | `KitPlatform` (root `novixa-site`) |
 | Build | `npm run build` → `dist/` |
 | Stats | GHA `novixa-update-stats.yml` → `stats-snapshot.json` |
 
@@ -124,7 +124,7 @@ SSL ERP: Certbot trên VPS. SSL marketing: Cloudflare.
 | Hạng mục | V1 |
 |----------|-----|
 | DB backup | `deploy/ubuntu/backup-db.sh` daily pg_dump |
-| Log API | `journalctl -u pharmacore-api` |
+| Log API | `journalctl -u kit-platform-api` |
 | Uptime | Manual / UptimeRobot (Planned NVX-OPS-06) |
 | Restore drill | NVX-OPS-03 Planned — **1 lần trước go-live tenant 2** |
 

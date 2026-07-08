@@ -855,6 +855,21 @@
       "title": "Batch management (FEFO)",
       "save": "Save batch mode"
     },
+    "customerAppLinkCard": {
+      "title": "Customer app link & QR",
+      "intro": "Print this QR for the counter — customers scan with their phone camera and skip entering the pharmacy code.",
+      "copy": "Copy",
+      "copySuccess": "Link copied",
+      "copyFailed": "Could not copy link",
+      "downloadQr": "Download QR image",
+      "downloadSuccess": "QR image downloaded",
+      "downloadFailed": "Could not download QR image",
+      "loadFailed": "Could not load platform config",
+      "missingTenant": "Pharmacy code unavailable — sign in to admin again.",
+      "missingAppUrl": "Platform__CustomerAppUrl is not configured on the server.",
+      "qrCaption": "Scan to open app · {{tenant}}",
+      "qrHint": "Customers only enter phone and OTP (pilot: staff reads OTP from admin)."
+    },
     "customerAppCard": {
       "title": "Customer app settings",
       "intro": "Name, colors, and support info shown in the customer mobile/PWA app. Changes apply after the customer reloads the app.",
@@ -1018,7 +1033,7 @@
     "create": "Create voucher",
     "paginationTotal": "{{count}} vouchers",
     "loadFailed": "Could not load voucher list",
-    "loadErrorHint": "Check the API is running at http://localhost:5290 — run .\\scripts\\restart-api.ps1 if needed.",
+    "loadErrorHint": "Check the backend API and click Retry. If it persists, on the VPS run: systemctl restart KitPlatform-api.",
     "retry": "Retry",
     "columns": {
       "actions": "Actions",

@@ -16,8 +16,9 @@ import {
 import type { FormListFieldData } from 'antd/es/form/FormList';
 import type { ColumnsType } from 'antd/es/table';
 import { isAxiosError } from 'axios';
-import { PlusOutlined, ReloadOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, EyeOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
 import {
+  cancelTransfer,
   completeTransfer,
   createTransfer,
   fetchStockBatches,
@@ -322,6 +323,19 @@ export function TransferListPage() {
     }
   };
 
+  const handleCancel = async (id: string) => {
+    try {
+      await cancelTransfer(id);
+      message.success(t('messages.cancelSuccess'));
+      if (detail?.id === id) {
+        setDetail(await fetchTransfer(id));
+      }
+      load();
+    } catch (error) {
+      message.error(apiErrorMessage(error, t('messages.cancelFailed')));
+    }
+  };
+
   const columns: ColumnsType<TransferListItem> = [
     { title: ts('documentNumber'), dataIndex: 'transferNumber', width: 130 },
     { title: ts('fromWarehouse'), dataIndex: 'fromWarehouseName' },
@@ -358,14 +372,24 @@ export function TransferListPage() {
             {ts('detail')}
           </Tag>
           {row.status !== 3 && row.status !== 4 && (
-            <Tag
-              color="green"
-              icon={<CheckCircleOutlined />}
-              style={{ cursor: 'pointer', margin: 0 }}
-              onClick={() => handleComplete(row.id)}
-            >
-              {ts('complete')}
-            </Tag>
+            <>
+              <Tag
+                color="green"
+                icon={<CheckCircleOutlined />}
+                style={{ cursor: 'pointer', margin: 0 }}
+                onClick={() => handleComplete(row.id)}
+              >
+                {ts('complete')}
+              </Tag>
+              <Tag
+                color="red"
+                icon={<StopOutlined />}
+                style={{ cursor: 'pointer', margin: 0 }}
+                onClick={() => handleCancel(row.id)}
+              >
+                {ts('cancel')}
+              </Tag>
+            </>
           )}
         </Space>
       ),
@@ -447,9 +471,14 @@ export function TransferListPage() {
         onClose={() => setDetailOpen(false)}
         extra={
           detail && detail.status !== 3 && detail.status !== 4 ? (
-            <Button type="primary" onClick={() => handleComplete(detail.id)}>
-              {ts('complete')}
-            </Button>
+            <Space>
+              <Button danger onClick={() => handleCancel(detail.id)}>
+                {ts('cancel')}
+              </Button>
+              <Button type="primary" onClick={() => handleComplete(detail.id)}>
+                {ts('complete')}
+              </Button>
+            </Space>
           ) : null
         }
       >

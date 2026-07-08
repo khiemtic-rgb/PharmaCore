@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Sinh cặp VAPID key cho Web Push (CustomerAppPush).
 
@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== PharmaCore VAPID key generator ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform VAPID key generator ===" -ForegroundColor Cyan
 
 $output = npx --yes web-push@3 generate-vapid-keys 2>&1 | Out-String
 $public = $null
@@ -45,3 +45,4 @@ Write-Host "  CustomerAppPush__PrivateKey=$private"
 Write-Host ""
 Write-Host "Sau khi set env: restart API → .\scripts\verify-push-config.ps1" -ForegroundColor Cyan
 Write-Host "Hướng dẫn pilot NT: docs\customer-app-push-pilot.md" -ForegroundColor Cyan
+

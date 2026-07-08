@@ -10,6 +10,7 @@ import {
   DAY_LABELS,
   FAMILY_RELATIONSHIP_LABELS,
   HEALTH_RECORD_TYPE_LABELS,
+  CARE_REMINDER_TYPE_LABELS,
   LOYALTY_TX_LABELS,
   NOTIFICATION_CATEGORY_LABELS,
 } from '@/shared/api/customer-app.types';
@@ -38,6 +39,7 @@ export function useCustomerLabels() {
     day: (n: number) => enumLabel('day', n, DAY_LABELS[n]),
     familyRelationship: (key: string) => enumLabel('familyRelationship', key, FAMILY_RELATIONSHIP_LABELS[key]),
     healthRecordType: (key: string) => enumLabel('healthRecordType', key, HEALTH_RECORD_TYPE_LABELS[key]),
+    careReminderType: (key: string) => enumLabel('careReminderType', key, CARE_REMINDER_TYPE_LABELS[key]),
     notificationCategory: (key: string) =>
       enumLabel('notificationCategory', key, NOTIFICATION_CATEGORY_LABELS[key]),
   };

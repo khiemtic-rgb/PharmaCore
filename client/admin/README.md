@@ -1,4 +1,4 @@
-# PharmaCore Admin Web
+﻿# KitPlatform Admin Web
 
 React + Vite + TypeScript + Ant Design — ERP Admin (Phase 1).
 

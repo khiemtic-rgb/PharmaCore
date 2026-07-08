@@ -1,4 +1,4 @@
--- PharmaCore 020: Demo loyalty transactions (Trần Thị Mai — 120 điểm)
+﻿-- KitPlatform 020: Demo loyalty transactions (Trần Thị Mai — 120 điểm)
 
 INSERT INTO loyalty_transactions (
     tenant_id,

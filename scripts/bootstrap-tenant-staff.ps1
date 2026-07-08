@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Buoc 4 quy trinh 10x10: tao role thu ngan + user gan tung chi nhanh.
 
@@ -111,7 +111,7 @@ function Ensure-BranchUser {
     )
     $code = [string]$Branch.branchCode
     $username = "{0}_{1}" -f $UserPrefix, ($code.ToLower())
-    $email = "{0}.{1}@staff.demo.pharmacore.vn" -f $UserPrefix, ($code.ToLower())
+    $email = "{0}.{1}@staff.demo.KitPlatform.vn" -f $UserPrefix, ($code.ToLower())
 
     $users = Invoke-Api -Path '/api/system/users?page=1&pageSize=500' -Token $Token
     $existing = Get-One ($users.items | Where-Object { $_.username -eq $username })
@@ -179,3 +179,4 @@ foreach ($b in $branches) {
 }
 
 Write-Host "=== Done: $($created.Count) staff user(s), role=$RoleCode, password=$StaffPassword ===" -ForegroundColor Green
+

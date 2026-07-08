@@ -1,5 +1,5 @@
-param(
-    [string]$ConnectionString = "postgresql://pharmacore:pharmacore_dev_2026@localhost:5432/pharmacore"
+﻿param(
+    [string]$ConnectionString = "postgresql://kitplatform:kitplatform_dev_2026@localhost:5432/kitplatform"
 )
 
 $ErrorActionPreference = "Stop"
@@ -45,6 +45,7 @@ $files = @(
     "seed\001_demo_data.sql",
     "seed\002_admin_password.sql",
     "seed\003_more_customers.sql",
+    "seed\004_deck_rich_demo.sql",
     "024_loyalty_unify_redeem_value.sql",
     "025_loyalty_max_redeem_percent.sql",
     "026_loyalty_fractional_points.sql",
@@ -87,10 +88,30 @@ $files = @(
     "062_health_care_schema_align.sql",
     "063_p9_engagement_notifications.sql",
     "064_p10b_customer_app_i18n.sql",
-    "065_customer_engagement_analytics.sql"
+    "065_customer_engagement_analytics.sql",
+    "066_customer_otp_pilot_admin.sql",
+    "067_platform_events.sql",
+    "068_assessment_engine.sql",
+    "069_assessment_pharmacy_v1_seed.sql",
+    "070_stock_movements_tenant_index.sql",
+    "070_assessment_pharmacy_v1_vietnamese.sql",
+    "071_kit_schemas_foundation.sql",
+    "072_kit_core_iam_tenant.sql",
+    "073_kit_org_workspace.sql",
+    "074_kit_common_storage_party.sql",
+    "075_kit_metadata.sql",
+    "076_kit_event_audit_notify.sql",
+    "077_kit_workflow_integration_ai.sql",
+    "078_pack_clinic_crm.sql",
+    "079_kit_pack_registry_workspace_party_backfill.sql",
+    "080_kit_workspace_pack_rls.sql",
+    "081_kit_kernel_rls_workspace.sql",
+    "082_pack_pharmacy_schema.sql",
+    "083_pack_survey_schema.sql",
+    "084_kit_provision_pharmacy_survey_workspace.sql"
 )
 
-Write-Host "=== PharmaCore Migrations ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform Migrations ===" -ForegroundColor Cyan
 Write-Host "Database: $ConnectionString"
 Write-Host "psql: $psql"
 
@@ -115,3 +136,4 @@ foreach ($file in $files) {
 
 $tableCount = & $psql $ConnectionString -t -A -c "SELECT COUNT(*)::text FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"
 Write-Host "=== XONG! $tableCount bang + demo data ===" -ForegroundColor Green
+

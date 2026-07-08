@@ -1,4 +1,4 @@
-# Báo cáo chuyển Sapo → Novixa
+﻿# Báo cáo chuyển Sapo → Novixa
 
 Nguồn: C:\Users\admin\Downloads\excel\danh_sach_san_pham_28.06.2026_3d129fd466af3ee62e675c08c0672df9.xlsx
 Sheet: Xuất file sản phẩm
@@ -63,6 +63,6 @@ Cảnh báo (71):
 ... và 21 cảnh báo khác
 
 File output:
-- E:\PharmaCore\import\xuan-hoa\danh-muc-novixa.csv
-- E:\PharmaCore\import\xuan-hoa\ton-dau-CN1.csv
-- E:\PharmaCore\import\xuan-hoa\ton-dau-CN2.csv
+- E:\KitPlatform\import\xuan-hoa\danh-muc-novixa.csv
+- E:\KitPlatform\import\xuan-hoa\ton-dau-CN1.csv
+- E:\KitPlatform\import\xuan-hoa\ton-dau-CN2.csv

@@ -1,12 +1,12 @@
----
-description: Novixa marketing site (novixa.vn) — Astro, tách khỏi ERP PharmaCore
+﻿---
+description: Novixa marketing site (novixa.vn) — Astro, tách khỏi ERP KitPlatform
 globs: novixa-site/**
 alwaysApply: false
 ---
 
 # Novixa Site
 
-Website giới thiệu **Novixa** tại `novixa-site/` — deploy tách, **không** gọi API/DB PharmaCore.
+Website giới thiệu **Novixa** tại `novixa-site/` — deploy tách, **không** gọi API/DB KitPlatform.
 
 ## Stack & chạy local
 
@@ -28,7 +28,7 @@ Website giới thiệu **Novixa** tại `novixa-site/` — deploy tách, **khôn
 
 ## Quy tắc khi sửa
 
-1. **Không** import code từ `client/admin` hay `src/PharmaCore.*`
+1. **Không** import code từ `client/admin` hay `src/KitPlatform.*`
 2. Tin tức: luôn dùng `filterPublishedPosts()` trên trang chủ và danh sách tin
 3. Liên hệ: cấu hình trong `vi.json` → `contact` (phoneDisplay, zaloPhone, facebookUrl)
 4. Form email: Formsubmit → `khiemtic@gmail.com`

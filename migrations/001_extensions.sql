@@ -1,4 +1,4 @@
--- PharmaCore: extensions & shared helpers
+﻿-- KitPlatform: extensions & shared helpers
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "citext";
 

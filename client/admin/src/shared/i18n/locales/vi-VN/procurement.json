@@ -384,7 +384,7 @@
       "loadFailed": "Không tải được thanh toán NCC",
       "detailLoadFailed": "Không tải được chi tiết phiếu — dùng dữ liệu danh sách",
       "saveFailed": "Không lưu được phiếu thanh toán",
-      "apiEditUnsupported": "API chưa hỗ trợ sửa phiếu. Restart PharmaCore.Api sau khi build.",
+      "apiEditUnsupported": "API chưa hỗ trợ sửa phiếu. Restart KitPlatform.Api sau khi build.",
       "postFailed": "Không ghi sổ được",
       "cancelFailed": "Không hủy được phiếu",
       "noWritePermission": "Bạn không có quyền ghi nhận thanh toán",

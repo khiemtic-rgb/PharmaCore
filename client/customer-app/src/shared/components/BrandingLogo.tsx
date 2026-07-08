@@ -28,7 +28,7 @@ export function BrandingLogo({ logoUrl, size = 40, style }: BrandingLogoProps) {
         flexShrink: 0,
         ...style,
       }}
-      onError={() => setSrc('/icon.svg')}
+      onError={() => setSrc('/icon-512.png')}
     />
   );
 }

@@ -1,4 +1,4 @@
-# Smoke test: tenant isolation + branch scoping across modules
+﻿# Smoke test: tenant isolation + branch scoping across modules
 $ErrorActionPreference = "Stop"
 $Base = "http://localhost:5290"
 $Tenant = "DEMO_PHARMACY"
@@ -158,7 +158,7 @@ function Ensure-ScopeUser {
     if ($existing) {
         $updateBody = @{
             username         = $scopeUser
-            email            = "quay.smoke@demo.pharmacore.vn"
+            email            = "quay.smoke@demo.KitPlatform.vn"
             status           = 1
             roleIds          = @($ScopeRole.id)
             employeeFullName = "Thu ngan Smoke"
@@ -172,7 +172,7 @@ function Ensure-ScopeUser {
 
     $created = Invoke-Api -Method POST -Path "/api/system/users" -Token $AdminToken -Body @{
         username         = $scopeUser
-        email            = "quay.smoke@demo.pharmacore.vn"
+        email            = "quay.smoke@demo.KitPlatform.vn"
         password         = $scopePassword
         status           = 1
         roleIds          = @($ScopeRole.id)
@@ -184,7 +184,7 @@ function Ensure-ScopeUser {
     return $created.id
 }
 
-Write-Host "=== PharmaCore smoke: multi-branch readiness ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform smoke: multi-branch readiness ===" -ForegroundColor Cyan
 
 try {
     $health = Invoke-Api -Path "/api/health"
@@ -400,3 +400,4 @@ if ($failed -gt 0) {
     exit 1
 }
 exit 0
+

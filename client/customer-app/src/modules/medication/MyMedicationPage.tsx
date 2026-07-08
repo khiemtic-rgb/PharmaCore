@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Card, Empty, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Empty, Select, Space, Spin, Tag, Timeline, Typography, message } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import {
   fetchActiveMedications,
+  fetchFamilyMembers,
   fetchRepurchaseSuggestions,
   getApiErrorMessage,
 } from '@/shared/api/customer-app.api';
-import type { ActiveMedication, RepurchaseSuggestion } from '@/shared/api/customer-app.types';
+import type { ActiveMedication, FamilyMember, RepurchaseSuggestion } from '@/shared/api/customer-app.types';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 import { RepurchaseSuggestionsPanel } from '@/modules/reminders/RepurchaseSuggestionsPanel';
+
+type FamilyFilter = 'all' | 'self' | string;
 
 function isVisibleRepurchase(item: RepurchaseSuggestion) {
   if (item.status === 'dismissed' || item.status === 'expired') return false;
@@ -20,7 +23,13 @@ function isVisibleRepurchase(item: RepurchaseSuggestion) {
   return item.status === 'pending' || item.status === 'snoozed';
 }
 
-function MedicationCard({ item }: { item: ActiveMedication }) {
+function MedicationCard({
+  item,
+  personLabel,
+}: {
+  item: ActiveMedication;
+  personLabel: string | null;
+}) {
   const { t } = useTranslation();
   const lowSupply = item.daysRemaining != null && item.daysRemaining <= 3;
 
@@ -38,6 +47,11 @@ function MedicationCard({ item }: { item: ActiveMedication }) {
           <Typography.Text strong>{item.productName}</Typography.Text>
           <Tag color={lowSupply ? 'orange' : 'green'}>{daysLabel}</Tag>
         </div>
+        {personLabel ? (
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t('medications.forPerson', { name: personLabel })}
+          </Typography.Text>
+        ) : null}
         {item.remindTime ? (
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
             {t('medications.remindAt', { time: item.remindTime })}
@@ -97,16 +111,43 @@ export function MyMedicationPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<ActiveMedication[]>([]);
   const [repurchase, setRepurchase] = useState<RepurchaseSuggestion[]>([]);
+  const [family, setFamily] = useState<FamilyMember[]>([]);
+  const [familyFilter, setFamilyFilter] = useState<FamilyFilter>('all');
   const [loading, setLoading] = useState(true);
   const [activeMedsUnavailable, setActiveMedsUnavailable] = useState(false);
+
+  const familyFilterOptions = useMemo(
+    () => [
+      { value: 'all', label: t('medications.filterAll') },
+      { value: 'self', label: t('medications.filterSelf') },
+      ...family.map((member) => ({ value: member.id, label: member.fullName })),
+    ],
+    [family, t],
+  );
+
+  const resolvePersonLabel = useCallback(
+    (familyMemberId: string | null) => {
+      if (!familyMemberId) return t('health.self');
+      return family.find((member) => member.id === familyMemberId)?.fullName ?? t('health.familyMember');
+    },
+    [family, t],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     setActiveMedsUnavailable(false);
     try {
-      const [medsResult, suggestionsResult] = await Promise.allSettled([
-        fetchActiveMedications(),
+      const medParams =
+        familyFilter === 'all'
+          ? undefined
+          : familyFilter === 'self'
+            ? { forSelf: true }
+            : { familyMemberId: familyFilter };
+
+      const [medsResult, suggestionsResult, familyResult] = await Promise.allSettled([
+        fetchActiveMedications(medParams),
         fetchRepurchaseSuggestions(),
+        fetchFamilyMembers(),
       ]);
 
       if (medsResult.status === 'fulfilled') {
@@ -122,10 +163,14 @@ export function MyMedicationPage() {
         setRepurchase([]);
         message.error(getApiErrorMessage(suggestionsResult.reason, t('medications.loadRepurchaseFailed')));
       }
+
+      if (familyResult.status === 'fulfilled') {
+        setFamily(familyResult.value.filter((member) => member.status === 1));
+      }
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [familyFilter, t]);
 
   useEffect(() => {
     void load();
@@ -143,6 +188,18 @@ export function MyMedicationPage() {
         {t('medications.intro')}
       </Typography.Paragraph>
 
+      <div style={{ marginBottom: 12 }}>
+        <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
+          {t('medications.filterLabel')}
+        </Typography.Text>
+        <Select
+          style={{ width: '100%' }}
+          value={familyFilter}
+          options={familyFilterOptions}
+          onChange={(value) => setFamilyFilter(value as FamilyFilter)}
+        />
+      </div>
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: 48 }}>
           <Spin />
@@ -159,7 +216,15 @@ export function MyMedicationPage() {
             />
           ) : null}
 
-          {items.length > 0 ? items.map((item) => <MedicationCard key={item.productId} item={item} />) : null}
+          {items.length > 0
+            ? items.map((item) => (
+                <MedicationCard
+                  key={`${item.productId}-${item.familyMemberId ?? 'self'}`}
+                  item={item}
+                  personLabel={item.familyMemberId || familyFilter !== 'all' ? resolvePersonLabel(item.familyMemberId) : null}
+                />
+              ))
+            : null}
 
           {items.length === 0 && !hasRepurchase ? (
             <Empty description={t('medications.empty')}>

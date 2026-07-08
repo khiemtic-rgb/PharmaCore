@@ -1,9 +1,9 @@
-# PharmaCore — Customer App Phase 2
+﻿# KitPlatform — Customer App Phase 2
 
-> Chat title: **PharmaCore · Customer App — P2: CDP & Catalog**
+> Chat title: **KitPlatform · Customer App — P2: CDP & Catalog**
 > Base commit: `4775e4d`
 
-PharmaCore E:\PharmaCore — tiếp Phase 2 (sau commit 4775e4d)
+KitPlatform E:\KitPlatform — tiếp Phase 2 (sau commit 4775e4d)
 
 ĐÃ XONG (đừng sửa lại trừ khi bug):
 - Customer App https://localhost:5174 (HTTPS dev)

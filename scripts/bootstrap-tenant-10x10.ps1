@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Quy trinh 10x10 buoc 3+4: chi nhanh + kho + nhan vien thu ngan.
 
@@ -51,3 +51,4 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Host ""
 Write-Host "=== 10x10 bootstrap complete ===" -ForegroundColor Green
 Write-Host "Chay: .\scripts\run-readiness-check.ps1 -StaffUat" -ForegroundColor Yellow
+

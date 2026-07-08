@@ -19,6 +19,7 @@ export function CustomerLayout() {
         label: t('engagement'),
         path: '/customer/engagement',
         icon: <LineChartOutlined />,
+        feature: 'customer.engagement',
       },
       { key: 'loyalty', label: t('loyalty'), path: '/customer/loyalty', icon: <GiftOutlined /> },
       {

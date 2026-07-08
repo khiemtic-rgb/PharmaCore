@@ -1,0 +1,2 @@
+-- PROMOTED → migrations/072_kit_core_iam_tenant.sql (2026-07-08)
+-- This draft file is kept for history only. Do not apply from draft/.

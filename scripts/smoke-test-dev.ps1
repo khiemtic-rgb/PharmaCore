@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5290'
 $passed = 0
 $failed = @()
@@ -16,7 +16,7 @@ function Test-Step([string]$Name, [scriptblock]$Block) {
     }
 }
 
-Write-Host "`n=== PharmaCore dev smoke test ===" -ForegroundColor Cyan
+Write-Host "`n=== KitPlatform dev smoke test ===" -ForegroundColor Cyan
 
 Test-Step 'API health' {
     $h = Invoke-RestMethod "$base/api/health" -TimeoutSec 5
@@ -220,6 +220,40 @@ Test-Step 'System audit log' {
     if ($audit.total -lt 1) { throw 'expected audit history' }
 }
 
+Test-Step 'Tenant platform settings' {
+    $p = Invoke-RestMethod "$base/api/system/tenant-platform" -Headers $script:adminH
+    if (-not $p.vertical) { throw 'no vertical' }
+    if ($p.enabledModules.Count -lt 1) { throw 'no enabled modules' }
+}
+
+Test-Step 'Platform module registry' {
+    $mods = Invoke-RestMethod "$base/api/system/tenant-platform/modules" -Headers $script:adminH
+    if ($mods.Count -lt 5) { throw "expected modules, got $($mods.Count)" }
+}
+
+Test-Step 'AI health ask (valid)' {
+    # ASCII body avoids PowerShell default encoding mangling Vietnamese JSON over HTTP.
+    $aiBody = [Text.Encoding]::UTF8.GetBytes('{"question":"Can I take Paracetamol before meals?"}')
+    $ai = Invoke-RestMethod "$base/api/customer-app/ai-health/ask" -Method POST -Headers $script:custH `
+        -ContentType 'application/json; charset=utf-8' -Body $aiBody
+    if (-not $ai.answer) { throw 'no answer' }
+}
+
+Test-Step 'AI health ask (too short -> 400)' {
+    try {
+        Invoke-RestMethod "$base/api/customer-app/ai-health/ask" -Method POST -Headers $script:custH `
+            -ContentType 'application/json' -Body '{"question":"ab"}' -ErrorAction Stop
+        throw 'expected 400'
+    }
+    catch {
+        if ($_.Exception.Response.StatusCode.value__ -ne 400) { throw }
+    }
+}
+
+Test-Step 'Customer engagement overview' {
+    Invoke-RestMethod "$base/api/customer-engagement/overview?periodDays=30" -Headers $script:adminH | Out-Null
+}
+
 Write-Host "`n--- Summary ---" -ForegroundColor Cyan
 Write-Host "Passed: $passed"
 Write-Host "Draft orders (customer): $script:draftCount"
@@ -232,3 +266,4 @@ if ($failed.Count -gt 0) {
     exit 1
 }
 Write-Host "`nAll API smoke checks passed." -ForegroundColor Green
+

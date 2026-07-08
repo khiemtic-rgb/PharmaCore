@@ -30,6 +30,7 @@ import { CustomerConsentPanel } from '@/modules/customer/CustomerConsentPanel';
 import { CustomerFormDrawer } from '@/modules/customer/CustomerFormDrawer';
 import { CustomerLoyaltyPanel } from '@/modules/customer/CustomerLoyaltyPanel';
 import { CustomerOrdersPanel } from '@/modules/customer/CustomerOrdersPanel';
+import { CustomerPilotOtpPanel } from '@/modules/customer/CustomerPilotOtpPanel';
 import { useCustomerEnums } from '@/shared/i18n/use-customer-enums';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { formatDisplayMoney } from '@/shared/utils/money';
@@ -108,6 +109,8 @@ export function CustomerDetailPage() {
                   : t('appAccount.notRegistered')}
               </Descriptions.Item>
             </Descriptions>
+
+            <CustomerPilotOtpPanel customerId={detail.id} />
 
             <Card size="small" title={t('appActivity.title')}>
               <Space wrap>

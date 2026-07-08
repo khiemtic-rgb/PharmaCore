@@ -1,4 +1,4 @@
--- PharmaCore 051: Nền tảng đa chi nhánh, đa vertical (NT/TBYT/TPCN/chuỗi) + i18n
+﻿-- KitPlatform 051: Nền tảng đa chi nhánh, đa vertical (NT/TBYT/TPCN/chuỗi) + i18n
 -- Additive only — pilot 3 NT chạy y nguyên; thiếu cột mới = default an toàn.
 
 -- ---------------------------------------------------------------------------

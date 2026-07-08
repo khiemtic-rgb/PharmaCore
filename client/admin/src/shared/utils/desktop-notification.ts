@@ -11,7 +11,7 @@ export function showDesktopNotification(title: string, body: string, tag?: strin
   try {
     new Notification(title, {
       body,
-      tag: tag ?? 'pharmacore-admin-chat',
+      tag: tag ?? 'kitplatform-admin-chat',
       silent: false,
     });
   } catch {

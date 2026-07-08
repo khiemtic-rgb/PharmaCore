@@ -15,6 +15,13 @@ export interface CustomerLoginResponse {
   profile: CustomerProfile;
 }
 
+export interface CustomerOtpSentResponse {
+  expiresInSeconds: number;
+  cooldownSeconds: number;
+  message: string;
+  pilotCode?: string | null;
+}
+
 export interface LoyaltyTier {
   tierCode: string;
   tierName: string;
@@ -513,6 +520,15 @@ export const HEALTH_RECORD_TYPE_LABELS: Record<string, string> = {
 };
 
 export const VITAL_RECORD_TYPES = ['bmi', 'blood_pressure', 'blood_glucose'] as const;
+
+export const CARE_REMINDER_TYPE_LABELS: Record<string, string> = {
+  visit: 'Tái khám',
+  lab: 'Xét nghiệm',
+  medication: 'Thuốc / điều trị',
+  exercise: 'Vận động',
+  nutrition: 'Dinh dưỡng',
+  other: 'Khác',
+};
 
 export const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
   order: 'Đơn hàng',

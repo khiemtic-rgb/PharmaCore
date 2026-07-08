@@ -305,6 +305,11 @@ export async function completeTransfer(id: string): Promise<TransferDetail> {
   return normalizeTransferDetail(data);
 }
 
+export async function cancelTransfer(id: string): Promise<TransferDetail> {
+  const { data } = await http.post<Record<string, unknown>>(`/inventory/transfers/${id}/cancel`);
+  return normalizeTransferDetail(data);
+}
+
 export async function fetchAdjustments(): Promise<AdjustmentListItem[]> {
   const { data } = await http.get<Record<string, unknown>[]>('/inventory/adjustments');
   return data.map((row) => normalizeAdjustmentListItem(row));

@@ -10,7 +10,7 @@ export type CustomerNotification = {
   read: boolean;
 };
 
-const STORAGE_KEY = 'pharmacore.customer.notifications';
+const STORAGE_KEY = 'kitplatform.customer.notifications';
 const MAX_ITEMS = 50;
 
 function loadRaw(): CustomerNotification[] {

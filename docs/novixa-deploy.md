@@ -1,8 +1,8 @@
-# Novixa — Hướng dẫn triển khai Production
+﻿# Novixa — Hướng dẫn triển khai Production
 
 > **Tier:** T2/T3 · **Canonical ops:** [docs/novixa/05-operations/deployment-model-v1.md](./novixa/05-operations/deployment-model-v1.md)
 
-Tài liệu thực hành deploy ERP Novixa (PharmaCore) lên VPS — bổ sung cho `client/admin/pilot-go-live-checklist.md`.
+Tài liệu thực hành deploy ERP Novixa (KitPlatform) lên VPS — bổ sung cho `client/admin/pilot-go-live-checklist.md`.
 
 ---
 
@@ -32,7 +32,7 @@ Marketing: `https://novixa.vn` — Cloudflare Pages, **không** dùng doc này.
 ## 3. Build artifact
 
 ```powershell
-cd E:\PharmaCore
+cd E:\KitPlatform
 .\scripts\deploy-production.ps1 -ApiBaseUrl "https://api.novixa.vn"
 ```
 
@@ -49,16 +49,16 @@ Kiểm tra `publish/api`, `publish/admin`, `publish/customer-app`.
 Trên VPS (lần đầu):
 
 ```bash
-sudo CERTBOT_EMAIL=care@novixa.vn bash /tmp/pharmacore-upload/deploy/ubuntu/bootstrap-vps.sh
+sudo CERTBOT_EMAIL=care@novixa.vn bash /tmp/kit-platform-upload/deploy/ubuntu/bootstrap-vps.sh
 ```
 
-**Lưu file secrets:** `/etc/pharmacore/secrets.generated` (backup an toàn, không commit).
+**Lưu file secrets:** `/etc/kit-platform/secrets.generated` (backup an toàn, không commit).
 
 Bootstrap sẽ:
 
 1. Cài runtime, nginx, PostgreSQL  
 2. Chạy **migrations production** (không demo seed)  
-3. Tạo `/etc/pharmacore/api.env`  
+3. Tạo `/etc/kit-platform/api.env`  
 4. Khởi động API + SMS stub pilot  
 5. SSL Certbot (nếu DNS OK)
 
@@ -80,9 +80,9 @@ Tenant thứ 2+: cùng flow `/setup`.
 ```powershell
 .\scripts\upload-to-vps.ps1 -SshTarget root@<VPS_IP>
 # Trên VPS:
-sudo systemctl restart pharmacore-api
+sudo systemctl restart kit-platform-api
 # Nếu có migration mới:
-sudo bash /opt/pharmacore/run-migrations-prod.sh "postgresql://pharmacore:***@127.0.0.1:5432/novixa_prod"
+sudo bash /opt/kit-platform/run-migrations-prod.sh "postgresql://KitPlatform:***@127.0.0.1:5432/novixa_prod"
 ```
 
 ---

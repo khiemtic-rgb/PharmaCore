@@ -1,6 +1,6 @@
-<#
+﻿<#
 .SYNOPSIS
-  Kiểm tra API đã cấu hình VAPID và push worker.
+  Kiá»ƒm tra API Ä‘Ã£ cáº¥u hÃ¬nh VAPID vÃ  push worker.
 
 .EXAMPLE
   .\scripts\verify-push-config.ps1
@@ -34,15 +34,16 @@ Write-Host "Device subscribed: $($status.subscribed) (count=$($status.subscripti
 
 if (-not $status.supported -or -not $status.publicKey) {
     Write-Host ""
-    Write-Host "[FAIL] Chưa cấu hình CustomerAppPush:PublicKey/PrivateKey hoặc Enabled=false." -ForegroundColor Red
-    Write-Host "Chạy: .\scripts\generate-vapid-keys.ps1 rồi set env và restart API." -ForegroundColor Yellow
+    Write-Host "[FAIL] ChÆ°a cáº¥u hÃ¬nh CustomerAppPush:PublicKey/PrivateKey hoáº·c Enabled=false." -ForegroundColor Red
+    Write-Host "Cháº¡y: .\scripts\generate-vapid-keys.ps1 rá»“i set env vÃ  restart API." -ForegroundColor Yellow
     exit 1
 }
 
 if ($status.publicKey.Length -lt 80) {
-    Write-Host "[WARN] Public key ngắn bất thường — kiểm tra cặp key khớp." -ForegroundColor Yellow
+    Write-Host "[WARN] Public key ngáº¯n báº¥t thÆ°á»ng â€” kiá»ƒm tra cáº·p key khá»›p." -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "[OK] VAPID sẵn sàng. Bật push trên app: Tài khoản → Thông báo push + đồng ý nhắc chăm sóc." -ForegroundColor Green
-Write-Host "Production: HTTPS bắt buộc (PWA + Service Worker). Xem docs\customer-app-push-pilot.md" -ForegroundColor Cyan
+Write-Host "[OK] VAPID sáºµn sÃ ng. Báº­t push trÃªn app: TÃ i khoáº£n â†’ ThÃ´ng bÃ¡o push + Ä‘á»“ng Ã½ nháº¯c chÄƒm sÃ³c." -ForegroundColor Green
+Write-Host "Production: HTTPS báº¯t buá»™c (PWA + Service Worker). Xem docs\customer-app-push-pilot.md" -ForegroundColor Cyan
+

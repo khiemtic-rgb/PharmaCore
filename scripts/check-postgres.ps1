@@ -1,10 +1,10 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $dbHost = "localhost"
 $dbPort = 5432
-$dbName = "pharmacore"
-$dbUser = "pharmacore"
-$dbPass = "pharmacore_dev_2026"
+$dbName = "kitplatform"
+$dbUser = "kitplatform"
+$dbPass = "kitplatform_dev_2026"
 
 $pgIsready = @(
     "C:\Program Files\PostgreSQL\18\bin\pg_isready.exe",
@@ -58,3 +58,4 @@ finally {
 
 Write-Host "[OK] PostgreSQL + database '$dbName' san sang." -ForegroundColor Green
 exit 0
+

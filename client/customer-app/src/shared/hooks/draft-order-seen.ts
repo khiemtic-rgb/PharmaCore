@@ -1,4 +1,4 @@
-const SEEN_KEY = 'pharmacore.seenSentDraftIds';
+const SEEN_KEY = 'kitplatform.seenSentDraftIds';
 
 export function loadSeenSentDraftIds(): Set<string> {
   try {

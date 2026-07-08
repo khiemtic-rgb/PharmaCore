@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Form, Input, Space, Steps, Typography, message } from 'antd';
 import { MobileOutlined, SafetyOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getApiErrorMessage, requestOtp, verifyOtp } from '@/shared/api/customer-app.api';
 import {
@@ -10,16 +10,53 @@ import {
   loadStoredTenantCode,
   saveStoredTenantCode,
 } from '@/shared/config/app-brand';
+import { applyTenantFromUrl } from '@/shared/config/tenant-link';
 import { useAuthStore } from '@/shared/auth/auth.store';
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 export function OtpLoginPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const search = searchParams.toString();
+  const initialTenant = useMemo(() => applyTenantFromUrl(search ? `?${search}` : ''), [search]);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState(import.meta.env.DEV ? '0909123456' : '');
-  const [tenantCode, setTenantCode] = useState(loadStoredTenantCode);
+  const [tenantCode, setTenantCode] = useState(initialTenant.code);
+  const [pilotCode, setPilotCode] = useState<string | null>(null);
+  const [expiresInSeconds, setExpiresInSeconds] = useState(0);
+  const [form] = Form.useForm<{ code: string }>();
+  const tenantLocked = initialTenant.locked;
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (initialTenant.locked) {
+      setTenantCode(initialTenant.code);
+    }
+  }, [initialTenant.code, initialTenant.locked]);
+
+  useEffect(() => {
+    if (step !== 1) return;
+
+    const timer = window.setInterval(() => {
+      setExpiresInSeconds((current) => (current > 0 ? current - 1 : 0));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [step]);
+
+  const resetOtpStep = () => {
+    setStep(0);
+    setPilotCode(null);
+    setExpiresInSeconds(0);
+    form.resetFields();
+  };
 
   const onRequestOtp = async () => {
     const normalized = phone.trim();
@@ -37,6 +74,13 @@ export function OtpLoginPage() {
       saveStoredTenantCode(code);
       const res = await requestOtp(normalized, code);
       message.success(res.message || t('auth.otpSent'));
+      setPilotCode(res.pilotCode?.trim() || null);
+      setExpiresInSeconds(res.expiresInSeconds);
+      if (res.pilotCode?.trim()) {
+        form.setFieldsValue({ code: res.pilotCode.trim() });
+      } else {
+        form.resetFields();
+      }
       setStep(1);
     } catch (error) {
       message.error(getApiErrorMessage(error, t('auth.otpSendFailed')));
@@ -87,6 +131,11 @@ export function OtpLoginPage() {
 
           {step === 0 ? (
             <Form layout="vertical" onFinish={onRequestOtp}>
+              {tenantLocked && tenantCode ? (
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
+                  {t('auth.tenantLocked', { tenant: tenantCode })}
+                </Typography.Paragraph>
+              ) : null}
               <Form.Item label={t('auth.phoneLabel')} required>
                 <Input
                   prefix={<MobileOutlined />}
@@ -94,29 +143,71 @@ export function OtpLoginPage() {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="0909123456"
                   size="large"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                 />
               </Form.Item>
-              <Form.Item label={t('auth.tenantLabel')} required>
-                <Input
-                  value={tenantCode}
-                  onChange={(e) => setTenantCode(e.target.value.toUpperCase())}
-                  placeholder={DEFAULT_TENANT_CODE || 'NT_A'}
-                  size="large"
-                  style={{ textTransform: 'uppercase' }}
-                />
-              </Form.Item>
+              {!tenantLocked ? (
+                <Form.Item label={t('auth.tenantLabel')} required>
+                  <Input
+                    value={tenantCode}
+                    onChange={(e) => setTenantCode(e.target.value.toUpperCase())}
+                    placeholder={DEFAULT_TENANT_CODE || loadStoredTenantCode() || 'NT_A'}
+                    size="large"
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                </Form.Item>
+              ) : null}
               <Button type="primary" htmlType="submit" block size="large" loading={loading}>
                 {t('auth.sendOtp')}
               </Button>
             </Form>
           ) : (
-            <Form layout="vertical" onFinish={onVerifyOtp}>
+            <Form form={form} layout="vertical" onFinish={onVerifyOtp}>
               <Typography.Paragraph type="secondary" style={{ marginBottom: 12 }}>
                 {t('auth.otpSentTo')} <strong>{phone}</strong>.
-                {import.meta.env.DEV ? (
+                {import.meta.env.DEV && !pilotCode ? (
                   <> {t('auth.devOtpHint')} <code>000000</code></>
                 ) : null}
               </Typography.Paragraph>
+
+              {pilotCode ? (
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: '16px 12px',
+                    borderRadius: 12,
+                    background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%)',
+                    border: '1px solid #99f6e4',
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    {t('auth.pilotCodeTitle')}
+                  </Typography.Text>
+                  <Typography.Title
+                    level={2}
+                    style={{
+                      margin: 0,
+                      letterSpacing: 8,
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      color: '#0f766e',
+                    }}
+                  >
+                    {pilotCode}
+                  </Typography.Title>
+                  <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                    {expiresInSeconds > 0
+                      ? t('auth.pilotCodeExpires', { seconds: formatCountdown(expiresInSeconds) })
+                      : t('auth.pilotCodeExpired')}
+                  </Typography.Text>
+                  <Typography.Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
+                    {t('auth.pilotCodeHint')}
+                  </Typography.Text>
+                </div>
+              ) : null}
+
               <Form.Item
                 name="code"
                 label={t('auth.otpLabel')}
@@ -133,7 +224,7 @@ export function OtpLoginPage() {
               <Button type="primary" htmlType="submit" block size="large" loading={loading}>
                 {t('auth.confirm')}
               </Button>
-              <Button type="link" block onClick={() => setStep(0)} style={{ marginTop: 8 }}>
+              <Button type="link" block onClick={resetOtpStep} style={{ marginTop: 8 }}>
                 {t('auth.changePhone')}
               </Button>
             </Form>

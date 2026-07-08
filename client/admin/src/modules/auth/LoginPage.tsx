@@ -12,6 +12,7 @@ import {
   saveStoredTenantCode,
 } from '@/shared/config/app-brand';
 import { AdminLanguageSelect } from '@/shared/i18n/LanguageSelect';
+import { AppBrandLogo } from '@/shared/components/AppBrandLogo';
 
 type LoginFormValues = {
   tenantCode: string;
@@ -79,7 +80,7 @@ export function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f766e 0%, #134e4a 50%, #115e59 100%)',
+        background: 'linear-gradient(135deg, #1b3a6b 0%, #2563eb 55%, #15803d 100%)',
         padding: 24,
       }}
     >
@@ -89,6 +90,9 @@ export function LoginPage() {
             <AdminLanguageSelect />
           </div>
           <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <AppBrandLogo height={72} maxWidth={200} />
+            </div>
             <Typography.Title level={3} style={{ marginBottom: 4 }}>
               {APP_BRAND}
             </Typography.Title>

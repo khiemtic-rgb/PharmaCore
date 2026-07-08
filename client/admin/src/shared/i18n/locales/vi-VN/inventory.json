@@ -52,6 +52,7 @@
     "addLine": "Thêm dòng",
     "detail": "Chi tiết",
     "complete": "Hoàn tất",
+    "cancel": "Hủy",
     "count": "Đếm",
     "fromWarehouse": "Kho xuất",
     "toWarehouse": "Kho nhận",
@@ -189,7 +190,9 @@
       "createSuccess": "Đã tạo phiếu {{number}}",
       "createFailed": "Không tạo được phiếu",
       "completeSuccess": "Đã hoàn tất điều chuyển",
-      "completeFailed": "Không hoàn tất được phiếu"
+      "completeFailed": "Không hoàn tất được phiếu",
+      "cancelSuccess": "Đã hủy phiếu điều chuyển",
+      "cancelFailed": "Không hủy được phiếu"
     }
   },
   "adjustmentList": {
@@ -449,6 +452,6 @@
       "manager": "Quản lý",
       "signHint": "(Ký, họ tên)"
     },
-    "footnote": "In từ hệ thống PharmaCore — chỉ mang tính tham chiếu trước khi duyệt chốt."
+    "footnote": "In từ hệ thống KitPlatform — chỉ mang tính tham chiếu trước khi duyệt chốt."
   }
 }

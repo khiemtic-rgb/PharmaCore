@@ -1,14 +1,16 @@
-# Novixa — Kiến trúc giải pháp V1
+﻿# Novixa — Kiến trúc giải pháp V1
 
-**Mã:** NVX-SOL-01 · **Tier:** T2/T3 · **Trạng thái:** Draft · **Version:** 1.0
+**Mã:** NVX-SOL-01 · **Tier:** T2/T3 · **Trạng thái:** Draft · **Version:** 1.1
+
+> **EA evolution (pilot-safe):** [enterprise-architecture-evolution-v1.md](./enterprise-architecture-evolution-v1.md) (NVX-SOL-07) · Gap matrix [enterprise-architecture-gap-matrix-v1.md](./enterprise-architecture-gap-matrix-v1.md) (NVX-SOL-06) · **KIT Platform / Novixa Pack:** [platform-kernel-and-solution-packs-v1.md](./platform-kernel-and-solution-packs-v1.md) (KIT-PLT-01) · NSF `docs/novixa/standards/` · Core Engines trong `KitPlatform.Application/Core/Engines`.
 
 ---
 
 ## 1. Tổng quan
 
-Novixa là **nền tảng SaaS multi-tenant** cho quản lý nhà thuốc, gồm:
+**Novixa** là **Solution Pack đầu tiên** (nhà thuốc / health retail) trên **KIT Platform** — host kỹ thuật **KitPlatform** (SaaS multi-tenant). Triển khai V1 gồm:
 
-- **PharmaCore API** (.NET 10, PostgreSQL)
+- **KitPlatform API** (.NET 10, PostgreSQL)
 - **Admin Web** (React/Vite) — ERP + POS desktop
 - **Staff POS Mobile** (React/PWA)
 - **Customer App** (React/PWA)
@@ -26,10 +28,10 @@ Novixa là **nền tảng SaaS multi-tenant** cho quản lý nhà thuốc, gồm
 
 ┌─────────────── VPS (Ubuntu 24.04) ───────────────────────────────┐
 │  Nginx (TLS)                                                      │
-│    api.novixa.vn  → Kestrel :5000 (PharmaCore.Api)               │
-│    admin.novixa.vn → /var/www/pharmacore/admin/ (static)         │
-│    app.novixa.vn   → /var/www/pharmacore/customer-app/ (static)  │
-│    pos.novixa.vn   → /var/www/pharmacore/admin/ (POS route)      │
+│    api.novixa.vn  → Kestrel :5000 (KitPlatform.Api)               │
+│    admin.novixa.vn → /var/www/kit-platform/admin/ (static)         │
+│    app.novixa.vn   → /var/www/kit-platform/customer-app/ (static)  │
+│    pos.novixa.vn   → /var/www/kit-platform/admin/ (POS route)      │
 │                                                                   │
 │  PostgreSQL: novixa_prod (multi-tenant)                          │
 │  SMS stub (pilot) → CustomerAppSms                               │
@@ -78,7 +80,7 @@ Reports Wave 1 (read models / SQL views)
 
 | Layer | Công nghệ | Repo path |
 |-------|-----------|-----------|
-| API | ASP.NET Core 10 | `src/PharmaCore.*` |
+| API | ASP.NET Core 10 | `src/KitPlatform.*` |
 | Admin | React 18, Ant Design, Vite | `client/admin/` |
 | Customer App | React, PWA | `client/customer-app/` |
 | Staff App | React, mobile-first | `client/staff-app/` |
@@ -94,7 +96,7 @@ Reports Wave 1 (read models / SQL views)
 | Transport | HTTPS (Certbot/nginx) |
 | Auth | JWT access + refresh, RBAC permissions |
 | Tenant | Middleware validate tenant context |
-| Secrets | `/etc/pharmacore/api.env`, chmod 600 |
+| Secrets | `/etc/kit-platform/api.env`, chmod 600 |
 | Audit | `audit_logs` (System module) |
 | CORS | Whitelist admin/app/pos origins |
 | Pilot OTP | SMS stub / Log provider — **không production SMS mặc định** |
@@ -125,7 +127,7 @@ Chi tiết mở rộng: NVX-SOL-05 (Planned).
 .\scripts\upload-to-vps.ps1 -SshTarget user@host
 
 # Bootstrap lần đầu (trên VPS)
-sudo bash /tmp/pharmacore-upload/deploy/ubuntu/bootstrap-vps.sh
+sudo bash /tmp/kit-platform-upload/deploy/ubuntu/bootstrap-vps.sh
 ```
 
 Chi tiết: [deployment-model-v1.md](../05-operations/deployment-model-v1.md), [docs/novixa-deploy.md](../../novixa-deploy.md)

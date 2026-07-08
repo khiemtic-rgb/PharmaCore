@@ -1,4 +1,4 @@
--- PharmaCore: Catalog module (8 tables)
+﻿-- KitPlatform: Catalog module (8 tables)
 
 CREATE TABLE product_categories (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

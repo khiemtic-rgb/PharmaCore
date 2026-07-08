@@ -12,12 +12,15 @@ import axios from 'axios';
 import { apiPath } from '@/shared/api/api-base';
 
 const HEALTH_URL = apiPath('/api/health');
-const POLL_ONLINE_MS = 15_000;
-const POLL_OFFLINE_MS = 3_000;
+const POLL_ONLINE_MS = 30_000;
+const POLL_OFFLINE_MS = 5_000;
+const HEALTH_TIMEOUT_MS = 5_000;
+const RETRY_AFTER_FAIL_MS = 1_200;
+/** Tránh banner nhấp nháy khi API cold-start / mạng chập chờn */
+const FAILS_BEFORE_OFFLINE = 2;
 
 type ApiHealthContextValue = {
-  /** null = chưa kiểm tra lần đầu */
-  online: boolean | null;
+  online: boolean;
   checking: boolean;
   recheck: () => Promise<void>;
 };
@@ -25,20 +28,34 @@ type ApiHealthContextValue = {
 const ApiHealthContext = createContext<ApiHealthContextValue | null>(null);
 
 export function ApiHealthProvider({ children }: { children: ReactNode }) {
-  const [online, setOnline] = useState<boolean | null>(null);
+  const [online, setOnline] = useState(true);
   const [checking, setChecking] = useState(false);
-  const onlineRef = useRef<boolean | null>(null);
+  const failStreakRef = useRef(0);
+  const retryTimerRef = useRef<number | undefined>(undefined);
 
   const recheck = useCallback(async () => {
     setChecking(true);
     try {
-      const { data } = await axios.get<{ status?: string }>(HEALTH_URL, { timeout: 4000 });
-      const next = data.status === 'ok';
-      onlineRef.current = next;
-      setOnline(next);
+      const { data } = await axios.get<{ status?: string }>(HEALTH_URL, {
+        timeout: HEALTH_TIMEOUT_MS,
+      });
+      if (data.status === 'ok') {
+        failStreakRef.current = 0;
+        setOnline(true);
+      } else {
+        failStreakRef.current += 1;
+        if (failStreakRef.current >= FAILS_BEFORE_OFFLINE) setOnline(false);
+        else {
+          retryTimerRef.current = window.setTimeout(() => void recheck(), RETRY_AFTER_FAIL_MS);
+        }
+      }
     } catch {
-      onlineRef.current = false;
-      setOnline(false);
+      failStreakRef.current += 1;
+      if (failStreakRef.current >= FAILS_BEFORE_OFFLINE) {
+        setOnline(false);
+      } else {
+        retryTimerRef.current = window.setTimeout(() => void recheck(), RETRY_AFTER_FAIL_MS);
+      }
     } finally {
       setChecking(false);
     }
@@ -56,11 +73,12 @@ export function ApiHealthProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.clearInterval(timer);
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
     };
   }, [recheck]);
 
   useEffect(() => {
-    if (online !== false) return;
+    if (online) return;
     const fastTimer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void recheck();
     }, POLL_OFFLINE_MS);
@@ -91,11 +109,11 @@ export function useRetryWhenApiOnline(onOnline: () => void | Promise<void>) {
   onOnlineRef.current = onOnline;
 
   useEffect(() => {
-    if (online === false) {
+    if (!online) {
       wasOfflineRef.current = true;
       return;
     }
-    if (online === true && wasOfflineRef.current) {
+    if (wasOfflineRef.current) {
       wasOfflineRef.current = false;
       void onOnlineRef.current();
     }

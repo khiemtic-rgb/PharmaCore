@@ -15,7 +15,9 @@ VALUES
 ON CONFLICT (permission_code) DO NOTHING;
 
 INSERT INTO role_permissions (role_id, permission_id)
-SELECT '11111111-1111-1111-1111-111111111501', p.id
-FROM permissions p
-WHERE p.permission_code IN ('sales.discount', 'sales.discount.unlimited')
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.role_code = 'ADMIN'
+  AND p.permission_code IN ('sales.discount', 'sales.discount.unlimited')
 ON CONFLICT DO NOTHING;

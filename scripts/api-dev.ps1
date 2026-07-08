@@ -1,14 +1,14 @@
-# Quản lý PharmaCore API cho môi trường dev local (chạy nền, không cần giữ cửa sổ CMD).
+﻿# Quản lý KitPlatform API cho môi trường dev local (chạy nền, không cần giữ cửa sổ CMD).
 $ErrorActionPreference = "Stop"
 
 $script:Root = Split-Path -Parent $PSScriptRoot
-$script:ApiProject = Join-Path $script:Root "src\PharmaCore.Api\PharmaCore.Api.csproj"
+$script:ApiProject = Join-Path $script:Root "src\KitPlatform.Api\KitPlatform.Api.csproj"
 $script:DevDir = Join-Path $script:Root ".dev"
 $script:PidFile = Join-Path $script:DevDir "api.pid"
 $script:WatchPidFile = Join-Path $script:DevDir "watch.pid"
 $script:LogFile = Join-Path $script:DevDir "api.log"
 $script:LogErrFile = Join-Path $script:DevDir "api.err.log"
-$script:LockFile = Join-Path $env:TEMP "PharmaCore-api-dev.lock"
+$script:LockFile = Join-Path $env:TEMP "kit-platform-api-dev.lock"
 
 function Test-ApiDevHealth {
     try {
@@ -54,13 +54,13 @@ function Stop-ApiDevProcess {
         Remove-Item $script:PidFile -Force -ErrorAction SilentlyContinue
     }
 
-    Get-Process -Name "PharmaCore.Api" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process -Name "KitPlatform.Api" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     foreach ($port in 5290, 7224) {
         Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
             ForEach-Object {
                 $proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
-                if ($proc -and ($proc.ProcessName -eq "PharmaCore.Api" -or $proc.ProcessName -eq "dotnet")) {
+                if ($proc -and ($proc.ProcessName -eq "KitPlatform.Api" -or $proc.ProcessName -eq "dotnet")) {
                     Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
                 }
             }
@@ -183,3 +183,4 @@ function Stop-ApiDevAll {
     Stop-ApiDevProcess
     Write-Host "[OK] Da dung API dev + watcher." -ForegroundColor Green
 }
+

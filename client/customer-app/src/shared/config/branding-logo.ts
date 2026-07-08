@@ -1,4 +1,4 @@
-const DEFAULT_LOGO = '/icon.svg';
+const DEFAULT_LOGO = '/icon-512.png';
 
 export function resolveBrandingLogoUrl(logoUrl: string | null | undefined): string {
   const raw = logoUrl?.trim();

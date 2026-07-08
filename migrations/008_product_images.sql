@@ -1,4 +1,4 @@
--- PharmaCore: Product images (multi-image ready)
+﻿-- KitPlatform: Product images (multi-image ready)
 
 CREATE TABLE product_images (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

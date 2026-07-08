@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: () => Boolean(get().accessToken),
     }),
     {
-      name: 'pharmacore-customer-auth',
+      name: 'kitplatform-customer-auth',
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

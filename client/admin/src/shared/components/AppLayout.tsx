@@ -22,6 +22,8 @@ import { moduleRegistry } from '@/modules/registry';
 
 import type { ModuleKey } from '@/modules/registry';
 
+import { useTenantPlatformStore } from '@/shared/platform/tenant-platform.store';
+
 import { ApiHealthBanner } from '@/shared/components/ApiHealthBanner';
 import {
   ModuleSubnavProvider,
@@ -33,12 +35,9 @@ import { useAuthStore } from '@/shared/auth/auth.store';
 import { logoutApi } from '@/shared/api/auth.api';
 
 import { AdminLanguageSelect } from '@/shared/i18n/LanguageSelect';
-
-
+import { AppBrandLogo } from '@/shared/components/AppBrandLogo';
 
 const { Header, Sider, Content } = Layout;
-
-
 
 function resolveActiveModuleKey(pathname: string): ModuleKey {
 
@@ -76,6 +75,8 @@ function AppLayoutShell() {
   const clearSession = useAuthStore((s) => s.clearSession);
 
   const subnav = useModuleSubnavState();
+  const isModuleEnabled = useTenantPlatformStore((s) => s.isModuleEnabled);
+  const platformLoaded = useTenantPlatformStore((s) => s.loaded);
 
 
 
@@ -89,23 +90,22 @@ function AppLayoutShell() {
 
     () =>
 
-      moduleRegistry.map((module) => ({
+      moduleRegistry.map((module) => {
+        const platformOk =
+          !module.platformModule || !platformLoaded || isModuleEnabled(module.platformModule);
+        const navEnabled = module.enabled && platformOk;
 
-        key: module.key,
+        return {
+          key: module.key,
+          icon: module.icon,
+          label: navEnabled
+            ? t(`modules.${module.key}`)
+            : t('modules.comingSoon', { name: t(`modules.${module.key}`) }),
+          disabled: !navEnabled,
+        };
+      }),
 
-        icon: module.icon,
-
-        label: module.enabled
-
-          ? t(`modules.${module.key}`)
-
-          : t('modules.comingSoon', { name: t(`modules.${module.key}`) }),
-
-        disabled: !module.enabled,
-
-      })),
-
-    [t],
+    [t, isModuleEnabled, platformLoaded],
 
   );
 
@@ -179,36 +179,20 @@ function AppLayoutShell() {
 
         width={240}
 
+        style={{ background: '#1b3a6b' }}
+
       >
 
         <div
-
           style={{
-
             height: 64,
-
-            margin: 16,
-
+            margin: collapsed ? '16px 8px' : 16,
             display: 'flex',
-
             alignItems: 'center',
-
-            justifyContent: collapsed ? 'center' : 'flex-start',
-
-            color: '#fff',
-
-            fontWeight: 700,
-
-            fontSize: collapsed ? 14 : 18,
-
-            letterSpacing: 0.5,
-
+            justifyContent: 'center',
           }}
-
         >
-
-          {collapsed ? 'PC' : 'PharmaCore'}
-
+          <AppBrandLogo height={collapsed ? 36 : 48} maxWidth={collapsed ? 40 : 168} />
         </div>
 
         <Menu
@@ -225,7 +209,10 @@ function AppLayoutShell() {
 
             const module = moduleRegistry.find((m) => m.key === key);
 
-            if (module?.enabled) {
+            const platformOk =
+              !module?.platformModule || !platformLoaded || isModuleEnabled(module.platformModule);
+
+            if (module?.enabled && platformOk) {
 
               navigate(module.path);
 
@@ -237,7 +224,7 @@ function AppLayoutShell() {
 
       </Sider>
 
-      <Layout>
+      <Layout style={{ minWidth: 0, overflow: 'hidden' }}>
 
         <Header className="app-header">
 
@@ -311,7 +298,7 @@ function AppLayoutShell() {
 
         <ApiHealthBanner />
 
-        <Content style={{ margin: 24 }}>
+        <Content className="app-main-content">
 
           <Outlet />
 

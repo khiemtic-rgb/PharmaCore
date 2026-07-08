@@ -1,7 +1,7 @@
-# Xuất OpenAPI spec từ PharmaCore.Api (không cần API đang chạy).
+﻿# Xuất OpenAPI spec từ KitPlatform.Api (không cần API đang chạy).
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$apiProject = Join-Path $root "src\PharmaCore.Api\PharmaCore.Api.csproj"
+$apiProject = Join-Path $root "src\KitPlatform.Api\KitPlatform.Api.csproj"
 $outDir = Join-Path $root "client\admin\openapi"
 $outFile = Join-Path $outDir "swagger.json"
 
@@ -10,7 +10,7 @@ try {
     Write-Host "Restoring dotnet tools..."
     dotnet tool restore | Out-Null
 
-    $dll = Join-Path $root "src\PharmaCore.Api\bin\Debug\net10.0\PharmaCore.Api.dll"
+    $dll = Join-Path $root "src\KitPlatform.Api\bin\Debug\net10.0\KitPlatform.Api.dll"
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
     Write-Host "Building API..."
@@ -38,3 +38,4 @@ try {
 finally {
     Pop-Location
 }
+

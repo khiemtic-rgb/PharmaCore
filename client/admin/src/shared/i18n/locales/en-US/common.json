@@ -31,7 +31,7 @@
     "deleteFailed": "Could not delete"
   },
   "errors": {
-    "apiOffline": "Could not connect to the API. Check that PharmaCore.Api is running (port 5290)."
+    "apiOffline": "Could not connect to the backend API."
   },
   "appLayout": {
     "logout": "Sign out",
@@ -40,8 +40,8 @@
     "productName": "Pharmacy ERP"
   },
   "apiHealth": {
-    "message": "Backend API is not responding (port 5290)",
-    "description": "API on port 5290 is not responding. Run npm run dev (starts API automatically) or .\\scripts\\restart-api.ps1 — the API runs in the background; no CMD window needed.",
+    "message": "Backend API is not responding",
+    "description": "Check API connectivity and try again.",
     "recheck": "Check again"
   },
   "boot": {

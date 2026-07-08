@@ -1,4 +1,4 @@
--- PharmaCore: Sales / POS module (7 tables)
+﻿-- KitPlatform: Sales / POS module (7 tables)
 
 CREATE TABLE customers (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

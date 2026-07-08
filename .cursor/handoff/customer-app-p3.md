@@ -1,6 +1,6 @@
-# PharmaCore — Customer App Phase 3
+﻿# KitPlatform — Customer App Phase 3
 
-> Chat title: **PharmaCore · Customer App — P3: Đơn hàng O2O**
+> Chat title: **KitPlatform · Customer App — P3: Đơn hàng O2O**
 > Entity: `customer_draft_orders` (tách khỏi `sales_orders` nháp POS)
 
 ## ĐÃ XONG

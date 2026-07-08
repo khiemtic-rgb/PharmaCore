@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5290'
 $tenantCode = 'NT_XUANHOA'
 
@@ -55,3 +55,4 @@ foreach ($draft in $drafts) {
 }
 
 Write-Host "Cancelled $cancelled draft(s)." -ForegroundColor Cyan
+

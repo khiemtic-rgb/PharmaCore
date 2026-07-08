@@ -1,0 +1,99 @@
+{
+  "capturedAt": "2026-07-04T04:50:14.853Z",
+  "shots": [
+    {
+      "id": "01-dashboard",
+      "slide": 8,
+      "label": "Dashboard tong quan",
+      "url": "/",
+      "app": "admin",
+      "prep": "dashboard",
+      "waitMs": 3500,
+      "file": "assets/screenshots/01-dashboard.png"
+    },
+    {
+      "id": "02-catalog-products",
+      "slide": 10,
+      "label": "Danh muc san pham",
+      "url": "/catalog/products",
+      "app": "admin",
+      "prep": "products",
+      "waitMs": 2500,
+      "file": "assets/screenshots/02-catalog-products.png"
+    },
+    {
+      "id": "03-procurement-grn",
+      "slide": 11,
+      "label": "Nhap kho GRN",
+      "url": "/procurement/goods-receipts",
+      "app": "admin",
+      "waitMs": 2000,
+      "file": "assets/screenshots/03-procurement-grn.png"
+    },
+    {
+      "id": "04-inventory-stock",
+      "slide": 12,
+      "label": "Ton kho theo lo",
+      "url": "/inventory/stock",
+      "app": "admin",
+      "prep": "stock",
+      "waitMs": 2500,
+      "file": "assets/screenshots/04-inventory-stock.png"
+    },
+    {
+      "id": "05-sales-pos",
+      "slide": 13,
+      "label": "POS quay ban",
+      "url": "/sales/pos",
+      "app": "admin",
+      "prep": "pos",
+      "waitMs": 3000,
+      "file": "assets/screenshots/05-sales-pos.png"
+    },
+    {
+      "id": "06-customer-crm",
+      "slide": 15,
+      "label": "CRM khach hang",
+      "url": "/customer/list",
+      "app": "admin",
+      "waitMs": 2000,
+      "file": "assets/screenshots/06-customer-crm.png"
+    },
+    {
+      "id": "07-o2o-drafts",
+      "slide": 17,
+      "label": "Don app khach O2O",
+      "url": "/sales/customer-drafts",
+      "app": "admin",
+      "waitMs": 2000,
+      "file": "assets/screenshots/07-o2o-drafts.png"
+    },
+    {
+      "id": "08-reports-home",
+      "slide": 18,
+      "label": "Bao cao Wave 1",
+      "url": "/reports",
+      "app": "admin",
+      "waitMs": 2000,
+      "file": "assets/screenshots/08-reports-home.png"
+    },
+    {
+      "id": "09-customer-app-home",
+      "slide": 16,
+      "label": "App khach - Trang chu",
+      "url": "/",
+      "app": "customer",
+      "waitMs": 2500,
+      "file": "assets/screenshots/09-customer-app-home.png"
+    },
+    {
+      "id": "10-staff-pos",
+      "slide": 14,
+      "label": "Staff POS mobile",
+      "url": "/pos",
+      "app": "staff",
+      "waitMs": 2500,
+      "file": "assets/screenshots/10-staff-pos.png"
+    }
+  ]
+}

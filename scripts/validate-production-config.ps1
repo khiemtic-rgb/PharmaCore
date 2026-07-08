@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Kiểm tra biến môi trường tối thiểu trước khi chạy API Production.
 
@@ -20,7 +20,7 @@ function Require-Env([string]$Name, [int]$MinLength = 1) {
 Write-Host "Kiểm tra cấu hình Production..." -ForegroundColor Cyan
 
 $conn = Require-Env "ConnectionStrings__Default" 10
-if ($conn -match "pharmacore_dev") {
+if ($conn -match "KitPlatform_dev") {
     throw "ConnectionStrings__Default vẫn là chuỗi dev."
 }
 
@@ -51,3 +51,4 @@ if ([string]::IsNullOrWhiteSpace($cors0)) {
 }
 
 Write-Host "`nCấu hình tối thiểu OK." -ForegroundColor Green
+

@@ -8,15 +8,13 @@ import {
   confirmDraftOrder,
   cancelReservation,
   fetchDraftOrder,
-  fetchDraftOrders,
   fetchPurchase,
-  fetchPurchases,
   fetchReservation,
-  fetchReservations,
   getApiErrorMessage,
   hideDraftOrder,
   cancelDraftOrder,
 } from '@/shared/api/customer-app.api';
+import { useOrdersOverviewQuery } from '@/shared/api/overview-queries';
 import {
   CUSTOMER_DRAFT_ORDER_STATUS,
   CUSTOMER_PURCHASE_STATUS,
@@ -30,6 +28,7 @@ import {
 } from '@/shared/api/customer-app.types';
 import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
+import { ListCardSkeleton } from '@/shared/components/ListCardSkeleton';
 import { shouldHidePageErrorForOfflineApi } from '@/shared/components/ApiHealthBanner';
 import { useApiHealth, useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
 import { subscribeDraftOrderAlerts } from '@/shared/hooks/draft-order-alert-bus';
@@ -567,11 +566,10 @@ function OrderDetailPanel({
 export function DraftOrdersPage() {
   const { t } = useTranslation();
   const { online } = useApiHealth();
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data, isLoading, isFetching, error, refetch } = useOrdersOverviewQuery();
+  const initialLoading = isLoading && !data;
+  const refreshing = isFetching && !initialLoading;
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [purchaseLoadError, setPurchaseLoadError] = useState<string | null>(null);
-  const [reservationLoadError, setReservationLoadError] = useState<string | null>(null);
   const [orders, setOrders] = useState<CustomerDraftOrderListItem[]>([]);
   const [purchases, setPurchases] = useState<CustomerPurchaseListItem[]>([]);
   const [reservations, setReservations] = useState<CustomerReservationListItem[]>([]);
@@ -594,79 +592,57 @@ export function DraftOrdersPage() {
 
   const placedOrders = useMemo(() => orders.filter((o) => isPlacedOrder(o.status)), [orders]);
 
-  const loadAll = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setInitialLoading(true);
-    setLoadError(null);
-    setPurchaseLoadError(null);
-    setReservationLoadError(null);
-    try {
-      const [draftResult, purchaseResult, reservationResult] = await Promise.allSettled([
-        fetchDraftOrders(),
-        fetchPurchases(),
-        fetchReservations(),
-      ]);
+  const applyOrdersData = useCallback(
+    (
+      draftItems: CustomerDraftOrderListItem[],
+      purchaseItems: CustomerPurchaseListItem[],
+      reservationItems: CustomerReservationListItem[],
+    ) => {
+      setOrders(draftItems);
+      setPurchases(purchaseItems);
+      setReservations(reservationItems);
 
-      if (draftResult.status === 'fulfilled') {
-        const items = draftResult.value;
-        setOrders(items);
-        const unseenSent = filterUnseenSentDrafts(
-          items.filter((o) => o.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent),
-        );
-        if (unseenSent.length > 0) {
-          setNewDraftBanner(unseenSent);
+      const unseenSent = filterUnseenSentDrafts(
+        draftItems.filter((o) => o.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent),
+      );
+      if (unseenSent.length > 0) {
+        setNewDraftBanner(unseenSent);
+      }
+
+      const placed = draftItems.filter((o) => isPlacedOrder(o.status));
+      setActiveTab((tab) => {
+        if (tab === 'placed' && placed.length === 0 && purchaseItems.length > 0) {
+          return 'purchased';
         }
-        const placed = items.filter((o) => isPlacedOrder(o.status));
-        setActiveTab((tab) => {
-          if (tab === 'placed' && placed.length === 0 && purchaseResult.status === 'fulfilled' && purchaseResult.value.length > 0) {
-            return 'purchased';
-          }
-          return tab;
-        });
-        setSelectedId((current) => {
-          if (current && items.some((o) => o.id === current)) return current;
-          const placed = items.filter((o) => isPlacedOrder(o.status));
-          return placed[0]?.id;
-        });
-      } else {
-        setOrders([]);
-        setLoadError(getApiErrorMessage(draftResult.reason, t('ordersDetail.loadDraftFailed')));
-      }
-
-      if (purchaseResult.status === 'fulfilled') {
-        const items = purchaseResult.value;
-        setPurchases(items);
-        setSelectedPurchaseId((current) => {
-          if (current && items.some((o) => o.id === current)) return current;
-          return items[0]?.id;
-        });
-      } else {
-        setPurchases([]);
-        setPurchaseLoadError(getApiErrorMessage(purchaseResult.reason, t('ordersDetail.loadPurchaseFailed')));
-      }
-
-      if (reservationResult.status === 'fulfilled') {
-        const items = reservationResult.value;
-        setReservations(items);
-        setSelectedReservationId((current) => {
-          if (current && items.some((o) => o.id === current)) return current;
-          return items[0]?.id;
-        });
-      } else {
-        setReservations([]);
-        setReservationLoadError(getApiErrorMessage(reservationResult.reason, t('ordersDetail.loadReservationFailed')));
-      }
-    } finally {
-      setInitialLoading(false);
-      setRefreshing(false);
-    }
-  }, [t]);
+        return tab;
+      });
+      setSelectedId((current) => {
+        if (current && draftItems.some((o) => o.id === current)) return current;
+        return placed[0]?.id;
+      });
+      setSelectedPurchaseId((current) => {
+        if (current && purchaseItems.some((o) => o.id === current)) return current;
+        return purchaseItems[0]?.id;
+      });
+      setSelectedReservationId((current) => {
+        if (current && reservationItems.some((o) => o.id === current)) return current;
+        return reservationItems[0]?.id;
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
-    void loadAll(false);
-  }, [loadAll]);
+    if (!data) return;
+    applyOrdersData(data.draftOrders, data.purchases, data.reservations);
+  }, [applyOrdersData, data]);
 
-  useRetryWhenApiOnline(() => loadAll(true));
+  useEffect(() => {
+    if (!error) return;
+    setLoadError(getApiErrorMessage(error, t('ordersDetail.loadDraftFailed')));
+  }, [error, t]);
+
+  useRetryWhenApiOnline(() => void refetch());
 
   useEffect(() => {
     return subscribeDraftOrderAlerts((drafts) => {
@@ -675,9 +651,9 @@ export function DraftOrdersPage() {
         drafts.forEach((d) => merged.set(d.id, d));
         return [...merged.values()];
       });
-      void loadAll(true);
+      void refetch();
     });
-  }, [loadAll]);
+  }, [refetch]);
 
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
@@ -820,7 +796,7 @@ export function DraftOrdersPage() {
       const updated = await confirmDraftOrder(selectedId);
       setDetail(updated);
       message.success(t('ordersDetail.confirmSuccess'));
-      await loadAll(true);
+      await refetch();
     } catch (error) {
       message.error(getApiErrorMessage(error, t('ordersDetail.confirmFailed')));
     } finally {
@@ -835,7 +811,7 @@ export function DraftOrdersPage() {
       const updated = await cancelDraftOrder(selectedId);
       setDetail(updated);
       message.success(t('ordersDetail.cancelSuccess'));
-      await loadAll(true);
+      await refetch();
     } catch (error) {
       message.error(getApiErrorMessage(error, t('ordersDetail.cancelFailed')));
     } finally {
@@ -850,7 +826,7 @@ export function DraftOrdersPage() {
       await hideDraftOrder(selectedId);
       message.success(t('ordersDetail.hideSuccess'));
       setDetail(null);
-      await loadAll(true);
+      await refetch();
     } catch (error) {
       message.error(getApiErrorMessage(error, t('ordersDetail.hideFailed')));
     } finally {
@@ -865,7 +841,7 @@ export function DraftOrdersPage() {
       const updated = await cancelReservation(selectedReservationId);
       setReservationDetail(updated);
       message.success(t('ordersDetail.cancelReservationSuccess'));
-      await loadAll(true);
+      await refetch();
     } catch (error) {
       message.error(getApiErrorMessage(error, t('ordersDetail.cancelReservationFailed')));
     } finally {
@@ -873,21 +849,8 @@ export function DraftOrdersPage() {
     }
   };
 
-  const waitingForApi = online === false && !!loadError && !!purchaseLoadError && !!reservationLoadError;
-  const pageError =
-    activeTab === 'placed'
-      ? loadError
-      : activeTab === 'purchased'
-        ? purchaseLoadError ?? loadError
-        : reservationLoadError ?? loadError;
-
-  if (initialLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: 48 }}>
-        <Spin />
-      </div>
-    );
-  }
+  const waitingForApi = online === false && !!loadError;
+  const pageError = loadError;
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -948,7 +911,7 @@ export function DraftOrdersPage() {
           }
           description={pageError}
           action={
-            <Button size="small" onClick={() => void loadAll(true)}>
+            <Button size="small" onClick={() => void refetch()}>
               {t('common.retry')}
             </Button>
           }
@@ -961,8 +924,8 @@ export function DraftOrdersPage() {
         </div>
       ) : null}
 
-      {!waitingForApi && !pageError ? (
-        <Spin spinning={refreshing}>
+      {!waitingForApi ? (
+        <Spin spinning={refreshing && !initialLoading}>
           <Tabs
             activeKey={activeTab}
             onChange={(key) => setActiveTab(key as 'placed' | 'purchased' | 'reservations')}
@@ -970,7 +933,9 @@ export function DraftOrdersPage() {
               {
                 key: 'placed',
                 label: `${t('orders.tabPlaced')}${placedOrders.length > 0 ? ` (${placedOrders.length})` : ''}`,
-                children: (
+                children: initialLoading ? (
+                  <ListCardSkeleton rows={4} />
+                ) : (
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     {selectedId && detailLoading ? (
                       <Card size="small" style={{ borderRadius: 12, textAlign: 'center', padding: 16 }}>
@@ -995,7 +960,9 @@ export function DraftOrdersPage() {
               {
                 key: 'reservations',
                 label: `${t('orders.tabReservations')}${reservations.length > 0 ? ` (${reservations.length})` : ''}`,
-                children: (
+                children: initialLoading ? (
+                  <ListCardSkeleton rows={3} />
+                ) : (
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
                       {t('orders.reservationsIntro')}
@@ -1023,7 +990,9 @@ export function DraftOrdersPage() {
               {
                 key: 'purchased',
                 label: `${t('orders.tabPurchased')}${purchases.length > 0 ? ` (${purchases.length})` : ''}`,
-                children: (
+                children: initialLoading ? (
+                  <ListCardSkeleton rows={3} />
+                ) : (
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
                       {t('orders.purchasedIntro')}

@@ -1,5 +1,5 @@
 /**
- * PharmaCore — lộ trình sản phẩm
+ * KitPlatform — lộ trình sản phẩm
  *
  * Giai đoạn 1: Vận hành nhà thuốc / chuỗi nhỏ (bán, kho, mua, công nợ, app KH).
  * Giai đoạn 2: Báo cáo thuế chuyên sâu / export kế toán / tích hợp HĐĐT (không gồm cấu hình loại thuế cơ bản).
@@ -8,6 +8,11 @@
  */
 
 import type { ReactNode } from 'react';
+import {
+  isPlatformGateOpen,
+  PRODUCT_FEATURE_PLATFORM_GATES,
+} from '@/shared/platform/platform-feature-map';
+import { useTenantPlatformStore } from '@/shared/platform/tenant-platform.store';
 
 export const CURRENT_PRODUCT_PHASE = 1 as const;
 
@@ -24,6 +29,7 @@ export type ProductFeatureKey =
   | 'catalog.brands'
   | 'catalog.ingredients'
   | 'catalog.nationalDrug'
+  | 'customer.engagement'
   | 'reports.taxInput'
   | 'reports.accountingExport'
   | 'reports.module';
@@ -44,6 +50,7 @@ const PHASE_1_FEATURES: Record<ProductFeatureKey, boolean> = {
   'catalog.brands': true,
   'catalog.ingredients': true,
   'catalog.nationalDrug': true,
+  'customer.engagement': true,
   // Giai đoạn 2 — chưa triển khai UI
   'reports.module': true,
   'reports.taxInput': false,
@@ -58,9 +65,20 @@ const PHASE_2_FEATURE_OVERRIDES: Partial<Record<ProductFeatureKey, boolean>> = {
 
 export function isProductFeatureEnabled(key: ProductFeatureKey): boolean {
   if (CURRENT_PRODUCT_PHASE >= 2 && key in PHASE_2_FEATURE_OVERRIDES) {
-    return PHASE_2_FEATURE_OVERRIDES[key] ?? PHASE_1_FEATURES[key];
+    const phase2 = PHASE_2_FEATURE_OVERRIDES[key] ?? PHASE_1_FEATURES[key];
+    if (!phase2) return false;
+  } else if (!PHASE_1_FEATURES[key]) {
+    return false;
   }
-  return PHASE_1_FEATURES[key];
+
+  const store = useTenantPlatformStore.getState();
+  if (!store.loaded) return true;
+
+  return isPlatformGateOpen(
+    PRODUCT_FEATURE_PLATFORM_GATES[key],
+    store.isModuleEnabled,
+    store.isFeatureEnabled,
+  );
 }
 
 export interface ProductNavTab {

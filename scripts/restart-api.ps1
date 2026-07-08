@@ -1,10 +1,10 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "api-dev.ps1")
 
 
 
-Write-Host "=== Restart PharmaCore API ===" -ForegroundColor Cyan
+Write-Host "=== Restart KitPlatform API ===" -ForegroundColor Cyan
 
 
 
@@ -26,6 +26,21 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ">> Migration 065 (Customer Engagement)..." -ForegroundColor Yellow
 & (Join-Path $PSScriptRoot "apply-065-customer-engagement.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host ">> Migration 067 (Platform events)..." -ForegroundColor Yellow
+& (Join-Path $PSScriptRoot "apply-067-platform-events.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host ">> Migration 068 (Assessment Engine)..." -ForegroundColor Yellow
+& (Join-Path $PSScriptRoot "apply-068-assessment-engine.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host ">> Seed 069 (PHARMACY_V1 assessment)..." -ForegroundColor Yellow
+& (Join-Path $PSScriptRoot "apply-069-assessment-pharmacy-v1-seed.ps1")
+
+Write-Host ">> i18n 070 (PHARMACY_V1 Vietnamese)..." -ForegroundColor Yellow
+& (Join-Path $PSScriptRoot "apply-070-assessment-vietnamese.ps1")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 
@@ -125,4 +140,5 @@ Write-Host "Log API:       .dev\api.log" -ForegroundColor DarkGray
 
 
 if (-not $httpsOk) { exit 1 }
+
 

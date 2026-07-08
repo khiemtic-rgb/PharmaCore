@@ -1,12 +1,13 @@
-# Mot lenh dev: PostgreSQL + API (nen + watchdog) + Customer App + Admin.
+﻿# Mot lenh dev: PostgreSQL + API (nen + watchdog) + Customer App + Admin.
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-Write-Host "=== PharmaCore dev (all-in-one) ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform dev (all-in-one) ===" -ForegroundColor Cyan
 Write-Host "API:      http://localhost:5290"
 Write-Host "Admin:    http://localhost:5173"
 Write-Host "Customer: http://localhost:5174"
+Write-Host "Staff POS: http://localhost:5175"
 Write-Host ""
 
 & (Join-Path $PSScriptRoot "check-postgres.ps1")
@@ -18,8 +19,9 @@ if ($code -ne 0) { exit $code }
 
 $customerDir = Join-Path $Root "client\customer-app"
 $adminDir = Join-Path $Root "client\admin"
+$staffDir = Join-Path $Root "client\staff-app"
 
-foreach ($dir in @($customerDir, $adminDir)) {
+foreach ($dir in @($customerDir, $adminDir, $staffDir)) {
     if (-not (Test-Path (Join-Path $dir "node_modules"))) {
         Write-Host "[npm install] $dir" -ForegroundColor Yellow
         Push-Location $dir
@@ -31,7 +33,7 @@ foreach ($dir in @($customerDir, $adminDir)) {
 
 & (Join-Path $PSScriptRoot "stop-dev-frontends.ps1")
 
-foreach ($port in @(5173, 5174)) {
+foreach ($port in @(5173, 5174, 5175)) {
     $listeners = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($listeners) {
         Write-Host "[CANH BAO] Port $port dang duoc dung - dong cua so Vite cu hoac chay scripts\stop-dev-frontends.ps1" -ForegroundColor Yellow
@@ -40,6 +42,11 @@ foreach ($port in @(5173, 5174)) {
 
 Write-Host "[OK] Mo Customer App (5174)..." -ForegroundColor Green
 Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "npm run dev:vite" -WorkingDirectory $customerDir
+
+Start-Sleep -Seconds 1
+
+Write-Host "[OK] Mo Staff POS (5175)..." -ForegroundColor Green
+Start-Process -FilePath "cmd.exe" -ArgumentList "/k", "npm run dev" -WorkingDirectory $staffDir
 
 Start-Sleep -Seconds 2
 
@@ -52,3 +59,4 @@ try {
 finally {
     Pop-Location
 }
+

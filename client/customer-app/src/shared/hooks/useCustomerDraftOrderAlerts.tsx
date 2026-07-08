@@ -80,7 +80,10 @@ export function useCustomerDraftOrderAlerts() {
   const onOrdersPage = location.pathname.startsWith('/orders');
 
   useEffect(() => {
-    if (!accessToken || online === false) {
+    if (!accessToken || online === false || onOrdersPage) {
+      if (onOrdersPage) {
+        setUnseenCount(0);
+      }
       return;
     }
 

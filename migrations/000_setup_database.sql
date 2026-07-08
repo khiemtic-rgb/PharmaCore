@@ -1,16 +1,16 @@
--- Chạy bằng user postgres (superuser)
--- Tạo user + database cho PharmaCore
+﻿-- Chạy bằng user postgres (superuser)
+-- Tạo user + database cho KitPlatform (local dev)
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pharmacore') THEN
-        CREATE ROLE pharmacore WITH LOGIN PASSWORD 'pharmacore_dev_2026';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'kitplatform') THEN
+        CREATE ROLE kitplatform WITH LOGIN PASSWORD 'kitplatform_dev_2026';
     END IF;
 END $$;
 
-ALTER ROLE pharmacore WITH LOGIN PASSWORD 'pharmacore_dev_2026';
+ALTER ROLE kitplatform WITH LOGIN PASSWORD 'kitplatform_dev_2026';
 
-SELECT 'CREATE DATABASE pharmacore OWNER pharmacore'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'pharmacore')\gexec
+SELECT 'CREATE DATABASE kitplatform OWNER kitplatform'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'kitplatform')\gexec
 
-GRANT ALL PRIVILEGES ON DATABASE pharmacore TO pharmacore;
+GRANT ALL PRIVILEGES ON DATABASE kitplatform TO kitplatform;

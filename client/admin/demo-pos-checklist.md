@@ -1,4 +1,4 @@
-# Checklist demo POS — PharmaCore
+﻿# Checklist demo POS — KitPlatform
 
 Dùng trước khi demo đối tác hoặc sau mỗi đợt release lớn. Login: `admin` / `Admin@123`.
 

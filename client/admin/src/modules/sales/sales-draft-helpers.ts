@@ -4,7 +4,7 @@ import type { OrderDiscountState } from '@/modules/sales/pos-pricing';
 
 export { buildDraftUpdatePayload } from '@/modules/sales/pos-sale-payload';
 
-const POS_DRAFT_EDIT_KEY = 'pharmacore.pos.editingDraftId';
+const POS_DRAFT_EDIT_KEY = 'kitplatform.pos.editingDraftId';
 
 export function persistPosDraftEdit(draftId: string) {
   sessionStorage.setItem(POS_DRAFT_EDIT_KEY, draftId);

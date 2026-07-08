@@ -1,4 +1,4 @@
--- PharmaCore 019: Customer App OTP login + refresh tokens (tách khỏi admin users)
+﻿-- KitPlatform 019: Customer App OTP login + refresh tokens (tách khỏi admin users)
 
 CREATE TABLE customer_otp_challenges (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

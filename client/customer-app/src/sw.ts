@@ -7,12 +7,17 @@ declare let self: ServiceWorkerGlobalScope & {
 };
 
 clientsClaim();
+
 precacheAndRoute(self.__WB_MANIFEST);
+
+self.addEventListener('install', () => {
+  void self.skipWaiting();
+});
 
 self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     (async () => {
-      let title = 'PharmaCore';
+      let title = 'KitPlatform';
       let body = 'You have a new notification';
       let data: unknown;
 
@@ -28,8 +33,8 @@ self.addEventListener('push', (event: PushEvent) => {
 
       await self.registration.showNotification(title, {
         body,
-        icon: '/icon.svg',
-        badge: '/icon.svg',
+        icon: '/icon-512.png',
+        badge: '/icon-512.png',
         data,
       });
     })(),

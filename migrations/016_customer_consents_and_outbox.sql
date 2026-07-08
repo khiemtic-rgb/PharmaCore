@@ -1,4 +1,4 @@
--- PharmaCore 016: CDP foundation — customer consent + integration outbox
+﻿-- KitPlatform 016: CDP foundation — customer consent + integration outbox
 -- Code/API: P1 CDP (consent UI + outbox writer). Schema-only at this migration.
 
 -- customer_consents.channel: 1 SMS, 2 Zalo, 3 Email, 4 AppPush

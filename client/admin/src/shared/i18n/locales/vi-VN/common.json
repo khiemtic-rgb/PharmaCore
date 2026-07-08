@@ -31,7 +31,7 @@
     "deleteFailed": "Không xóa được"
   },
   "errors": {
-    "apiOffline": "Không kết nối được API. Kiểm tra PharmaCore.Api đang chạy (port 5290)."
+    "apiOffline": "Không kết nối được API backend."
   },
   "appLayout": {
     "logout": "Đăng xuất",
@@ -40,8 +40,8 @@
     "productName": "ERP Nhà thuốc"
   },
   "apiHealth": {
-    "message": "API backend không phản hồi (port 5290)",
-    "description": "API port 5290 chưa phản hồi. Chạy npm run dev (tự động bật API) hoặc .\\scripts\\restart-api.ps1 — API chạy nền, không cần giữ cửa sổ CMD.",
+    "message": "API backend không phản hồi",
+    "description": "Kiểm tra kết nối API và thử lại.",
     "recheck": "Kiểm tra lại"
   },
   "boot": {

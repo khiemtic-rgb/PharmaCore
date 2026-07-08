@@ -1,4 +1,4 @@
-{
+﻿{
   "meta": {
     "siteName": "Novixa",
     "tagline": "Nền tảng vận hành nhà thuốc thông minh",
@@ -104,7 +104,7 @@
     "title": "Về Novixa",
     "p1": "Novixa (Smart Pharmacy Solutions) hướng tới giải pháp dược thông minh: giúp nhà thuốc vận hành chính xác, tuân thủ GPP và mở rộng bằng dữ liệu.",
     "p2": "Chúng tôi ưu tiên nhu cầu thực tế: bán đúng giá, đúng lô, đúng tồn — POS nhanh, kho minh bạch, báo cáo rõ ràng.",
-    "p3": "Lõi ERP (PharmaCore) tách biệt với website công khai — bảo mật hệ thống và cập nhật nội dung marketing độc lập."
+    "p3": "Lõi ERP (KitPlatform) tách biệt với website công khai — bảo mật hệ thống và cập nhật nội dung marketing độc lập."
   },
   "contact": {
     "title": "Liên hệ",

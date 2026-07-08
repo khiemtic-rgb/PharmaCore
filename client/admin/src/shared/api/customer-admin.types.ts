@@ -32,6 +32,13 @@ export interface CustomerDetail {
   creditLimit?: number | null;
 }
 
+export interface CustomerPilotOtpStatus {
+  enabled: boolean;
+  code: string | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+}
+
 export interface CustomerOrderListItem {
   id: string;
   orderNumber: string;

@@ -1,6 +1,6 @@
-# Checklist go-live pilot — 2 nhà thuốc, 2 chủ
+﻿# Checklist go-live pilot — 2 nhà thuốc, 2 chủ
 
-Dùng trước khi đưa PharmaCore vào vận hành thực tế.
+Dùng trước khi đưa KitPlatform vào vận hành thực tế.
 
 > **Quan trọng — không bắt buộc 1 nhà thuốc = 1 database.**  
 > Schema và API đã **multi-tenant** (`tenant_id` trên mọi bảng nghiệp vụ, JWT mang `tenant_id`, đăng nhập theo `tenantCode`).  
@@ -10,6 +10,7 @@ Tham chiếu thêm:
 - [demo-pos-checklist.md](./demo-pos-checklist.md)
 - [demo-procurement-checklist.md](./demo-procurement-checklist.md)
 - [demo-inventory-count-checklist.md](./demo-inventory-count-checklist.md)
+- [Smoke test EA G2 (3 NT)](../../docs/novixa/07-customer/pilot-smoke-test-checklist-v1.md) — sau deploy Core Engines
 
 ---
 
@@ -55,8 +56,8 @@ Phần **0A** mô tả Mô hình A (2 DB). Phần **0B** — Novixa / SaaS 1 DB.
 
 | Nhà thuốc | Database | API URL | Admin URL | Customer app URL |
 |-----------|----------|---------|-----------|------------------|
-| Chủ A | `pharmacore_nt_a` | `https://api-a.domain.vn` | `https://admin-a.domain.vn` | `https://app-a.domain.vn` |
-| Chủ B | `pharmacore_nt_b` | `https://api-b.domain.vn` | `https://admin-b.domain.vn` | `https://app-b.domain.vn` |
+| Chủ A | `KitPlatform_nt_a` | `https://api-a.domain.vn` | `https://admin-a.domain.vn` | `https://app-a.domain.vn` |
+| Chủ B | `KitPlatform_nt_b` | `https://api-b.domain.vn` | `https://admin-b.domain.vn` | `https://app-b.domain.vn` |
 
 - [ ] Mỗi nhà thuốc có **PostgreSQL riêng** (hoặc instance riêng)
 - [ ] `Jwt:Secret` **khác nhau**, ≥ 32 ký tự, không dùng dev-secret
@@ -91,7 +92,7 @@ Trên máy build (hoặc CI), **chạy riêng cho từng nhà thuốc** với UR
 
 ```powershell
 # Lần đầu: tạo DB + user (tuỳ hạ tầng), rồi:
-.\scripts\run-migrations-prod.ps1 -ConnectionString "postgresql://pharmacore:***@host:5432/pharmacore_nt_a"
+.\scripts\run-migrations-prod.ps1 -ConnectionString "postgresql://KitPlatform:***@host:5432/KitPlatform_nt_a"
 ```
 
 Script prod **không** chạy:
@@ -111,7 +112,7 @@ Script prod **có** `039_reports_permissions.sql` (quyền Báo cáo).
 
 ```powershell
 .\scripts\bootstrap-first-tenant.ps1 `
-  -ConnectionString "postgresql://pharmacore:***@host:5432/pharmacore_nt_a" `
+  -ConnectionString "postgresql://KitPlatform:***@host:5432/KitPlatform_nt_a" `
   -TenantCode "NT_A" `
   -TenantName "Nhà Thuốc An" `
   -BranchCode "CN01" `

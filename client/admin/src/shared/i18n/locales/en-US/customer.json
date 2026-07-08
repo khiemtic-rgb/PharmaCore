@@ -108,6 +108,14 @@
       "loadFailed": "Could not load customer profile"
     }
   },
+  "pilotOtp": {
+    "title": "Customer app OTP (pilot)",
+    "activeMessage": "Customer requested login — read this code to them",
+    "expiresAt": "Expires at {{time}}",
+    "hint": "Code clears after successful login or expiry (~5 min). Disable when a real SMS gateway is configured.",
+    "waiting": "No OTP yet",
+    "waitingHint": "When the customer taps «Send OTP» in the app, the 6-digit code appears here (auto-refreshes every few seconds)."
+  },
   "formDrawer": {
     "titleEdit": "Edit customer",
     "titleQuickCreate": "Quick add customer",

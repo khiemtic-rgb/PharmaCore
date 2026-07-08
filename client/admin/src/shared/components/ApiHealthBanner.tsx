@@ -1,6 +1,7 @@
 import { Alert, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useApiHealth } from '@/shared/api/useApiHealth';
+import { apiHealthBannerDescription, apiHealthBannerMessage } from '@/shared/api/api-network';
 
 export function ApiHealthBanner() {
   const { t } = useTranslation('common', { keyPrefix: 'apiHealth' });
@@ -12,8 +13,8 @@ export function ApiHealthBanner() {
       type="error"
       showIcon
       banner
-      message={t('message')}
-      description={t('description')}
+      message={apiHealthBannerMessage()}
+      description={apiHealthBannerDescription()}
       action={
         <Button size="small" loading={checking} onClick={() => void recheck()}>
           {t('recheck')}

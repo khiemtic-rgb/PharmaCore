@@ -1,4 +1,4 @@
-# Novixa — Tầm nhìn & Chiến lược V1
+﻿# Novixa — Tầm nhìn & Chiến lược V1
 
 **Mã:** NVX-CMP-01 · **Tier:** T2/T3 · **Trạng thái:** Draft · **Version:** 1.0 · **2026–2027**
 
@@ -8,7 +8,7 @@
 
 **Novixa** (Smart Pharmacy Solutions) xây dựng **nền tảng quản trị nhà thuốc thế hệ mới** cho thị trường Việt Nam — gom quầy bán, tồn kho theo lô, mua hàng, chăm sóc khách hàng và báo cáo trên **một hệ dữ liệu thống nhất**, tuân thủ tinh thần **GPP** và sẵn sàng mở rộng chuỗi.
 
-**Lõi kỹ thuật:** PharmaCore (ERP) · **Kênh tiếp cận:** novixa.vn + demo trực tiếp + founding program.
+**Lõi kỹ thuật:** KitPlatform (ERP) · **Kênh tiếp cận:** novixa.vn + demo trực tiếp + founding program.
 
 ---
 
@@ -32,7 +32,7 @@
 │  Admin ERP  │  Staff POS  │ Customer App│  Báo cáo      │
 │  (Web)      │  (Mobile)   │  (PWA)      │  real-time    │
 ├─────────────┴─────────────┴─────────────┴───────────────┤
-│              PharmaCore API · Multi-tenant · PostgreSQL    │
+│              KitPlatform API · Multi-tenant · PostgreSQL    │
 └─────────────────────────────────────────────────────────┘
          Marketing: novixa.vn (tách biệt, không DB ERP)
 ```

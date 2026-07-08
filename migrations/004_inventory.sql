@@ -1,4 +1,4 @@
--- PharmaCore: Inventory module (7 tables)
+﻿-- KitPlatform: Inventory module (7 tables)
 
 CREATE TABLE warehouses (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,0 +1,13 @@
+﻿[Unit]
+Description=KitPlatform SMS OTP stub (pilot only)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/kit-platform/sms-otp-stub.py 9091
+Restart=on-failure
+RestartSec=3
+SyslogIdentifier=kit-platform-sms-stub
+
+[Install]
+WantedBy=multi-user.target

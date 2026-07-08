@@ -1,0 +1,318 @@
+﻿using System.Data;
+using System.Text.Json;
+using Dapper;
+using KitPlatform.Application.Abstractions;
+using KitPlatform.Application.Configuration;
+using KitPlatform.Infrastructure.Data;
+
+namespace KitPlatform.Infrastructure.Configuration;
+
+internal sealed class TenantSettingsService : ITenantSettingsService
+{
+    private static readonly TenantReceiptSettingsDto DefaultReceipt = new(
+        Name: "NHÀ THUỐC NOVIXA",
+        Tagline: "Chăm sóc sức khỏe cộng đồng",
+        Phone: "0984.660.399",
+        Address: null);
+
+    private readonly IDbConnectionFactory _db;
+    private readonly ITenantContext _tenant;
+
+    public TenantSettingsService(IDbConnectionFactory db, ITenantContext tenant)
+    {
+        _db = db;
+        _tenant = tenant;
+    }
+
+    public async Task<TenantBatchMode> GetBatchModeAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT settings->>'batch_mode' AS BatchMode
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var value = await conn.QuerySingleOrDefaultAsync<string?>(
+            sql, new { TenantId = _tenant.TenantId });
+        return TenantBatchModeParser.Parse(value);
+    }
+
+    public async Task<TenantReceiptSettingsDto> GetReceiptSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT settings->'receipt' AS ReceiptJson
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var json = await conn.QuerySingleOrDefaultAsync<string?>(
+            sql, new { TenantId = _tenant.TenantId });
+        return ParseReceiptJson(json) ?? DefaultReceipt;
+    }
+
+    public async Task<TenantReceiptSettingsDto> UpdateReceiptSettingsAsync(
+        UpdateTenantReceiptSettingsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new InvalidOperationException("Tên cửa hàng không được để trống.");
+
+        var receipt = new TenantReceiptSettingsDto(
+            request.Name.Trim(),
+            string.IsNullOrWhiteSpace(request.Tagline) ? null : request.Tagline.Trim(),
+            string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
+            string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim());
+
+        var receiptJson = JsonSerializer.Serialize(new
+        {
+            name = receipt.Name,
+            tagline = receipt.Tagline,
+            phone = receipt.Phone,
+            address = receipt.Address,
+        });
+
+        const string sql = """
+            UPDATE tenants
+            SET settings = jsonb_set(
+                COALESCE(settings, '{}'::jsonb),
+                '{receipt}',
+                @ReceiptJson::jsonb,
+                true
+            ),
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new
+        {
+            TenantId = _tenant.TenantId,
+            ReceiptJson = receiptJson,
+        });
+
+        return receipt;
+    }
+
+    public async Task<TenantBatchModeSettingsDto> GetBatchModeSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var mode = await GetBatchModeAsync(cancellationToken);
+        return new TenantBatchModeSettingsDto(TenantBatchModeParser.ToSettingValue(mode));
+    }
+
+    public async Task<TenantBatchModeSettingsDto> UpdateBatchModeAsync(
+        UpdateTenantBatchModeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.BatchMode))
+            throw new InvalidOperationException("Chế độ quản lý lô không được để trống.");
+
+        var mode = TenantBatchModeParser.Parse(request.BatchMode);
+        var value = TenantBatchModeParser.ToSettingValue(mode);
+
+        const string sql = """
+            UPDATE tenants
+            SET settings = jsonb_set(
+                COALESCE(settings, '{}'::jsonb),
+                '{batch_mode}',
+                to_jsonb(@BatchMode::text),
+                true
+            ),
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new
+        {
+            TenantId = _tenant.TenantId,
+            BatchMode = value,
+        });
+
+        return new TenantBatchModeSettingsDto(value);
+    }
+
+    public async Task<TenantDefaultMinStockDto> GetDefaultMinStockAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT NULLIF(settings->>'default_min_stock_qty', '')::numeric AS DefaultMinStockQty
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var value = await conn.QuerySingleOrDefaultAsync<decimal?>(sql, new { TenantId = _tenant.TenantId });
+        return new TenantDefaultMinStockDto(value);
+    }
+
+    public async Task<TenantDefaultMinStockDto> UpdateDefaultMinStockAsync(
+        UpdateTenantDefaultMinStockRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.DefaultMinStockQty is < 0)
+            throw new InvalidOperationException("Ngưỡng tồn tối thiểu không được âm.");
+
+        const string sql = """
+            UPDATE tenants
+            SET settings = CASE
+                WHEN @DefaultMinStockQty IS NULL THEN COALESCE(settings, '{}'::jsonb) - 'default_min_stock_qty'
+                ELSE jsonb_set(
+                    COALESCE(settings, '{}'::jsonb),
+                    '{default_min_stock_qty}',
+                    to_jsonb(@DefaultMinStockQty::numeric),
+                    true
+                )
+            END,
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new
+        {
+            TenantId = _tenant.TenantId,
+            DefaultMinStockQty = request.DefaultMinStockQty,
+        });
+
+        return new TenantDefaultMinStockDto(request.DefaultMinStockQty);
+    }
+
+    public async Task<TenantCustomerAppSettingsDto> GetCustomerAppSettingsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                tenant_name AS TenantName,
+                settings->'customer_app'->'branding' AS BrandingJson
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var row = await conn.QuerySingleAsync<(string TenantName, string? BrandingJson)>(
+            sql,
+            new { TenantId = _tenant.TenantId });
+        return ParseCustomerAppSettings(row.TenantName, row.BrandingJson);
+    }
+
+    public async Task<TenantCustomerAppSettingsDto> UpdateCustomerAppSettingsAsync(
+        UpdateTenantCustomerAppSettingsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.AppName))
+            throw new InvalidOperationException("Tên app không được để trống.");
+        if (string.IsNullOrWhiteSpace(request.ShortName))
+            throw new InvalidOperationException("Tên rút gọn không được để trống.");
+
+        var settings = new TenantCustomerAppSettingsDto(
+            request.AppName.Trim(),
+            request.ShortName.Trim(),
+            string.IsNullOrWhiteSpace(request.LogoUrl) ? "/customer-app/icon.svg" : request.LogoUrl.Trim(),
+            string.IsNullOrWhiteSpace(request.PrimaryColor) ? "#0F52BA" : request.PrimaryColor.Trim(),
+            string.IsNullOrWhiteSpace(request.SecondaryColor) ? "#3CB371" : request.SecondaryColor.Trim(),
+            request.SupportPhone?.Trim() ?? "",
+            request.Tagline?.Trim() ?? "");
+
+        var brandingJson = JsonSerializer.Serialize(new
+        {
+            app_name = settings.AppName,
+            short_name = settings.ShortName,
+            logo_url = settings.LogoUrl,
+            primary_color = settings.PrimaryColor,
+            secondary_color = settings.SecondaryColor,
+            support_phone = settings.SupportPhone,
+            tagline = settings.Tagline,
+        });
+
+        const string sql = """
+            UPDATE tenants
+            SET settings = jsonb_set(
+                jsonb_set(
+                    COALESCE(settings, '{}'::jsonb),
+                    '{customer_app}',
+                    COALESCE(settings->'customer_app', '{}'::jsonb),
+                    true
+                ),
+                '{customer_app,branding}',
+                @BrandingJson::jsonb,
+                true
+            ),
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new
+        {
+            TenantId = _tenant.TenantId,
+            BrandingJson = brandingJson,
+        });
+
+        return settings;
+    }
+
+    private static TenantCustomerAppSettingsDto ParseCustomerAppSettings(string tenantName, string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "null")
+        {
+            return new TenantCustomerAppSettingsDto(
+                tenantName,
+                tenantName,
+                "/customer-app/icon.svg",
+                "#0F52BA",
+                "#3CB371",
+                "",
+                "");
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            string Read(string key, string fallback) =>
+                root.TryGetProperty(key, out var el) && !string.IsNullOrWhiteSpace(el.GetString())
+                    ? el.GetString()!.Trim()
+                    : fallback;
+
+            return new TenantCustomerAppSettingsDto(
+                Read("app_name", tenantName),
+                Read("short_name", tenantName),
+                Read("logo_url", "/customer-app/icon.svg"),
+                Read("primary_color", "#0F52BA"),
+                Read("secondary_color", "#3CB371"),
+                Read("support_phone", ""),
+                Read("tagline", ""));
+        }
+        catch (JsonException)
+        {
+            return new TenantCustomerAppSettingsDto(
+                tenantName,
+                tenantName,
+                "/customer-app/icon.svg",
+                "#0F52BA",
+                "#3CB371",
+                "",
+                "");
+        }
+    }
+
+    private static TenantReceiptSettingsDto? ParseReceiptJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "null")
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var name = root.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            return new TenantReceiptSettingsDto(
+                name.Trim(),
+                root.TryGetProperty("tagline", out var taglineEl) ? taglineEl.GetString() : null,
+                root.TryGetProperty("phone", out var phoneEl) ? phoneEl.GetString() : null,
+                root.TryGetProperty("address", out var addressEl) ? addressEl.GetString() : null);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+}

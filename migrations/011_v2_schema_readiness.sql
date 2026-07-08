@@ -1,4 +1,4 @@
--- PharmaCore V2: soft delete, workflow audit columns, child tenant_id, purge permission
+﻿-- KitPlatform V2: soft delete, workflow audit columns, child tenant_id, purge permission
 
 -- Purchase orders
 ALTER TABLE purchase_orders

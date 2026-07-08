@@ -20,20 +20,19 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
 import {
   createReminder,
-  fetchFamilyMembers,
-  fetchReminders,
   getApiErrorMessage,
   searchProducts,
   updateReminder,
 } from '@/shared/api/customer-app.api';
 import type { CustomerProductSearchItem, FamilyMember, MedicationReminder } from '@/shared/api/customer-app.types';
+import { useRemindersOverviewQuery } from '@/shared/api/overview-queries';
 import { useCustomerLabels } from '@/shared/i18n/useCustomerLabels';
 import { normalizeReminderId } from '@/shared/api/reminder-normalize';
 import i18n from '@/shared/i18n';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
+import { ListCardSkeleton } from '@/shared/components/ListCardSkeleton';
 import { RepurchaseSuggestionsPanel } from '@/modules/reminders/RepurchaseSuggestionsPanel';
 import { DueRemindersPanel, MissedMedicationAlert } from '@/modules/reminders/DueRemindersPanel';
-import { fetchMedicationAdherenceSummary } from '@/shared/api/customer-app.api';
 
 function useDayOptions() {
   const { day } = useCustomerLabels();
@@ -163,18 +162,36 @@ export function RemindersPage() {
   const { t } = useTranslation();
   const { familyRelationship } = useCustomerLabels();
   const dayOptions = useDayOptions();
+  const { data: overview, isLoading, error, refetch } = useRemindersOverviewQuery();
   const [items, setItems] = useState<MedicationReminder[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-  const [loading, setLoading] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<MedicationReminder | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [productOptions, setProductOptions] = useState<CustomerProductSearchItem[]>([]);
   const [productSearchLoading, setProductSearchLoading] = useState(false);
-  const [adherence, setAdherence] = useState({ showMissedAlert: false, missedStreakDays: 0 });
   const [form] = Form.useForm();
   const searchTimerRef = useRef<number | null>(null);
+
+  const familyMembers = overview?.familyMembers ?? [];
+  const adherence = overview?.adherence ?? { showMissedAlert: false, missedStreakDays: 0 };
+  const dueItems = overview?.dueReminders ?? [];
+  const repurchaseItems = overview?.repurchaseSuggestions ?? [];
+  const loading = isLoading && !overview;
+  const dueLoading = loading;
+  const repurchaseLoading = loading;
+
+  useEffect(() => {
+    if (!overview) return;
+    const ordered = stableReminderOrder(overview.reminders);
+    assertUniqueReminderIds(ordered);
+    setItems(ordered);
+  }, [overview]);
+
+  useEffect(() => {
+    if (!error) return;
+    message.error(getApiErrorMessage(error, t('reminders.listLoadFailed')));
+  }, [error, t]);
 
   const familyNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -183,20 +200,6 @@ export function RemindersPage() {
     }
     return map;
   }, [familyMembers, familyRelationship]);
-
-  const loadFamily = useCallback(async () => {
-    try {
-      const rows = await fetchFamilyMembers();
-      setFamilyMembers(rows);
-    } catch {
-      setFamilyMembers([]);
-    }
-  }, []);
-
-  const visibleItems = useMemo(() => {
-    const ordered = stableReminderOrder(items);
-    return includeInactive ? ordered : ordered.filter((item) => item.isActive);
-  }, [items, includeInactive]);
 
   const loadProducts = useCallback(async (search?: string) => {
     setProductSearchLoading(true);
@@ -210,39 +213,15 @@ export function RemindersPage() {
     }
   }, [t]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [remindersResult, summaryResult] = await Promise.allSettled([
-        fetchReminders(true),
-        fetchMedicationAdherenceSummary(),
-      ]);
-
-      if (remindersResult.status === 'fulfilled') {
-        const ordered = stableReminderOrder(remindersResult.value.items);
-        assertUniqueReminderIds(ordered);
-        setItems(ordered);
-      } else {
-        message.error(getApiErrorMessage(remindersResult.reason, t('reminders.listLoadFailed')));
-      }
-
-      if (summaryResult.status === 'fulfilled') {
-        setAdherence(summaryResult.value);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-    void loadFamily();
-  }, [load, loadFamily]);
-
   useEffect(() => {
     if (!modalOpen) return;
     void loadProducts();
   }, [modalOpen, loadProducts]);
+
+  const visibleItems = useMemo(() => {
+    const ordered = stableReminderOrder(items);
+    return includeInactive ? ordered : ordered.filter((item) => item.isActive);
+  }, [items, includeInactive]);
 
   const onProductSearch = (value: string) => {
     if (searchTimerRef.current) {
@@ -358,8 +337,17 @@ export function RemindersPage() {
     <div>
       <BackToHomeButton />
       <MissedMedicationAlert show={adherence.showMissedAlert} streak={adherence.missedStreakDays} />
-      <DueRemindersPanel onResponded={() => void load()} />
-      <RepurchaseSuggestionsPanel onAccepted={() => void load()} />
+      <DueRemindersPanel
+        dueItems={dueItems}
+        dueLoading={dueLoading}
+        onResponded={() => void refetch()}
+      />
+      <RepurchaseSuggestionsPanel
+        suggestions={repurchaseItems}
+        familyMembers={familyMembers}
+        suggestionsLoading={repurchaseLoading}
+        onAccepted={() => void refetch()}
+      />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Typography.Title level={5} style={{ margin: 0 }}>
@@ -377,9 +365,7 @@ export function RemindersPage() {
       </div>
 
       {loading && items.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 48 }}>
-          <Spin />
-        </div>
+        <ListCardSkeleton rows={4} />
       ) : visibleItems.length === 0 ? (
         <Empty description={t('reminders.empty')} />
       ) : (

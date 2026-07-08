@@ -1,4 +1,4 @@
-# Chạy website Novixa (Astro) — giữ cửa sổ này mở
+﻿# Cháº¡y website Novixa (Astro) â€” giá»¯ cá»­a sá»• nÃ y má»Ÿ
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 $site = Join-Path $root "novixa-site"
@@ -21,3 +21,4 @@ Write-Host "Dung server: Ctrl+C"
 Write-Host ""
 
 npm run dev -- --host localhost --port 4321
+

@@ -1,12 +1,13 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/shared/auth/auth.store';
+import { clearCustomerCachedData } from '@/shared/api/customer-session-cleanup';
 import type { CustomerLoginResponse } from '@/shared/api/customer-app.types';
 import { apiPath } from '@/shared/api/api-base';
 
 export const http = axios.create({
   baseURL: apiPath('/api/customer-app'),
   headers: { 'Content-Type': 'application/json' },
-  timeout: 30_000,
+  timeout: 8_000,
 });
 
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -69,6 +70,7 @@ async function refreshAccessToken(): Promise<string | null> {
     return data.accessToken;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearCustomerCachedData();
       clearSession();
     }
     return null;

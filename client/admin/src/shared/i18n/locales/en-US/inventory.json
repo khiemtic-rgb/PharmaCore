@@ -52,6 +52,7 @@
     "addLine": "Add line",
     "detail": "Details",
     "complete": "Complete",
+    "cancel": "Cancel",
     "count": "Count",
     "fromWarehouse": "From warehouse",
     "toWarehouse": "To warehouse",
@@ -189,7 +190,9 @@
       "createSuccess": "Created document {{number}}",
       "createFailed": "Could not create document",
       "completeSuccess": "Transfer completed",
-      "completeFailed": "Could not complete transfer"
+      "completeFailed": "Could not complete transfer",
+      "cancelSuccess": "Transfer cancelled",
+      "cancelFailed": "Could not cancel transfer"
     }
   },
   "adjustmentList": {
@@ -449,6 +452,6 @@
       "manager": "Manager",
       "signHint": "(Signature, name)"
     },
-    "footnote": "Printed from PharmaCore — for reference only before approval."
+    "footnote": "Printed from KitPlatform — for reference only before approval."
   }
 }

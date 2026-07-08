@@ -12,6 +12,13 @@ body,
   margin: 0;
   min-height: 100%;
   background: #f5f5f5;
+  overflow-x: hidden;
+}
+
+.app-main-content {
+  margin: 24px;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 body {
@@ -126,7 +133,7 @@ body {
 .dashboard-top__tenant {
   margin: 0;
   background: #e6fffb;
-  color: #0f766e;
+  color: #2563eb;
 }
 
 .dashboard-top__role {
@@ -158,21 +165,21 @@ body {
 }
 
 .dashboard-action:hover {
-  color: #0d9488;
+  color: #22c55e;
   border-color: #99f6e4;
   box-shadow: 0 4px 12px rgba(13, 148, 136, 0.12);
   transform: translateY(-1px);
 }
 
 .dashboard-action--primary {
-  background: #0d9488;
-  border-color: #0d9488;
+  background: #22c55e;
+  border-color: #22c55e;
   color: #fff;
 }
 
 .dashboard-action--primary:hover {
-  background: #0f766e;
-  border-color: #0f766e;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 
@@ -232,7 +239,7 @@ body {
 }
 
 .dashboard-hero__stat--featured .dashboard-hero__value {
-  color: #0f766e;
+  color: #2563eb;
 }
 
 .dashboard-hero__hint {
@@ -469,7 +476,7 @@ body {
 .dashboard-revenue-chart__total {
   font-size: clamp(1.35rem, 2.2vw, 1.75rem);
   font-weight: 700;
-  color: #0f766e;
+  color: #2563eb;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
@@ -489,7 +496,7 @@ body {
 
 .dashboard-revenue-chart__report-link {
   font-size: 12px;
-  color: #0d9488;
+  color: #22c55e;
   white-space: nowrap;
   align-self: flex-start;
   margin-left: auto;
@@ -520,7 +527,7 @@ body {
   max-width: 36px;
   min-height: 2px;
   border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, #2dd4bf 0%, #0d9488 100%);
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
   transition: height 0.25s ease;
 }
 
@@ -530,7 +537,7 @@ body {
 }
 
 .dashboard-revenue-chart__bar-wrap:hover .dashboard-revenue-chart__bar {
-  background: linear-gradient(180deg, #5eead4 0%, #0f766e 100%);
+  background: linear-gradient(180deg, #86efac 0%, #2563eb 100%);
 }
 
 .dashboard-revenue-chart__bar-label {
@@ -588,7 +595,7 @@ body {
 .dashboard-category-chart__total {
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   font-weight: 700;
-  color: #0f766e;
+  color: #2563eb;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
@@ -601,7 +608,7 @@ body {
 
 .dashboard-category-chart__report-link {
   font-size: 12px;
-  color: #0d9488;
+  color: #22c55e;
   white-space: nowrap;
 }
 
@@ -885,6 +892,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .pos-sales-subnav {
@@ -948,6 +957,8 @@ body {
   align-items: stretch;
   margin-bottom: 10px;
   gap: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pos-page__toolbar-cart {
@@ -1059,6 +1070,12 @@ body {
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pos-page__cart .ant-table-content {
+  overflow-x: auto;
 }
 
 .pos-page__cart {
@@ -1183,5 +1200,16 @@ body {
 
   .pos-summary-panel--sidebar .pos-summary-money {
     min-width: 92px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .pos-page__toolbar-row {
+    grid-template-columns: minmax(140px, 1fr) minmax(120px, 1fr);
+  }
+
+  .pos-page__app-draft-toggle {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }

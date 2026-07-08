@@ -1,6 +1,6 @@
-# Novixa — Website giới thiệu
+﻿# Novixa — Website giới thiệu
 
-Site marketing **tách biệt** khỏi lõi ERP PharmaCore (`client/admin`, `src/PharmaCore.*`).
+Site marketing **tách biệt** khỏi lõi ERP KitPlatform (`client/admin`, `src/KitPlatform.*`).
 
 - **Domain dự kiến:** [novixa.vn](https://novixa.vn)
 - **Ngôn ngữ:** Tiếng Việt (`/vi/…`). Khung i18n sẵn; **English chưa publish**.
@@ -38,7 +38,7 @@ npm run preview
 3. Build: `npm run build` — Output: `dist`
 4. Gán domain `novixa.vn` / `www.novixa.vn` trong DNS.
 
-**Không** deploy chung với PharmaCore API.
+**Không** deploy chung với KitPlatform API.
 
 ## Cấu trúc
 
@@ -221,6 +221,6 @@ Trang: **https://novixa.vn/vi/thong-ke** — mật khẩu mặc định **`novix
 - Form liên hệ: `mailto:khiemtic@gmail.com` (có thể thay Formspree sau).
 - ERP demo sau này: `app.novixa.vn` (VPS riêng).
 
-## Liên quan PharmaCore
+## Liên quan KitPlatform
 
 Trong repo ERP, module **Sales/POS** đã mở lại phát triển sau khi site v1 live — xem `README.md` gốc mục *Sales / POS*.

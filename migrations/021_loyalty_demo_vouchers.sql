@@ -1,4 +1,4 @@
--- PharmaCore 021: Demo voucher cho Trần Thị Mai
+﻿-- KitPlatform 021: Demo voucher cho Trần Thị Mai
 
 INSERT INTO vouchers (
     id,

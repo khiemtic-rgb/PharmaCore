@@ -1,4 +1,4 @@
-# Checklist demo Mua hàng — PharmaCore
+﻿# Checklist demo Mua hàng — KitPlatform
 
 Dùng trước pilot / demo đối tác hoặc sau release lớn module procurement. Login admin: `admin` / `Admin@123`.
 

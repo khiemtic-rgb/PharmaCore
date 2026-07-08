@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Kiem tra san sang trien khai multi-branch (10x10): migrate 045/046 + smoke test.
 
@@ -10,13 +10,13 @@ param(
     [switch]$SkipMigrate,
     [switch]$SkipRestart,
     [switch]$StaffUat,
-    [string]$ConnectionString = "postgresql://pharmacore:pharmacore_dev_2026@localhost:5432/pharmacore"
+    [string]$ConnectionString = "postgresql://kitplatform:kitplatform_dev_2026@localhost:5432/kitplatform"
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 
-Write-Host "=== PharmaCore readiness check (10x10) ===" -ForegroundColor Cyan
+Write-Host "=== KitPlatform readiness check (10x10) ===" -ForegroundColor Cyan
 
 if (-not $SkipMigrate) {
     $psqlCandidates = @(
@@ -61,3 +61,4 @@ if ($StaffUat) {
 }
 
 exit 0
+

@@ -15,9 +15,9 @@
     "delete": "Xóa",
     "new": "Mới",
     "waitingApi": "Đang chờ API — tự tải lại khi kết nối trở lại",
-    "checkingApi": "Đang kiểm tra kết nối API…",
-    "apiOffline": "API tạm ngưng — trang sẽ tự tải lại khi kết nối trở lại",
-    "apiOfflineDesc": "Watchdog tự khởi động API (~8 giây). Chỉ cần run-dev.bat hoặc npm run dev.",
+    "checkingApi": "Đang kiểm tra kết nối…",
+    "apiOffline": "Không kết nối được máy chủ — thử lại sau",
+    "apiOfflineDesc": "Kiểm tra mạng hoặc thử lại sau vài giây. Liên hệ nhà thuốc nếu vẫn lỗi.",
     "checkNow": "Kiểm tra ngay",
     "reconnecting": "Đang thử kết nối lại…",
     "familyMember": "Người thân",
@@ -265,6 +265,14 @@
       "vaccination": "Tiêm chủng",
       "other": "Khác"
     },
+    "careReminderType": {
+      "visit": "Tái khám",
+      "lab": "Xét nghiệm",
+      "medication": "Thuốc / điều trị",
+      "exercise": "Vận động",
+      "nutrition": "Dinh dưỡng",
+      "other": "Khác"
+    },
     "notificationCategory": {
       "order": "Đơn hàng",
       "medication": "Nhắc thuốc",
@@ -289,11 +297,16 @@
     "changePhone": "Đổi số điện thoại",
     "invalidPhone": "Nhập số điện thoại hợp lệ",
     "tenantRequired": "Nhập mã nhà thuốc",
+    "tenantLocked": "Nhà thuốc: {{tenant}}",
     "otpSent": "Đã gửi mã OTP",
     "otpSendFailed": "Không gửi được OTP",
     "welcome": "Xin chào {{name}}!",
     "otpInvalid": "Mã OTP không đúng hoặc đã hết hạn",
-    "booting": "Đang khởi động..."
+    "booting": "Đang khởi động...",
+    "pilotCodeTitle": "Mã đăng nhập của bạn",
+    "pilotCodeHint": "Chỉ dùng trên thiết bị này. Không chia sẻ cho người khác.",
+    "pilotCodeExpires": "Hết hạn sau {{seconds}}s",
+    "pilotCodeExpired": "Mã đã hết hạn — gửi lại OTP"
   },
   "medications": {
     "title": "Thuốc đang dùng",
@@ -311,7 +324,11 @@
     "apiUnavailableDesc": "Restart API (scripts\\restart-api.ps1) để bật module My Medication. Bạn vẫn xem được gợi ý đơn sắp hết bên dưới.",
     "empty": "Chưa có thuốc đang dùng",
     "addReminder": "Thêm nhắc uống",
-    "viewOrders": "Xem đơn hàng"
+    "viewOrders": "Xem đơn hàng",
+    "filterLabel": "Lọc theo người",
+    "filterAll": "Tất cả",
+    "filterSelf": "Bản thân",
+    "forPerson": "Cho: {{name}}"
   },
   "pharmacy": {
     "loadFailed": "Không tải được thông tin nhà thuốc",
@@ -362,7 +379,8 @@
     "loadFailed": "Không tải được tin nhắn",
     "consentEnabled": "Đã bật chat dược sĩ — bạn có thể gửi tin nhắn",
     "consentEnableFailed": "Không bật được đồng ý chat",
-    "sendFailed": "Không gửi được tin nhắn"
+    "sendFailed": "Không gửi được tin nhắn",
+    "send": "Gửi"
   },
   "ai": {
     "title": "Health Copilot",
@@ -556,7 +574,11 @@
     "recordDeleted": "Đã xóa hồ sơ",
     "deleteFailed": "Không xóa được",
     "careDone": "Đã đánh dấu hoàn thành",
-    "updateFailed": "Không cập nhật được"
+    "updateFailed": "Không cập nhật được",
+    "editRecord": "Sửa",
+    "modalEditRecord": "Sửa hồ sơ",
+    "recordUpdated": "Đã cập nhật hồ sơ",
+    "careReminderType": "Loại nhắc"
   },
   "repurchase": {
     "loadFailed": "Không tải được nhắc hết đơn",
@@ -652,8 +674,8 @@
   },
   "errors": {
     "generic": "Đã có lỗi xảy ra",
-    "apiOffline": "Không kết nối được API. Chạy run-dev.bat hoặc .\\scripts\\restart-api.ps1 trước.",
-    "apiServerError": "API đang lỗi hoặc chưa chạy. Chạy .\\scripts\\restart-api.ps1 (hoặc run-dev.bat) rồi thử lại.",
+    "apiOffline": "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.",
+    "apiServerError": "Máy chủ đang bận. Thử lại sau vài giây.",
     "vapidInvalid": "VAPID key không hợp lệ. Restart API (scripts\\restart-api.ps1) để nạp CustomerAppPush mới.",
     "httpStatus": "{{fallback}} (HTTP {{status}})"
   },

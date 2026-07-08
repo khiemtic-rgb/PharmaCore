@@ -86,7 +86,7 @@ function normalizeBranding(raw: Record<string, unknown>): CustomerAppBranding {
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const profileTenant = useAuthStore((s) => s.profile?.tenantCode);
   const [branding, setBranding] = useState<CustomerAppBranding>(DEFAULT_BRANDING);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const tenantCode = (profileTenant || loadStoredTenantCode()).trim().toUpperCase();
 
@@ -101,7 +101,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await axios.get<Record<string, unknown>>(
         apiPath('/api/customer-app/branding'),
-        { params: { tenantCode }, timeout: 10_000 },
+        { params: { tenantCode }, timeout: 8_000 },
       );
       setBranding(normalizeBranding(data));
     } catch {

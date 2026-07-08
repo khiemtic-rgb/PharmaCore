@@ -28,9 +28,11 @@ import {
   fetchHealthRecords,
   getApiErrorMessage,
   markCareReminderDone,
+  updateHealthRecord,
   uploadHealthRecordAttachment,
 } from '@/shared/api/customer-app.api';
 import {
+  CARE_REMINDER_TYPE_LABELS,
   HEALTH_RECORD_TYPE_LABELS,
   VITAL_RECORD_TYPES,
   type CareReminder,
@@ -84,7 +86,7 @@ function formatVitalSummary(record: HealthRecord): string | null {
 
 export function HealthWalletPage() {
   const { t } = useTranslation();
-  const { healthRecordType } = useCustomerLabels();
+  const { healthRecordType, careReminderType } = useCustomerLabels();
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [careReminders, setCareReminders] = useState<CareReminder[]>([]);
   const [family, setFamily] = useState<FamilyMember[]>([]);
@@ -92,6 +94,7 @@ export function HealthWalletPage() {
   const [recordModal, setRecordModal] = useState(false);
   const [vitalsModal, setVitalsModal] = useState(false);
   const [careModal, setCareModal] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<HealthRecord | null>(null);
   const [recordFiles, setRecordFiles] = useState<UploadFile[]>([]);
   const [recordForm] = Form.useForm();
   const [vitalsForm] = Form.useForm();
@@ -112,6 +115,15 @@ export function HealthWalletPage() {
         label: healthRecordType(value),
       })),
     [healthRecordType],
+  );
+
+  const careReminderOptions = useMemo(
+    () =>
+      Object.keys(CARE_REMINDER_TYPE_LABELS).map((value) => ({
+        value,
+        label: careReminderType(value),
+      })),
+    [careReminderType],
   );
 
   const vitalsRecords = useMemo(
@@ -138,11 +150,62 @@ export function HealthWalletPage() {
     careForm.setFieldsValue({
       familyMemberId: record.familyMemberId ?? undefined,
       healthRecordId: record.id,
+      reminderType: 'visit',
       title: t('health.followUpTitle', { title: record.title }),
       remindAt: dayjs().add(7, 'day'),
       note: record.providerName ? t('health.facilityNote', { name: record.providerName }) : undefined,
     });
     setCareModal(true);
+  };
+
+  const openEditRecord = (record: HealthRecord) => {
+    setEditingRecord(record);
+    const isVital = VITAL_RECORD_TYPES.includes(record.recordType as (typeof VITAL_RECORD_TYPES)[number]);
+    if (isVital) {
+      let meta: Record<string, unknown> = {};
+      try {
+        meta = JSON.parse(record.metadataJson || '{}') as Record<string, unknown>;
+      } catch {
+        meta = {};
+      }
+      vitalsForm.setFieldsValue({
+        familyMemberId: record.familyMemberId ?? undefined,
+        recordType: record.recordType,
+        recordedAt: dayjs(record.recordedAt),
+        weightKg: meta.weightKg,
+        heightCm: meta.heightCm,
+        systolic: meta.systolic,
+        diastolic: meta.diastolic,
+        glucoseValue: meta.value,
+        glucoseUnit: meta.unit ?? 'mmol/L',
+      });
+      setVitalsModal(true);
+      return;
+    }
+
+    recordForm.setFieldsValue({
+      familyMemberId: record.familyMemberId ?? undefined,
+      recordType: record.recordType,
+      title: record.title,
+      summary: record.summary,
+      providerName: record.providerName,
+      recordedAt: dayjs(record.recordedAt),
+    });
+    setRecordFiles([]);
+    setRecordModal(true);
+  };
+
+  const closeRecordModal = () => {
+    setRecordModal(false);
+    setEditingRecord(null);
+    setRecordFiles([]);
+    recordForm.resetFields();
+  };
+
+  const closeVitalsModal = () => {
+    setVitalsModal(false);
+    setEditingRecord(null);
+    vitalsForm.resetFields();
   };
 
   const load = useCallback(async () => {
@@ -189,8 +252,10 @@ export function HealthWalletPage() {
   const onCreateRecord = async () => {
     const values = await recordForm.validateFields();
     try {
-      const attachments = await filesToAttachments(recordFiles);
-      await createHealthRecord({
+      const attachments = editingRecord
+        ? editingRecord.attachments
+        : await filesToAttachments(recordFiles);
+      const payload = {
         familyMemberId: values.familyMemberId,
         recordType: values.recordType,
         title: values.title,
@@ -198,11 +263,17 @@ export function HealthWalletPage() {
         providerName: values.providerName,
         recordedAt: (values.recordedAt as dayjs.Dayjs).toISOString(),
         attachmentsJson: JSON.stringify(attachments),
-      });
-      message.success(t('health.recordAdded'));
-      setRecordModal(false);
-      setRecordFiles([]);
-      recordForm.resetFields();
+      };
+
+      if (editingRecord) {
+        await updateHealthRecord(editingRecord.id, payload);
+        message.success(t('health.recordUpdated'));
+      } else {
+        await createHealthRecord(payload);
+        message.success(t('health.recordAdded'));
+      }
+
+      closeRecordModal();
       await load();
     } catch (error) {
       message.error(error instanceof Error ? error.message : getApiErrorMessage(error, t('health.saveRecordFailed')));
@@ -239,17 +310,24 @@ export function HealthWalletPage() {
     }
 
     try {
-      await createHealthRecord({
+      const payload = {
         familyMemberId: values.familyMemberId,
         recordType: values.recordType,
         title,
         summary,
         recordedAt,
         metadataJson: JSON.stringify(metadata),
-      });
-      message.success(t('health.vitalSaved'));
-      setVitalsModal(false);
-      vitalsForm.resetFields();
+      };
+
+      if (editingRecord) {
+        await updateHealthRecord(editingRecord.id, payload);
+        message.success(t('health.recordUpdated'));
+      } else {
+        await createHealthRecord(payload);
+        message.success(t('health.vitalSaved'));
+      }
+
+      closeVitalsModal();
       await load();
     } catch (error) {
       message.error(getApiErrorMessage(error, t('health.saveVitalFailed')));
@@ -262,7 +340,7 @@ export function HealthWalletPage() {
       await createCareReminder({
         familyMemberId: values.familyMemberId,
         healthRecordId: values.healthRecordId,
-        reminderType: 'visit',
+        reminderType: values.reminderType,
         title: values.title,
         note: values.note,
         remindAt: (values.remindAt as dayjs.Dayjs).toISOString(),
@@ -338,6 +416,9 @@ export function HealthWalletPage() {
             {t('health.followUpBtn')}
           </Button>
         ) : null}
+        <Button size="small" onClick={() => openEditRecord(item)}>
+          {t('health.editRecord')}
+        </Button>
         <Button size="small" danger onClick={() => void onDeleteRecord(item.id)}>
           {t('common.delete')}
         </Button>
@@ -369,7 +450,7 @@ export function HealthWalletPage() {
               label: t('health.tabVitals'),
               children: (
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => setVitalsModal(true)}>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); vitalsForm.resetFields(); setVitalsModal(true); }}>
                     {t('health.addVital')}
                   </Button>
                   {vitalsRecords.length === 0 ? (
@@ -385,7 +466,7 @@ export function HealthWalletPage() {
               label: t('health.tabRecords'),
               children: (
                 <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => setRecordModal(true)}>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingRecord(null); recordForm.resetFields(); setRecordFiles([]); setRecordModal(true); }}>
                     {t('health.addRecord')}
                   </Button>
                   {documentRecords.length === 0 ? (
@@ -409,7 +490,10 @@ export function HealthWalletPage() {
                   ) : (
                     careReminders.map((item) => (
                       <div key={item.id} style={{ borderBottom: '1px solid #e2e8f0', padding: '12px 0' }}>
-                        <Typography.Text strong>{item.title}</Typography.Text>
+                        <Space wrap style={{ marginBottom: 4 }}>
+                          <Tag>{careReminderType(item.reminderType)}</Tag>
+                          <Typography.Text strong>{item.title}</Typography.Text>
+                        </Space>
                         <div>
                           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                             {dayjs(item.remindAt).format('DD/MM/YYYY HH:mm')} · {familyName(item.familyMemberId)}
@@ -434,7 +518,12 @@ export function HealthWalletPage() {
         />
       )}
 
-      <Modal title={t('health.modalAddRecord')} open={recordModal} onCancel={() => setRecordModal(false)} onOk={() => void onCreateRecord()}>
+      <Modal
+        title={editingRecord ? t('health.modalEditRecord') : t('health.modalAddRecord')}
+        open={recordModal}
+        onCancel={closeRecordModal}
+        onOk={() => void onCreateRecord()}
+      >
         <Form form={recordForm} layout="vertical" initialValues={{ recordType: 'prescription', recordedAt: dayjs() }}>
           <Form.Item name="familyMemberId" label={t('health.forWho')}>
             <Select allowClear options={familyOptions} placeholder={t('health.self')} />
@@ -461,14 +550,22 @@ export function HealthWalletPage() {
               onChange={({ fileList }) => setRecordFiles(fileList.slice(-3))}
               maxCount={3}
               accept="image/*,.pdf"
+              disabled={Boolean(editingRecord)}
             >
-              <Button icon={<UploadOutlined />}>{t('health.chooseFile')}</Button>
+              <Button icon={<UploadOutlined />} disabled={Boolean(editingRecord)}>
+                {t('health.chooseFile')}
+              </Button>
             </Upload>
           </Form.Item>
         </Form>
       </Modal>
 
-      <Modal title={t('health.modalAddVital')} open={vitalsModal} onCancel={() => setVitalsModal(false)} onOk={() => void onCreateVital()}>
+      <Modal
+        title={editingRecord ? t('health.modalEditRecord') : t('health.modalAddVital')}
+        open={vitalsModal}
+        onCancel={closeVitalsModal}
+        onOk={() => void onCreateVital()}
+      >
         <Form
           form={vitalsForm}
           layout="vertical"
@@ -522,9 +619,12 @@ export function HealthWalletPage() {
       </Modal>
 
       <Modal title={t('health.modalCare')} open={careModal} onCancel={() => setCareModal(false)} onOk={() => void onCreateCare()}>
-        <Form form={careForm} layout="vertical" initialValues={{ remindAt: dayjs().add(7, 'day') }}>
+        <Form form={careForm} layout="vertical" initialValues={{ reminderType: 'visit', remindAt: dayjs().add(7, 'day') }}>
           <Form.Item name="familyMemberId" label={t('health.forWho')}>
             <Select allowClear options={familyOptions} placeholder={t('health.self')} />
+          </Form.Item>
+          <Form.Item name="reminderType" label={t('health.careReminderType')} rules={[{ required: true }]}>
+            <Select options={careReminderOptions} />
           </Form.Item>
           <Form.Item name="healthRecordId" label={t('health.linkRecord')}>
             <Select

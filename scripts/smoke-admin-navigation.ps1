@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5290'
 $tenantCode = 'NT_XUANHOA'
 $passed = 0
@@ -57,3 +57,4 @@ Test-Step 'Inventory low stock' {
 
 Write-Host "`n=== Result: $passed OK, $($failed.Count) FAIL ===" -ForegroundColor Cyan
 if ($failed.Count -gt 0) { exit 1 }
+

@@ -28,20 +28,39 @@ ALTER TABLE repurchase_suggestions
     ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS order_label VARCHAR(120);
 
-UPDATE repurchase_suggestions
-SET suggested_for_date = COALESCE(
-        suggested_for_date,
-        suggested_run_out_at::date,
-        remind_at::date
-    )
-WHERE suggested_for_date IS NULL
-  AND EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'repurchase_suggestions'
-        AND column_name = 'suggested_run_out_at'
-  );
+-- Backfill only on legacy product-level schema (dynamic SQL — PG validates columns at parse time)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'repurchase_suggestions'
+          AND column_name = 'suggested_run_out_at'
+    ) THEN
+        EXECUTE $sql$
+            UPDATE repurchase_suggestions
+            SET suggested_for_date = COALESCE(
+                    suggested_for_date,
+                    suggested_run_out_at::date,
+                    remind_at::date
+                )
+            WHERE suggested_for_date IS NULL
+        $sql$;
+    ELSIF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'repurchase_suggestions'
+          AND column_name = 'remind_at'
+    ) THEN
+        EXECUTE $sql$
+            UPDATE repurchase_suggestions
+            SET suggested_for_date = COALESCE(suggested_for_date, remind_at::date)
+            WHERE suggested_for_date IS NULL
+        $sql$;
+    END IF;
+END $$;
 
 UPDATE repurchase_suggestions rs
 SET order_label = COALESCE(NULLIF(TRIM(rs.order_label), ''), CONCAT('Đơn ', so.order_number))

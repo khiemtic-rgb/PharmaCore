@@ -10,11 +10,13 @@ import { I18nextProvider, useTranslation } from 'react-i18next';
 import { AppRouter } from '@/app/router';
 import { AppErrorBoundary } from '@/app/AppErrorBoundary';
 import { AuthHydrationGate } from '@/shared/auth/AuthHydrationGate';
+import { TenantPlatformHydrator } from '@/shared/platform/TenantPlatformHydrator';
 import i18n from '@/shared/i18n';
 
 const theme = {
   token: {
-    colorPrimary: '#0d9488',
+    colorPrimary: '#2563eb',
+    colorSuccess: '#22c55e',
     borderRadius: 8,
   },
 };
@@ -40,6 +42,7 @@ export function AppProviders() {
       <I18nextProvider i18n={i18n}>
         <AntdLocaleBridge>
           <AuthHydrationGate>
+            <TenantPlatformHydrator />
             <AppRouter />
           </AuthHydrationGate>
         </AntdLocaleBridge>

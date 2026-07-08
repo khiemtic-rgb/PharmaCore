@@ -153,6 +153,9 @@ const CustomerEngagementPage = lazy(() =>
 const CustomerDetailPage = lazy(() =>
   import('@/modules/customer/CustomerDetailPage').then((m) => ({ default: m.CustomerDetailPage })),
 );
+const PlatformPackSettingsPage = lazy(() =>
+  import('@/modules/system/PlatformPackSettingsPage').then((m) => ({ default: m.PlatformPackSettingsPage })),
+);
 const SystemLayout = lazy(() =>
   import('@/modules/system/SystemLayout').then((m) => ({ default: m.SystemLayout })),
 );
@@ -167,6 +170,9 @@ const BranchListPage = lazy(() =>
 );
 const AuditLogListPage = lazy(() =>
   import('@/modules/system/AuditLogListPage').then((m) => ({ default: m.AuditLogListPage })),
+);
+const AssessmentLeadsPage = lazy(() =>
+  import('@/modules/system/AssessmentLeadsPage').then((m) => ({ default: m.AssessmentLeadsPage })),
 );
 const ReportsLayout = lazy(() =>
   import('@/modules/reports/ReportsLayout').then((m) => ({ default: m.ReportsLayout })),
@@ -456,9 +462,11 @@ export function AppRouter() {
                 <Route path="branches" element={<BranchListPage />} />
                 <Route path="users" element={<UserListPage />} />
                 <Route path="roles" element={<RoleListPage />} />
+                <Route path="platform-pack" element={<PlatformPackSettingsPage />} />
                 <Route path="pos-settings" element={<ReceiptSettingsPage />} />
                 <Route path="customer-app-settings" element={<CustomerAppSettingsPage />} />
                 <Route path="audit-log" element={<AuditLogListPage />} />
+                <Route path="assessment-leads" element={<AssessmentLeadsPage />} />
               </Route>
             </Route>
           </Route>

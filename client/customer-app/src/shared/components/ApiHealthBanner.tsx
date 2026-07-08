@@ -1,24 +1,13 @@
 import { Alert, Button, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { apiOfflineHint } from '@/shared/api/api-network';
 import { useApiHealth } from '@/shared/api/useApiHealth';
 
 export function ApiHealthBanner() {
   const { t } = useTranslation();
   const { online, checking, recheck } = useApiHealth();
 
-  if (online === null && checking) {
-    return (
-      <Alert
-        type="info"
-        showIcon
-        banner
-        message={t('common.checkingApi')}
-        style={{ margin: '0 0 8px' }}
-      />
-    );
-  }
-
-  if (online !== false) return null;
+  if (online) return null;
 
   return (
     <Alert
@@ -26,7 +15,7 @@ export function ApiHealthBanner() {
       showIcon
       banner
       message={t('common.apiOffline')}
-      description={checking ? t('common.reconnecting') : t('common.apiOfflineDesc')}
+      description={checking ? t('common.reconnecting') : apiOfflineHint()}
       action={
         checking ? (
           <Spin size="small" />
@@ -44,8 +33,8 @@ export function ApiHealthBanner() {
 /** Ẩn lỗi tải trang khi layout đã báo API offline. */
 export function shouldHidePageErrorForOfflineApi(
   error: string | null | undefined,
-  apiOnline: boolean | null,
+  apiOnline: boolean,
 ): boolean {
-  if (!error || apiOnline !== false) return false;
+  if (!error || apiOnline) return false;
   return true;
 }

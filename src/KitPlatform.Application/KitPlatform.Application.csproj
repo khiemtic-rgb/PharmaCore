@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\KitPlatform.Domain\KitPlatform.Domain.csproj" />
+    <ProjectReference Include="..\Packs\Pharmacy\KitPlatform.Packs.Pharmacy.Application\KitPlatform.Packs.Pharmacy.Application.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

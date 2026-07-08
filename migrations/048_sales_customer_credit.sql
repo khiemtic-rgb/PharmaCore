@@ -14,14 +14,7 @@ SET amount_paid = total_amount,
 WHERE status = 2
   AND (amount_paid = 0 AND outstanding = 0);
 
--- Demo: KH001 được phép ghi nợ (POS UAT)
-UPDATE customers
-SET allow_credit = TRUE,
-    credit_limit = 5000000
-WHERE customer_code = 'KH001'
-  AND tenant_id = '11111111-1111-1111-1111-111111111101';
-
--- Demo NT_XUANHOA: Khách Xuan Hoa (CUZN00488)
+-- Demo NT_XUANHOA: Khách Xuan Hoa (CUZN00488) — no-op nếu tenant chưa tồn tại
 UPDATE customers c
 SET allow_credit = TRUE,
     credit_limit = 5000000

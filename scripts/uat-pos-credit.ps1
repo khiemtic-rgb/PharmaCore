@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5290'
 $tenantCode = 'NT_XUANHOA'
 $passed = 0
@@ -216,3 +216,4 @@ if ($failed.Count -gt 0) {
 }
 Write-Host "Partial: $($script:partialDetail.orderNumber)" -ForegroundColor DarkGray
 Write-Host "Full credit: $($script:fullCreditDetail.orderNumber)" -ForegroundColor DarkGray
+

@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.OpenApi" Version="1.6.23" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\KitPlatform.Application\KitPlatform.Application.csproj" />
+    <ProjectReference Include="..\KitPlatform.Infrastructure\KitPlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\Packs\Pharmacy\KitPlatform.Packs.Pharmacy.Application\KitPlatform.Packs.Pharmacy.Application.csproj" />
+    <ProjectReference Include="..\Packs\Pharmacy\KitPlatform.Packs.Pharmacy.Infrastructure\KitPlatform.Packs.Pharmacy.Infrastructure.csproj" />
+    <ProjectReference Include="..\Packs\Clinic\KitPlatform.Packs.Clinic.Infrastructure\KitPlatform.Packs.Clinic.Infrastructure.csproj" />
+    <ProjectReference Include="..\Packs\Survey\KitPlatform.Packs.Survey.Infrastructure\KitPlatform.Packs.Survey.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

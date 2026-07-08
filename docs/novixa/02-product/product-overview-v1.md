@@ -1,4 +1,4 @@
-# Novixa — Tổng quan sản phẩm V1
+﻿# Novixa — Tổng quan sản phẩm V1
 
 **Mã:** NVX-PRD-01 · **Tier:** T1/T2 · **Trạng thái:** Draft · **Version:** 1.0
 
@@ -6,7 +6,7 @@
 
 ## 1. Novixa là gì?
 
-**Novixa** là nền tảng phần mềm quản lý nhà thuốc (ERP + POS + CRM + app khách) cho thị trường Việt Nam, xây trên lõi **PharmaCore**.
+**Novixa** là nền tảng phần mềm quản lý nhà thuốc (ERP + POS + CRM + app khách) cho thị trường Việt Nam, xây trên lõi **KitPlatform**.
 
 **Không phải:** POS thu ngân đơn giản · phần mềm kê toán thay thế · tư vấn y khoa.
 

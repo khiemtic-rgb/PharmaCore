@@ -58,8 +58,8 @@ export function CustomerChatPage() {
   const [draft, setDraft] = useState('');
   const [draftDrawerOpen, setDraftDrawerOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-
-  const selected = threads.find((thread) => thread.customerId === selectedId);
+  const selectedIdRef = useRef<string | undefined>(undefined);
+  selectedIdRef.current = selectedId;
 
   const loadThreads = useCallback(async (silent = false) => {
     if (!silent) setLoadingThreads(true);
@@ -67,9 +67,7 @@ export function CustomerChatPage() {
     try {
       const data = await fetchChatThreads();
       setThreads(data);
-      if (!selectedId && data.length > 0) {
-        setSelectedId(data[0].customerId);
-      }
+      setSelectedId((prev) => prev ?? data[0]?.customerId);
     } catch (error) {
       const errMsg = apiErrorMessage(error, t('loadFailed'));
       setThreadsError(errMsg);
@@ -77,7 +75,7 @@ export function CustomerChatPage() {
     } finally {
       if (!silent) setLoadingThreads(false);
     }
-  }, [selectedId, t]);
+  }, [t]);
 
   const loadMessages = useCallback(
     async (customerId: string, silent = false) => {
@@ -86,15 +84,24 @@ export function CustomerChatPage() {
         const page = await fetchCustomerChatMessages(customerId);
         setMessages(page.items);
         await markStaffChatRead(customerId).catch(() => undefined);
-        void loadThreads(true);
+        setThreads((prev) =>
+          prev.map((row) =>
+            row.customerId === customerId ? { ...row, staffUnreadCount: 0 } : row,
+          ),
+        );
       } catch (error) {
         if (!silent) message.error(apiErrorMessage(error, t('messagesLoadFailed')));
       } finally {
         if (!silent) setLoadingMessages(false);
       }
     },
-    [loadThreads, t],
+    [t],
   );
+
+  const loadThreadsRef = useRef(loadThreads);
+  loadThreadsRef.current = loadThreads;
+  const loadMessagesRef = useRef(loadMessages);
+  loadMessagesRef.current = loadMessages;
 
   useEffect(() => {
     void loadThreads();
@@ -113,10 +120,13 @@ export function CustomerChatPage() {
     if (!accessToken) return;
     const url = buildAdminChatEventsUrl(accessToken);
     return subscribeChatSse(url, () => {
-      void loadThreads(true);
-      if (selectedId) void loadMessages(selectedId, true);
+      void loadThreadsRef.current(true);
+      const sid = selectedIdRef.current;
+      if (sid) void loadMessagesRef.current(sid, true);
     });
-  }, [accessToken, selectedId, loadThreads, loadMessages]);
+  }, [accessToken]);
+
+  const selected = threads.find((thread) => thread.customerId === selectedId);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -131,7 +141,7 @@ export function CustomerChatPage() {
       const created = await sendStaffChatMessage(selectedId, text);
       setMessages((prev) => [...prev, created]);
       setDraft('');
-      void loadThreads(true);
+      void loadThreadsRef.current(true);
     } catch (error) {
       message.error(apiErrorMessage(error, t('sendFailed')));
     } finally {

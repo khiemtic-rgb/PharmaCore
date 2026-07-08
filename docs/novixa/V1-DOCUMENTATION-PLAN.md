@@ -84,6 +84,11 @@ Xây dựng **bộ tài liệu vận hành doanh nghiệp** phục vụ:
 | NVX-SOL-03 | integration-catalog-v1.md | T2 | Planned | Engineering |
 | NVX-SOL-04 | data-model-overview-v1.md | T3 | Planned | Engineering |
 | NVX-SOL-05 | security-architecture-v1.md | T2/T3 | Planned | Engineering |
+| NVX-SOL-06 | [enterprise-architecture-gap-matrix-v1.md](./03-solution/enterprise-architecture-gap-matrix-v1.md) | T2/T3 | Draft | Engineering + Product |
+| NVX-SOL-07 | [enterprise-architecture-evolution-v1.md](./03-solution/enterprise-architecture-evolution-v1.md) | T2/T3 | Active | Engineering + Product |
+| NVX-DOM-01 | [domain-map-v1.md](./domains/domain-map-v1.md) | T2 | Draft | Product |
+| NSF-* | [standards/](./standards/) | T2 | Draft | Product |
+| POL-* | [policies/](./policies/) | T2 | Draft | Product |
 
 ### 3.4 Nhóm 04 — GTM (Go-to-Market)
 
@@ -129,6 +134,7 @@ Xây dựng **bộ tài liệu vận hành doanh nghiệp** phục vụ:
 | NVX-CS-05 | pos-quick-start-v1.md | T1 | Planned | CS |
 | NVX-CS-06 | customer-app-guide-v1.md | T1 | Planned | CS |
 | NVX-CS-07 | migration-playbook-v1.md | T2 | Planned | CS (→ import/xuan-hoa) |
+| NVX-CS-08 | [pilot-smoke-test-checklist-v1.md](./07-customer/pilot-smoke-test-checklist-v1.md) | T2 | Draft | CS + Engineering |
 
 ### 3.8 Nhóm 08 — Internal Governance
 

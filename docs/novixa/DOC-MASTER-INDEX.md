@@ -1,4 +1,4 @@
-# Novixa — DOC Master Index
+﻿# Novixa — DOC Master Index
 
 **Phiên bản:** 1.0 · **Phạm vi:** V1 · 2026–2027 · Việt Nam  
 **Mục tiêu:** Single entry point cho **hai lớp tài liệu** — Launch Pack (10 DOC) và Operations Pack (`docs/novixa/`).
@@ -54,13 +54,14 @@
 | **DOC-007** | Marketing Playbook | Content, social, lịch đăng | ⭐⭐⭐ | NVX-GTM-06 `marketing-plan-2026-v1.md` · NVX-GTM-07 `content-calendar-v1.md` | 📝 Founding cadence nhẹ (1 bài/tuần) |
 | **DOC-008** | Sales Playbook | Lead → ký → handoff | ⭐⭐⭐⭐⭐ | [sales-playbook-v1.md](./04-gtm/sales-playbook-v1.md) · [sales-deck-v1.md](./launch/DOC-008/sales-deck-v1.md) · [founding-program-terms-v1.md](./04-gtm/founding-program-terms-v1.md) | ✅ Draft |
 | **DOC-009** | Customer Success | Sau ký, onboarding | ⭐⭐⭐⭐⭐ | [onboarding-playbook-v1.md](./07-customer/onboarding-playbook-v1.md) · [go-live-checklist-customer-v1.md](./07-customer/go-live-checklist-customer-v1.md) · pilot-go-live | ✅ Draft |
-| **DOC-010** | Technical Standard | Code, API, deploy, security | ⭐⭐⭐⭐ | [solution-architecture-v1.md](./03-solution/solution-architecture-v1.md) (NVX-SOL-01) · [deployment-model-v1.md](./05-operations/deployment-model-v1.md) (NVX-OPS-01) · 🔗 [novixa-deploy.md](../novixa-deploy.md) · NVX-SOL-02/05 · NVX-OPS-02 | ✅ Draft ops — coding std Planned |
+| **DOC-010** | Technical Standard | Code, API, deploy, security | ⭐⭐⭐⭐ | [platform-kernel-and-solution-packs-v1.md](./03-solution/platform-kernel-and-solution-packs-v1.md) (KIT-PLT-01) · [solution-architecture-v1.md](./03-solution/solution-architecture-v1.md) (NVX-SOL-01) · [enterprise-architecture-evolution-v1.md](./03-solution/enterprise-architecture-evolution-v1.md) (NVX-SOL-07) · [enterprise-architecture-gap-matrix-v1.md](./03-solution/enterprise-architecture-gap-matrix-v1.md) (NVX-SOL-06) · [standards/](./standards/) · [deployment-model-v1.md](./05-operations/deployment-model-v1.md) (NVX-OPS-01) · 🔗 [novixa-deploy.md](../novixa-deploy.md) · NVX-SOL-02/05 · NVX-OPS-02 | ✅ Draft ops — coding std Planned |
 
 ### 2.1 Product naming map (DOC-005 ↔ thực tế)
 
 | Tên marketing (DOC-005) | Module / app thực tế | Phase V1 |
 |-------------------------|----------------------|----------|
-| Novixa Platform | PharmaCore API + multi-tenant | ✅ |
+| KIT Platform (kernel) | KitPlatform API + multi-tenant + module registry | ✅ |
+| Novixa Pharmacy Pack | ERP NT + Care trên KIT Platform | ✅ pilot |
 | Novixa POS | Admin `/sales` + Staff app | ✅ |
 | Novixa Inventory | `/inventory` + batches FEFO | ✅ |
 | Novixa CRM | `/customer` + loyalty | ✅ |
@@ -68,7 +69,7 @@
 | Novixa AI | Rule-based copilot | 🧪 Roadmap |
 | Novixa Analytics | Reports Wave 1 | ✅ (không phải BI riêng) |
 | Novixa Admin | Admin Web | ✅ |
-| Novixa API | `PharmaCore.Api` | ✅ |
+| Novixa API | `KitPlatform.Api` | ✅ |
 
 ### 2.2 Deliverables V1 ↔ DOC
 
@@ -171,7 +172,7 @@
 | **Sales** | DOC-008, 005 | [sales-playbook-v1.md](./04-gtm/sales-playbook-v1.md) · [module-catalog-v1.md](./02-product/module-catalog-v1.md) |
 | **Customer Success** | DOC-009 | [onboarding-playbook-v1.md](./07-customer/onboarding-playbook-v1.md) · [pilot-go-live-checklist.md](../../client/admin/pilot-go-live-checklist.md) |
 | **Product** | DOC-005 | [product-overview-v1.md](./02-product/product-overview-v1.md) · `PHASE_SCOPE.md` |
-| **Engineering / DevOps** | DOC-010 | [solution-architecture-v1.md](./03-solution/solution-architecture-v1.md) · [novixa-deploy.md](../novixa-deploy.md) |
+| **Engineering / DevOps** | DOC-010 | [solution-architecture-v1.md](./03-solution/solution-architecture-v1.md) · [enterprise-architecture-gap-matrix-v1.md](./03-solution/enterprise-architecture-gap-matrix-v1.md) · [novixa-deploy.md](../novixa-deploy.md) |
 | **Compliance / Dược sĩ** | DOC-009, 005 | [gpp-operational-context-v1.md](./06-compliance/gpp-operational-context-v1.md) |
 | **Ops / Doc owner** | All | [document-governance-v1.md](./08-internal/document-governance-v1.md) |
 

@@ -115,7 +115,7 @@ export function PosPage() {
   const [saving, setSaving] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [lastCompletedOrder, setLastCompletedOrder] = useState<SalesOrderDetail | null>(null);
-  const [openShift, setOpenShift] = useState<SalesShiftDetail | null>(null);
+  const [openShift, setOpenShift] = useState<SalesShiftDetail | null | undefined>(undefined);
   const [openShiftModal, setOpenShiftModal] = useState(false);
   const [shiftSaving, setShiftSaving] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
@@ -209,7 +209,7 @@ export function PosPage() {
   ) => {
     try {
       const payload = await loadCustomerDraftOrderForPos(draftOrderId);
-      setWarehouseId(payload.warehouseId);
+      selectWarehouse(payload.warehouseId);
       setCustomerId(payload.customerId);
       setCart(await loadCustomerDraftCartLines(payload));
       setOrderDiscount(orderDiscountFromCustomerDraft(payload));
@@ -239,7 +239,7 @@ export function PosPage() {
   ) => {
     try {
       const payload = await loadCustomerReservationForPos(reservationId);
-      setWarehouseId(payload.warehouseId);
+      selectWarehouse(payload.warehouseId);
       setCustomerId(payload.customerId);
       setCart(await loadCustomerReservationCartLines(payload));
       setOrderDiscount({});
@@ -272,6 +272,12 @@ export function PosPage() {
     setActiveCustomerDraft(null);
   }, []);
 
+  /** undefined = đang kiểm tra ca; null = chưa có ca; object = ca đang mở */
+  const selectWarehouse = useCallback((id: string | undefined) => {
+    setOpenShift(undefined);
+    setWarehouseId(id);
+  }, []);
+
   const clearDraftEdit = useCallback(() => {
     setEditingDraftId(null);
     setEditingDraftNumber(null);
@@ -288,14 +294,21 @@ export function PosPage() {
 
   useEffect(() => {
     if (!warehouseId) {
-      setOpenShift(null);
+      setOpenShift(undefined);
       return;
     }
-    void loadOpenShift(warehouseId).catch((error) => {
-      setOpenShift(null);
-      message.error(apiErrorMessage(error, t('pos.messages.loadShiftFailed')));
-    });
-  }, [warehouseId, loadOpenShift]);
+    let cancelled = false;
+    void loadOpenShift(warehouseId)
+      .catch((error) => {
+        if (!cancelled) {
+          setOpenShift(null);
+          message.error(apiErrorMessage(error, t('pos.messages.loadShiftFailed')));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [warehouseId, loadOpenShift, message, t]);
 
   useEffect(() => {
     if (!warehouseId) {
@@ -339,7 +352,7 @@ export function PosPage() {
       const wh = await fetchWarehouses();
       setWarehouses(wh);
       const defaultWh = wh.find((w) => w.isDefault) ?? wh[0];
-      if (defaultWh && !warehouseId) setWarehouseId(defaultWh.id);
+      if (defaultWh && !warehouseId) selectWarehouse(defaultWh.id);
       setCustomers(await searchCustomers());
       void loadReceiptStoreSettings();
     })();
@@ -399,7 +412,7 @@ export function PosPage() {
           clearDraftEdit();
           return;
         }
-        setWarehouseId(order.warehouseId);
+        selectWarehouse(order.warehouseId);
         setCustomerId(order.customerId);
         setCart(await loadDraftCartLines(order));
         setOrderDiscount(orderDiscountFromDetail(order));
@@ -1170,7 +1183,7 @@ export function PosPage() {
           }
         />
       )}
-      {!openShift && warehouseId && canWrite && (
+      {openShift === null && warehouseId && canWrite && (
         <Alert
           type="warning"
           showIcon
@@ -1183,7 +1196,7 @@ export function PosPage() {
           }
         />
       )}
-      {openShift && (
+      {openShift != null && (
         <Alert
           type="info"
           showIcon
@@ -1246,7 +1259,7 @@ export function PosPage() {
               disabled={!!editingDraftId}
               onChange={(id) => {
                 if (editingDraftId) return;
-                setWarehouseId(id);
+                selectWarehouse(id);
                 resetCart();
               }}
               options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}

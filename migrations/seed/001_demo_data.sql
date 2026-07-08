@@ -1,4 +1,4 @@
--- PharmaCore: Demo seed data for development
+﻿-- KitPlatform: Demo seed data for development
 
 -- Fixed UUIDs for reproducible dev references
 -- Tenant
@@ -22,7 +22,7 @@ INSERT INTO employees (id, tenant_id, employee_code, full_name, phone, email)
 VALUES (
     '11111111-1111-1111-1111-111111111301',
     '11111111-1111-1111-1111-111111111101',
-    'EMP001', 'Nguyễn Văn Admin', '0901000001', 'admin@demo.pharmacore.vn'
+    'EMP001', 'Nguyễn Văn Admin', '0901000001', 'admin@demo.KitPlatform.vn'
 );
 
 -- Admin tenant: khong gan employee_branches de ADMIN co quyen toan tenant (multi-branch 10x10).
@@ -33,7 +33,7 @@ VALUES (
     '11111111-1111-1111-1111-111111111401',
     '11111111-1111-1111-1111-111111111101',
     '11111111-1111-1111-1111-111111111301',
-    'admin', 'admin@demo.pharmacore.vn',
+    'admin', 'admin@demo.KitPlatform.vn',
     '$2a$11$Oq8dLLVbqREcBk4VBW0ELOuBQneydTDK7VLpR9FcHEiQdWoUTQyJS'
 );
 

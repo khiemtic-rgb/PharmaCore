@@ -9,17 +9,21 @@ import {
   ShoppingOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Card, Col, Row, Space, Spin, Typography } from 'antd';
+import { Badge, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   fetchDraftOrders,
+  fetchHomeSummary,
   fetchLoyaltySummary,
   fetchMedicationAdherenceSummary,
   fetchRepurchaseSuggestions,
   getApiErrorMessage,
 } from '@/shared/api/customer-app.api';
+import axios from 'axios';
 import { CUSTOMER_DRAFT_ORDER_STATUS } from '@/shared/api/customer-app.types';
+import { prefetchPrimaryTabOverviews } from '@/shared/api/overview-queries';
 import { useAuthStore } from '@/shared/auth/auth.store';
 import { useCustomerBranding } from '@/shared/config/BrandingProvider';
 import { useCustomerNotificationCount } from '@/shared/hooks/useCustomerNotificationCount';
@@ -41,10 +45,11 @@ type HealthStatProps = {
   value: string;
   valueColor?: string;
   compact?: boolean;
+  loading?: boolean;
   onClick?: () => void;
 };
 
-function HealthStat({ label, value, valueColor, compact, onClick }: HealthStatProps) {
+function HealthStat({ label, value, valueColor, compact, loading, onClick }: HealthStatProps) {
   const clickable = Boolean(onClick);
   return (
     <div
@@ -66,9 +71,12 @@ function HealthStat({ label, value, valueColor, compact, onClick }: HealthStatPr
       <span className="home-health-stat-label">{label}</span>
       <span
         className={`home-health-stat-value${compact ? ' home-health-stat-value--compact' : ''}`}
-        style={valueColor ? { color: valueColor } : undefined}
+        style={{
+          ...(valueColor ? { color: valueColor } : undefined),
+          ...(loading ? { opacity: 0.45 } : undefined),
+        }}
       >
-        {value}
+        {loading ? '…' : value}
       </span>
     </div>
   );
@@ -77,6 +85,7 @@ function HealthStat({ label, value, valueColor, compact, onClick }: HealthStatPr
 export function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const profile = useAuthStore((s) => s.profile);
   const { branding } = useCustomerBranding();
   const notificationCount = useCustomerNotificationCount();
@@ -95,7 +104,7 @@ export function HomePage() {
     [],
   );
 
-  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [points, setPoints] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
   const [repurchaseCount, setRepurchaseCount] = useState(0);
@@ -107,58 +116,86 @@ export function HomePage() {
     showMissedAlert: false,
   });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const applyHomeData = useCallback(
+    (
+      loyalty: { programs: { pointsBalance?: number }[] },
+      drafts: { status: number }[],
+      repurchase: { status: string }[],
+      summary: typeof adherence,
+    ) => {
+      setPoints(loyalty.programs[0]?.pointsBalance ?? 0);
+      setPendingOrders(
+        drafts.filter(
+          (d) =>
+            d.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent ||
+            d.status === CUSTOMER_DRAFT_ORDER_STATUS.Confirmed,
+        ).length,
+      );
+      setRepurchaseCount(
+        repurchase.filter((r) => r.status === 'pending' || r.status === 'snoozed').length,
+      );
+      setAdherence(summary);
+    },
+    [],
+  );
+
+  const load = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setStatsLoading(true);
     try {
-      const [loyalty, drafts, repurchase, summary] = await Promise.allSettled([
-        fetchLoyaltySummary(),
-        fetchDraftOrders(),
-        fetchRepurchaseSuggestions(),
-        fetchMedicationAdherenceSummary(),
-      ]);
-      if (loyalty.status === 'fulfilled') {
-        setPoints(loyalty.value.programs[0]?.pointsBalance ?? 0);
-      }
-      if (drafts.status === 'fulfilled') {
-        setPendingOrders(
-          drafts.value.filter(
-            (d) =>
-              d.status === CUSTOMER_DRAFT_ORDER_STATUS.Sent ||
-              d.status === CUSTOMER_DRAFT_ORDER_STATUS.Confirmed,
-          ).length,
+      try {
+        const summary = await fetchHomeSummary();
+        applyHomeData(
+          summary.loyalty,
+          summary.draftOrders,
+          summary.repurchaseSuggestions,
+          summary.adherence,
         );
-      }
-      if (repurchase.status === 'fulfilled') {
-        setRepurchaseCount(
-          repurchase.value.filter((r) => r.status === 'pending' || r.status === 'snoozed').length,
-        );
-      }
-      if (summary.status === 'fulfilled') {
-        setAdherence(summary.value);
+      } catch (overviewError) {
+        if (axios.isAxiosError(overviewError) && overviewError.response?.status === 404) {
+          const [loyalty, drafts, repurchase, summary] = await Promise.allSettled([
+            fetchLoyaltySummary(),
+            fetchDraftOrders(),
+            fetchRepurchaseSuggestions(),
+            fetchMedicationAdherenceSummary(),
+          ]);
+          applyHomeData(
+            loyalty.status === 'fulfilled' ? loyalty.value : { programs: [] },
+            drafts.status === 'fulfilled' ? drafts.value : [],
+            repurchase.status === 'fulfilled' ? repurchase.value : [],
+            summary.status === 'fulfilled'
+              ? summary.value
+              : {
+                  dueCount: 0,
+                  takenToday: 0,
+                  scheduledToday: 0,
+                  missedStreakDays: 0,
+                  showMissedAlert: false,
+                },
+          );
+        } else {
+          throw overviewError;
+        }
       }
     } catch (error) {
       console.error(getApiErrorMessage(error));
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
-  }, []);
+  }, [applyHomeData]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const medicationDone =
-    adherence.scheduledToday > 0
-      ? adherence.takenToday >= adherence.scheduledToday && adherence.dueCount === 0
-      : adherence.dueCount === 0;
+  useEffect(() => {
+    void prefetchPrimaryTabOverviews(queryClient);
+  }, [queryClient]);
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: 48 }}>
-        <Spin />
-      </div>
-    );
-  }
+  const medicationDone =
+    !statsLoading &&
+    (adherence.scheduledToday > 0
+      ? adherence.takenToday >= adherence.scheduledToday && adherence.dueCount === 0
+      : adherence.dueCount === 0);
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -201,6 +238,7 @@ export function HomePage() {
           <Col span={12}>
             <HealthStat
               label={t('home.medicationTaken')}
+              loading={statsLoading}
               value={medicationDone ? '✓' : `${adherence.takenToday}/${Math.max(adherence.scheduledToday, 1)}`}
               valueColor={medicationDone ? '#059669' : '#b45309'}
             />
@@ -208,6 +246,7 @@ export function HomePage() {
           <Col span={12}>
             <HealthStat
               label={t('home.points')}
+              loading={statsLoading}
               value={formatPoints(points)}
               valueColor={branding.primaryColor}
               compact={formatPoints(points).length > 9}
@@ -215,11 +254,17 @@ export function HomePage() {
             />
           </Col>
           <Col span={12}>
-            <HealthStat label={t('home.orders')} value={String(pendingOrders)} onClick={() => navigate('/orders')} />
+            <HealthStat
+              label={t('home.orders')}
+              loading={statsLoading}
+              value={String(pendingOrders)}
+              onClick={() => navigate('/orders')}
+            />
           </Col>
           <Col span={12}>
             <HealthStat
               label={t('home.notificationsCount')}
+              loading={statsLoading}
               value={String(notificationCount)}
               onClick={() => navigate('/notifications')}
             />
@@ -240,8 +285,8 @@ export function HomePage() {
       </Card>
 
       <MissedMedicationAlert show={adherence.showMissedAlert} streak={adherence.missedStreakDays} />
-      <DueRemindersPanel compact onResponded={() => void load()} />
-      <FamilyCaregiverDuePanel compact onResponded={() => void load()} />
+      <DueRemindersPanel compact onResponded={() => void load({ silent: true })} />
+      <FamilyCaregiverDuePanel compact onResponded={() => void load({ silent: true })} />
 
       <div>
         <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>

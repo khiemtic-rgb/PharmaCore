@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5290'
 $tenantCode = 'NT_XUANHOA'
 $passed = 0
@@ -170,7 +170,7 @@ Test-Step 'Reject double post on posted voucher' {
     if (-not $line) { return }
     $out = [decimal]$line.outstanding
     # Bypass create validation by using unlinked FIFO post path is harder; skip if only linked validation exists.
-    # Create at max allowed then manually update not exposed — test post reject via overpay after partial pay:
+    # Create at max allowed then manually update not exposed â€” test post reject via overpay after partial pay:
     $maxDraft = Invoke-Api -Method POST -Path '/api/sales/customer-payments' -Headers $script:H -Body @{
         customerId = $script:targetCustomerId
         salesOrderId = $line.salesOrderId
@@ -188,3 +188,4 @@ if ($failed.Count -gt 0) {
     exit 1
 }
 Write-Host "Posted: $($script:postedPayment.paymentNumber) on $($script:targetLine.orderNumber)" -ForegroundColor DarkGray
+

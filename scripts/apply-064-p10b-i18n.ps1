@@ -1,5 +1,5 @@
-param(
-    [string]$ConnectionString = "postgresql://pharmacore:pharmacore_dev_2026@localhost:5432/pharmacore"
+﻿param(
+    [string]$ConnectionString = "postgresql://kitplatform:kitplatform_dev_2026@localhost:5432/kitplatform"
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,3 +35,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host '[OK] en-US da bat; DEMO_PHARMACY ho tro vi + en.' -ForegroundColor Green
+

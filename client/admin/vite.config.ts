@@ -16,9 +16,6 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
           if (id.includes('antd') || id.includes('@ant-design')) return 'antd';
-          if (id.includes('react-dom') || id.includes('react-router')) return 'react-vendor';
-          if (id.includes('axios') || id.includes('zustand') || id.includes('dayjs')) return 'utils-vendor';
-          return 'vendor';
         },
       },
     },

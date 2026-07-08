@@ -1,8 +1,8 @@
-# PharmaCore
+﻿# KitPlatform
 
 ERP nhà thuốc đa quốc gia — **production-ready foundation**.
 
-**Đường dẫn:** `E:\PharmaCore`
+**Đường dẫn:** `E:\KitPlatform`
 
 ## Stack
 
@@ -11,12 +11,12 @@ ERP nhà thuốc đa quốc gia — **production-ready foundation**.
 | API | .NET 8 Web API + Swagger |
 | Database | PostgreSQL 16 |
 | Data access | Dapper + Npgsql |
-| Kiến trúc | Clean Architecture (Domain / Application / Infrastructure / Api) |
+| Kiến trúc | Clean Architecture + EA evolution (Core Engines, NSF) — xem `docs/novixa/03-solution/enterprise-architecture-evolution-v1.md` |
 
 ## Cấu trúc
 
 ```
-PharmaCore/
+KitPlatform/
 ├── docker-compose.yml          # PostgreSQL
 ├── migrations/                 # SQL 49 bảng
 │   ├── 001_extensions.sql
@@ -28,10 +28,10 @@ PharmaCore/
 ├── novixa-site/                # Website giới thiệu novixa.vn (tách deploy)
 ├── scripts/run-migrations.ps1
 ├── src/
-│   ├── PharmaCore.Api/         # REST API, Controllers
-│   ├── PharmaCore.Application/ # Business logic (sắp tới)
-│   ├── PharmaCore.Domain/      # Entities, enums
-│   └── PharmaCore.Infrastructure/ # DB, external services
+│   ├── KitPlatform.Api/         # REST API, Controllers
+│   ├── KitPlatform.Application/ # Business logic (sắp tới)
+│   ├── KitPlatform.Domain/      # Entities, enums
+│   └── KitPlatform.Infrastructure/ # DB, external services
 └── docs/                       # ERD, decisions, roadmap
 ```
 

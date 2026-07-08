@@ -1,4 +1,4 @@
-# Checklist demo Customer App — PharmaCore
+﻿# Checklist demo Customer App — KitPlatform
 
 Kiểm tra app khách trước pilot hoặc demo O2O. Chạy song song Admin (`5173`) + API (`5290`) + Customer App (`5174`).
 

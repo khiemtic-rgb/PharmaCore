@@ -1,9 +1,9 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title PharmaCore Customer App
+title KitPlatform Customer App
 
-echo === PharmaCore Customer App ===
+echo === KitPlatform Customer App ===
 echo Web:  http://localhost:5174  (dung http — push/PWA dev)
 echo API:  http://localhost:5290 (can chay rieng)
 echo Demo: 0909123456 / OTP 000000 / DEMO_PHARMACY

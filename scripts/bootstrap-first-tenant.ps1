@@ -1,10 +1,10 @@
-<#
+﻿<#
 .SYNOPSIS
   Tao tenant dau tien cho mot nha thuoc (sau run-migrations-prod.ps1).
 
 .EXAMPLE
   .\scripts\bootstrap-first-tenant.ps1 `
-    -ConnectionString "postgresql://pharmacore:secret@localhost:5432/pharmacore_nt_a" `
+    -ConnectionString "postgresql://KitPlatform:secret@localhost:5432/KitPlatform_nt_a" `
     -TenantCode "NT_A" `
     -TenantName "Nha Thuoc An" `
     -BranchCode "CN01" `
@@ -155,7 +155,7 @@ VALUES (
 COMMIT;
 "@
 
-$tempSql = Join-Path $env:TEMP "pharmacore-bootstrap-$tenantId.sql"
+$tempSql = Join-Path $env:TEMP "KitPlatform-bootstrap-$tenantId.sql"
 Set-Content -Path $tempSql -Value $sql -Encoding UTF8
 
 Write-Host "=== Bootstrap tenant: $TenantCode ===" -ForegroundColor Cyan
@@ -171,3 +171,4 @@ Write-Host "=== XONG ===" -ForegroundColor Green
 Write-Host "Tenant:   $TenantCode ($tenantId)"
 Write-Host "Dang nhap: $AdminUsername / (mat khau ban vua nhap)"
 Write-Host "Doi mat khau ngay sau khi dang nhap lan dau." -ForegroundColor Yellow
+
