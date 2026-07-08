@@ -1,41 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-08T17:56:15.329Z",
+  "generatedAt": "2026-07-08T22:15:54.745Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
     "todayVisitors": 0,
     "todayPageViews": 0,
     "todayRequests": 0,
-    "last24hVisitors": 139,
-    "last24hPageViews": 146,
-    "last24hRequests": 286
+    "last24hVisitors": 141,
+    "last24hPageViews": 150,
+    "last24hRequests": 295
   },
   "hourly": [
-    {
-      "time": "2026-07-07T18:00:00Z",
-      "visitors": 3,
-      "requests": 3
-    },
-    {
-      "time": "2026-07-07T19:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-07T20:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-07T21:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
-    {
-      "time": "2026-07-07T22:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
     {
       "time": "2026-07-07T23:00:00Z",
       "visitors": 1,
@@ -130,6 +105,26 @@
       "time": "2026-07-08T17:00:00Z",
       "visitors": 17,
       "requests": 23
+    },
+    {
+      "time": "2026-07-08T18:00:00Z",
+      "visitors": 3,
+      "requests": 4
+    },
+    {
+      "time": "2026-07-08T19:00:00Z",
+      "visitors": 2,
+      "requests": 6
+    },
+    {
+      "time": "2026-07-08T20:00:00Z",
+      "visitors": 7,
+      "requests": 7
+    },
+    {
+      "time": "2026-07-08T21:00:00Z",
+      "visitors": 2,
+      "requests": 2
     }
   ],
   "daily": [
@@ -165,38 +160,38 @@
     },
     {
       "date": "2026-07-08",
-      "visitors": 135,
-      "pageViews": 141,
-      "requests": 269
+      "visitors": 140,
+      "pageViews": 147,
+      "requests": 288
     }
   ],
   "topPages": [
     {
       "path": "/vi/tin-tuc/ai-ho-tro-van-hanh-nha-thuoc/",
-      "views": 97
+      "views": 98
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 34
+      "views": 35
     },
     {
       "path": "/",
-      "views": 25
+      "views": 28
     },
     {
       "path": "/robots.txt",
-      "views": 15
+      "views": 17
     },
     {
       "path": "/vi/",
-      "views": 14
-    },
-    {
-      "path": "/sitemap-index.xml",
-      "views": 12
+      "views": 15
     },
     {
       "path": "/api/stats",
+      "views": 13
+    },
+    {
+      "path": "/sitemap-index.xml",
       "views": 12
     },
     {
@@ -206,6 +201,10 @@
     {
       "path": "/images/logo.png",
       "views": 7
+    },
+    {
+      "path": "/vi",
+      "views": 5
     },
     {
       "path": "/images/tin-tuc/ai-ho-tro-van-hanh-nha-thuoc.png",
@@ -220,11 +219,7 @@
       "views": 4
     },
     {
-      "path": "/vi/tin-tuc/mo-rong-chuoi-nha-thuoc-checklist-he-thong/",
-      "views": 4
-    },
-    {
-      "path": "/vi",
+      "path": "/vi/thong-ke/",
       "views": 4
     },
     {
