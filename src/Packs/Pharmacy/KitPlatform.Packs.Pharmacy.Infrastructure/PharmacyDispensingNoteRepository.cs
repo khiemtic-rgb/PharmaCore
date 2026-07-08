@@ -96,7 +96,7 @@ internal sealed class PharmacyDispensingNoteRepository
 internal sealed class PharmacyDispensingNoteService : IPharmacyDispensingNoteService
 {
     private static readonly HashSet<string> AllowedNoteTypes =
-        new(StringComparer.OrdinalIgnoreCase) { "counseling", "interaction", "adherence", "other" };
+        new(StringComparer.OrdinalIgnoreCase) { "counseling", "dispensing", "interaction", "adherence", "other" };
 
     private readonly PharmacyDispensingNoteRepository _repo;
     private readonly ITenantContext _tenant;

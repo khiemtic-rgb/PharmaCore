@@ -110,6 +110,15 @@ public sealed record UpdatePurchaseOrderRequest(
 
 public sealed record ApprovePurchaseOrderRequest(Guid? SupplierId);
 
+public sealed record SubmitPurchaseOrderApprovalResult(Guid WorkflowTaskId);
+
+public sealed record PoWorkflowDecisionDto(
+    Guid TaskId,
+    string TaskStatus,
+    string Decision,
+    DateTime? CompletedAt,
+    Guid? PurchaseOrderId);
+
 public sealed record ProcurementVatTreatmentDto(
     Guid Id,
     string TreatmentCode,

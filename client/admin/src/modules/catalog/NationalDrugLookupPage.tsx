@@ -162,19 +162,23 @@ export function NationalDrugLookupPage() {
   return (
     <>
       <Alert
-        type="info"
+        type={connection?.isLive ? 'info' : 'warning'}
         showIcon
         icon={<CloudSyncOutlined />}
         style={{ marginBottom: 16 }}
         message={
           <Space wrap>
-            <span>{t('alertTitle')}</span>
+            <span>{connection?.isLive ? t('alertTitleLive') : t('alertTitleMock')}</span>
             {connection && (
               <Tag color={connection.isLive ? 'green' : 'gold'}>{connection.modeLabel}</Tag>
             )}
           </Space>
         }
-        description={connection?.message ?? t('alertDescriptionDefault')}
+        description={
+          connection?.isLive
+            ? (connection.message ?? t('alertDescriptionLive'))
+            : t('alertDescriptionMock')
+        }
       />
 
       <Row gutter={[16, 16]}>

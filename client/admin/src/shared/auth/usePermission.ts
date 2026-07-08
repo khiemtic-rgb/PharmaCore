@@ -11,6 +11,11 @@ export function useProcurementWrite(): boolean {
   return useHasPermission('procurement.write');
 }
 
+export function useIsAdmin(): boolean {
+  const user = useAuthStore((s) => s.user);
+  return user?.roles.includes('ADMIN') ?? false;
+}
+
 export function useSystemDeletePermanent(): boolean {
   return useHasPermission('system.delete_permanent');
 }

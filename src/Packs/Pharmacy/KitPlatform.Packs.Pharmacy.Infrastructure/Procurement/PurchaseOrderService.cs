@@ -10,17 +10,23 @@ internal sealed class PurchaseOrderService : IPurchaseOrderService
     private readonly ITenantContext _tenant;
     private readonly IAuditEngine _audit;
     private readonly IBranchAccessService _branchAccess;
+    private readonly IWorkflowEngine _workflow;
+    private readonly IPermissionEngine _permissions;
 
     public PurchaseOrderService(
         ProcurementRepository repository,
         ITenantContext tenant,
         IAuditEngine audit,
-        IBranchAccessService branchAccess)
+        IBranchAccessService branchAccess,
+        IWorkflowEngine workflow,
+        IPermissionEngine permissions)
     {
         _repository = repository;
         _tenant = tenant;
         _audit = audit;
         _branchAccess = branchAccess;
+        _workflow = workflow;
+        _permissions = permissions;
     }
 
     public async Task<ProcurementPagedListResult<PurchaseOrderListItemDto>> GetAllAsync(
@@ -130,20 +136,92 @@ internal sealed class PurchaseOrderService : IPurchaseOrderService
         ApprovePurchaseOrderRequest? request,
         CancellationToken cancellationToken = default)
     {
+        if (!_permissions.IsAdmin())
+            throw new InvalidOperationException("Chỉ quản trị viên mới duyệt trực tiếp PO. Hãy gửi duyệt qua workflow.");
+
+        return await ApproveInternalAsync(id, request, cancellationToken);
+    }
+
+    public async Task<SubmitPurchaseOrderApprovalResult> SubmitForApprovalAsync(
+        Guid id,
+        ApprovePurchaseOrderRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var po = await RequirePoAccessAsync(id, cancellationToken);
+        if (po.Status != PurchaseOrderStatuses.Draft)
+            throw new InvalidOperationException("Chỉ gửi duyệt PO ở trạng thái Nháp.");
+
+        await EnsureSupplierReadyForApprovalAsync(po, request?.SupplierId, cancellationToken);
+
+        if (request?.SupplierId is Guid newSupplierId && newSupplierId != po.SupplierId)
+            await _repository.SetPurchaseOrderSupplierAsync(id, newSupplierId, cancellationToken);
+
+        var taskId = await _workflow.SubmitPurchaseOrderApprovalAsync(
+            po.Id,
+            po.PoNumber,
+            po.SupplierName,
+            po.TotalAmount,
+            cancellationToken);
+
+        await _audit.WriteAsync(
+            "purchase_order",
+            id,
+            "submit_for_approval",
+            new { poNumber = po.PoNumber, workflowTaskId = taskId },
+            cancellationToken);
+
+        return new SubmitPurchaseOrderApprovalResult(taskId);
+    }
+
+    public async Task<PoWorkflowDecisionDto> DecideApprovalWorkflowAsync(
+        Guid taskId,
+        bool approved,
+        string? notes = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_permissions.IsAdmin())
+            throw new InvalidOperationException("Chỉ quản trị viên mới xử lý phê duyệt PO.");
+
+        var purchaseOrderId = await _workflow.GetPurchaseOrderIdForPendingTaskAsync(taskId, cancellationToken)
+            ?? throw new InvalidOperationException("Workflow task không thuộc PO.");
+
+        var decision = await _workflow.DecidePurchaseOrderTaskAsync(taskId, approved, notes, cancellationToken);
+
+        if (approved)
+        {
+            await ApproveInternalAsync(purchaseOrderId, null, cancellationToken);
+        }
+        else
+        {
+            await _audit.WriteAsync(
+                "purchase_order",
+                purchaseOrderId,
+                "approval_rejected",
+                new { workflowTaskId = taskId, notes },
+                cancellationToken);
+        }
+
+        return new PoWorkflowDecisionDto(
+            decision.TaskId,
+            decision.TaskStatus,
+            decision.Decision,
+            decision.CompletedAt,
+            purchaseOrderId);
+    }
+
+    private async Task<PurchaseOrderDetailDto?> ApproveInternalAsync(
+        Guid id,
+        ApprovePurchaseOrderRequest? request,
+        CancellationToken cancellationToken)
+    {
         var po = await RequirePoAccessAsync(id, cancellationToken);
         if (po.Status != PurchaseOrderStatuses.Draft)
             throw new InvalidOperationException("Chỉ duyệt được PO ở trạng thái Nháp.");
 
-        if (await _repository.IsSupplierPlaceholderAsync(po.SupplierId, cancellationToken))
-        {
-            if (request?.SupplierId is not Guid newSupplierId)
-                throw new InvalidOperationException("Chọn NCC thật trước khi duyệt PO.");
-            if (!await _repository.SupplierExistsAsync(newSupplierId, cancellationToken))
-                throw new InvalidOperationException("NCC không tồn tại.");
-            if (await _repository.IsSupplierPlaceholderAsync(newSupplierId, cancellationToken))
-                throw new InvalidOperationException("Không duyệt PO với NCC Chưa xác định.");
+        await EnsureSupplierReadyForApprovalAsync(po, request?.SupplierId, cancellationToken);
+
+        if (request?.SupplierId is Guid newSupplierId && newSupplierId != po.SupplierId)
             await _repository.SetPurchaseOrderSupplierAsync(id, newSupplierId, cancellationToken);
-        }
 
         var updated = await _repository.TransitionPurchaseOrderStatusAsync(
             id, PurchaseOrderStatuses.Draft, PurchaseOrderStatuses.Approved, _tenant.UserId, cancellationToken);
@@ -152,6 +230,22 @@ internal sealed class PurchaseOrderService : IPurchaseOrderService
 
         await _audit.WriteAsync("purchase_order", id, "approve", cancellationToken: cancellationToken);
         return await _repository.GetPurchaseOrderAsync(id, cancellationToken: cancellationToken);
+    }
+
+    private async Task EnsureSupplierReadyForApprovalAsync(
+        PurchaseOrderDetailDto po,
+        Guid? supplierOverrideId,
+        CancellationToken cancellationToken)
+    {
+        if (await _repository.IsSupplierPlaceholderAsync(po.SupplierId, cancellationToken))
+        {
+            if (supplierOverrideId is not Guid newSupplierId)
+                throw new InvalidOperationException("Chọn NCC thật trước khi duyệt PO.");
+            if (!await _repository.SupplierExistsAsync(newSupplierId, cancellationToken))
+                throw new InvalidOperationException("NCC không tồn tại.");
+            if (await _repository.IsSupplierPlaceholderAsync(newSupplierId, cancellationToken))
+                throw new InvalidOperationException("Không duyệt PO với NCC Chưa xác định.");
+        }
     }
 
     public async Task<PurchaseOrderDetailDto?> CancelAsync(Guid id, CancellationToken cancellationToken = default)

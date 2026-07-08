@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using KitPlatform.Api.Authorization;
+using KitPlatform.Api.Controllers.Workflow;
 using KitPlatform.Packs.Pharmacy.Procurement;
 
 namespace KitPlatform.Api.Controllers.Pharmacy;
@@ -77,8 +78,57 @@ public sealed class PurchaseOrdersController : ControllerBase
         [FromBody] ApprovePurchaseOrderRequest? request,
         CancellationToken cancellationToken)
     {
-        var item = await _orders.ApproveAsync(id, request, cancellationToken);
-        return item is null ? NotFound() : Ok(item);
+        try
+        {
+            var item = await _orders.ApproveAsync(id, request, cancellationToken);
+            return item is null ? NotFound() : Ok(item);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:guid}/submit-for-approval")]
+    [Authorize(Policy = ProcurementPolicies.Write)]
+    [ProducesResponseType(typeof(SubmitPurchaseOrderApprovalResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<SubmitPurchaseOrderApprovalResult>> SubmitForApproval(
+        Guid id,
+        [FromBody] ApprovePurchaseOrderRequest? request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _orders.SubmitForApprovalAsync(id, request, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("workflow/tasks/{taskId:guid}/decide")]
+    [Authorize(Roles = "ADMIN")]
+    [ProducesResponseType(typeof(PoWorkflowDecisionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PoWorkflowDecisionDto>> DecideWorkflowTask(
+        Guid taskId,
+        [FromBody] WorkflowTaskDecisionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _orders.DecideApprovalWorkflowAsync(
+                taskId,
+                request.Approved,
+                request.Notes,
+                cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("{id:guid}/cancel")]

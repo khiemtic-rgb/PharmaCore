@@ -15,6 +15,18 @@ internal static class CustomerOtpSenderRegistration
     {
         services.Configure<CustomerAppSmsSettings>(configuration.GetSection(CustomerAppSmsSettings.SectionName));
 
+        if (environment.IsProduction())
+        {
+            var smsUrl = configuration.GetSection(CustomerAppSmsSettings.SectionName)["HttpUrl"];
+            var smsProvider = configuration.GetSection(CustomerAppSmsSettings.SectionName)["Provider"] ?? "Http";
+            if (!smsProvider.Equals("Log", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(smsUrl))
+            {
+                throw new InvalidOperationException(
+                    "Production requires CustomerAppSms:HttpUrl when Provider is Http.");
+            }
+        }
+
         if (environment.IsDevelopment())
         {
             services.AddSingleton<ICustomerOtpSender, LogCustomerOtpSender>();

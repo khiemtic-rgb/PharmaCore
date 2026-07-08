@@ -19,6 +19,12 @@ public sealed class WorkflowController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await _workflow.ListPendingPosDiscountTasksAsync(cancellationToken));
 
+    [HttpGet("purchase-order/pending")]
+    [ProducesResponseType(typeof(IReadOnlyList<WorkflowTaskListItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<WorkflowTaskListItemDto>>> ListPendingPurchaseOrders(
+        CancellationToken cancellationToken) =>
+        Ok(await _workflow.ListPendingPurchaseOrderTasksAsync(cancellationToken));
+
     [HttpPost("tasks/{taskId:guid}/decide")]
     [ProducesResponseType(typeof(WorkflowTaskDecisionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

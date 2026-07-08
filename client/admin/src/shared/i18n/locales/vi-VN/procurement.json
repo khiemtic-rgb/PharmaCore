@@ -240,6 +240,8 @@
     "saveChanges": "Lưu thay đổi",
     "editOrder": "Sửa đơn",
     "approve": "Duyệt",
+    "submitForApproval": "Gửi duyệt",
+    "pendingApprovals": "PO chờ duyệt",
     "cancelOrder": "Huỷ đơn",
     "cancelConfirm": "Huỷ đơn đặt hàng này?",
     "closeOrder": "Đóng đơn",
@@ -269,17 +271,37 @@
       "createFailed": "Không tạo được đơn đặt hàng",
       "updateFailed": "Không cập nhật được đơn đặt hàng",
       "approveFailed": "Không duyệt được đơn",
+      "submitFailed": "Không gửi duyệt được đơn",
       "cancelFailed": "Không hủy được đơn",
       "closeFailed": "Không đóng được đơn",
       "archiveFailed": "Không ẩn được đơn",
       "purgeFailed": "Không xóa vĩnh viễn được đơn",
       "draftSaved": "Đã lưu PO nháp {{poNumber}}",
       "approved": "Đã duyệt {{poNumber}}",
+      "submittedForApproval": "Đã gửi duyệt {{poNumber}}",
       "cancelled": "Đã hủy đơn đặt hàng",
       "closed": "Đã đóng {{poNumber}}",
       "archived": "Đã ẩn đơn đặt hàng (có thể xem trong bản ghi đã ẩn)",
       "purged": "Đã xóa vĩnh viễn đơn đặt hàng",
       "updated": "Đã cập nhật {{poNumber}}"
+    },
+    "workflow": {
+      "drawerTitle": "Đơn mua chờ phê duyệt",
+      "drawerIntro": "PO ở trạng thái Nháp đã được nhân viên gửi duyệt. Quản trị viên duyệt hoặc từ chối tại đây.",
+      "loadFailed": "Không tải được hàng chờ duyệt",
+      "decideFailed": "Không xử lý được phê duyệt",
+      "approved": "Đã duyệt PO",
+      "rejected": "Đã từ chối PO",
+      "approveConfirm": "Duyệt PO này?",
+      "rejectConfirm": "Từ chối PO này?",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "empty": "Không có PO chờ duyệt",
+      "columns": {
+        "poNumber": "Số PO",
+        "submittedAt": "Gửi lúc",
+        "actions": "Thao tác"
+      }
     }
   },
   "goodsReceipts": {

@@ -240,6 +240,8 @@
     "saveChanges": "Save changes",
     "editOrder": "Edit order",
     "approve": "Approve",
+    "submitForApproval": "Submit for approval",
+    "pendingApprovals": "Pending PO approvals",
     "cancelOrder": "Cancel order",
     "cancelConfirm": "Cancel this purchase order?",
     "closeOrder": "Close order",
@@ -269,17 +271,37 @@
       "createFailed": "Could not create purchase order",
       "updateFailed": "Could not update purchase order",
       "approveFailed": "Could not approve order",
+      "submitFailed": "Could not submit order for approval",
       "cancelFailed": "Could not cancel order",
       "closeFailed": "Could not close order",
       "archiveFailed": "Could not archive order",
       "purgeFailed": "Could not permanently delete order",
       "draftSaved": "Draft PO saved {{poNumber}}",
       "approved": "Approved {{poNumber}}",
+      "submittedForApproval": "Submitted {{poNumber}} for approval",
       "cancelled": "Purchase order cancelled",
       "closed": "Closed {{poNumber}}",
       "archived": "Purchase order archived (visible in archived records)",
       "purged": "Purchase order permanently deleted",
       "updated": "Updated {{poNumber}}"
+    },
+    "workflow": {
+      "drawerTitle": "Purchase orders pending approval",
+      "drawerIntro": "Draft POs submitted by staff. Admins approve or reject here.",
+      "loadFailed": "Could not load pending approvals",
+      "decideFailed": "Could not process approval",
+      "approved": "PO approved",
+      "rejected": "PO rejected",
+      "approveConfirm": "Approve this PO?",
+      "rejectConfirm": "Reject this PO?",
+      "approve": "Approve",
+      "reject": "Reject",
+      "empty": "No POs pending approval",
+      "columns": {
+        "poNumber": "PO no.",
+        "submittedAt": "Submitted",
+        "actions": "Actions"
+      }
     }
   },
   "goodsReceipts": {

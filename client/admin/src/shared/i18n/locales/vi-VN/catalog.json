@@ -226,6 +226,10 @@
     }
   },
   "nationalDrugs": {
+    "alertTitleMock": "Tra cứu CSDL Dược QG — DỮ LIỆU THAM KHẢO (chưa liên thông Bộ Y tế)",
+    "alertTitleLive": "Tra cứu CSDL Dược QG — Liên thông QĐ 522",
+    "alertDescriptionMock": "Đang dùng bộ dữ liệu mẫu nội bộ (mock). Không thay thế tra cứu chính thức. Khi có tài khoản liên thông: cấu hình NationalDrugCatalog:Mode = sandbox hoặc live trên API.",
+    "alertDescriptionLive": "Đang kết nối nguồn dữ liệu quốc gia theo QĐ 522.",
     "alertTitle": "Tra cứu CSDL Dược QG — MVP mock (QĐ 522)",
     "alertDescriptionDefault": "Dữ liệu mẫu nội bộ. Khi có tài khoản liên thông: cấu hình NationalDrugCatalog:Mode = sandbox hoặc live.",
     "listTitle": "Danh mục CSDL Dược QG",

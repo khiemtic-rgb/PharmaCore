@@ -115,6 +115,12 @@ $files = @(
     "082_pack_pharmacy_schema.sql",
     "083_pack_survey_schema.sql",
     "084_kit_provision_pharmacy_survey_workspace.sql",
+    "085_pack_pharmacy_inventory_views.sql",
+    "086_pack_pharmacy_report_read_views.sql",
+    "087_phase_d_write_cutover.sql",
+    "088_purchase_order_workflow.sql",
+    "089_kap_decision_intelligence_schema.sql",
+    "090_kap_pharmacy_intelligence_seed.sql",
     "seed-prod\001_base_permissions.sql"
 )
 

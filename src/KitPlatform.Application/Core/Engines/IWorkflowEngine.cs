@@ -25,6 +25,30 @@ public interface IWorkflowEngine
 
     Task<IReadOnlyList<WorkflowTaskListItemDto>> ListPendingPosDiscountTasksAsync(
         CancellationToken cancellationToken = default);
+
+    Task<bool> HasPendingPurchaseOrderTaskAsync(
+        Guid purchaseOrderId,
+        CancellationToken cancellationToken = default);
+
+    Task<Guid> SubmitPurchaseOrderApprovalAsync(
+        Guid purchaseOrderId,
+        string poNumber,
+        string supplierName,
+        decimal totalAmount,
+        CancellationToken cancellationToken = default);
+
+    Task<Guid?> GetPurchaseOrderIdForPendingTaskAsync(
+        Guid taskId,
+        CancellationToken cancellationToken = default);
+
+    Task<WorkflowTaskDecisionDto> DecidePurchaseOrderTaskAsync(
+        Guid taskId,
+        bool approved,
+        string? notes = null,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<WorkflowTaskListItemDto>> ListPendingPurchaseOrderTasksAsync(
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Thrown when staff discount exceeds policy and manager approval is required.</summary>

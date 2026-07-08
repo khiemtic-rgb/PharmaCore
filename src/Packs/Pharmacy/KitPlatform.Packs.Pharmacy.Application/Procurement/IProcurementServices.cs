@@ -21,6 +21,15 @@ public interface IPurchaseOrderService
         Guid id,
         ApprovePurchaseOrderRequest? request = null,
         CancellationToken cancellationToken = default);
+    Task<SubmitPurchaseOrderApprovalResult> SubmitForApprovalAsync(
+        Guid id,
+        ApprovePurchaseOrderRequest? request = null,
+        CancellationToken cancellationToken = default);
+    Task<PoWorkflowDecisionDto> DecideApprovalWorkflowAsync(
+        Guid taskId,
+        bool approved,
+        string? notes = null,
+        CancellationToken cancellationToken = default);
     Task<PurchaseOrderDetailDto?> CancelAsync(Guid id, CancellationToken cancellationToken = default);
     Task<PurchaseOrderDetailDto?> CloseAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> ArchiveAsync(Guid id, CancellationToken cancellationToken = default);

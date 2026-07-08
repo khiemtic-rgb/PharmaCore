@@ -226,6 +226,10 @@
     }
   },
   "nationalDrugs": {
+    "alertTitleMock": "National Drug Database — REFERENCE DATA ONLY (not linked to MOH)",
+    "alertTitleLive": "National Drug Database — Decision 522 live",
+    "alertDescriptionMock": "Using internal mock sample data. Does not replace official lookup. Set NationalDrugCatalog:Mode = sandbox or live on the API when credentials are available.",
+    "alertDescriptionLive": "Connected to the national drug catalog per Decision 522.",
     "alertTitle": "National Drug Database lookup — MVP mock (Decision 522)",
     "alertDescriptionDefault": "Internal sample data. When integration credentials are available: set NationalDrugCatalog:Mode = sandbox or live.",
     "listTitle": "National Drug Database catalog",

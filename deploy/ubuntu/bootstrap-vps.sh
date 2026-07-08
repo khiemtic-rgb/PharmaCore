@@ -117,8 +117,8 @@ Cors__AllowedOrigins__0=https://${ADMIN_HOST}
 Cors__AllowedOrigins__1=https://${APP_HOST}
 Cors__AllowedOrigins__2=https://${POS_HOST}
 
-CustomerAppAuth__ExposePilotOtpInAdmin=true
-CustomerAppAuth__ExposePilotOtpOnCustomerApp=true
+CustomerAppAuth__ExposePilotOtpInAdmin=false
+CustomerAppAuth__ExposePilotOtpOnCustomerApp=false
 
 Platform__BrandName=Novixa
 Platform__ProductName=ERP Nha thuoc
@@ -127,7 +127,7 @@ Platform__CustomerAppUrl=https://${APP_HOST}
 Platform__ApiUrl=https://${API_HOST}
 Platform__ProvisioningKey=${PLATFORM_KEY}
 
-CustomerAppSms__Provider=Log
+CustomerAppSms__Provider=Http
 CustomerAppSms__HttpUrl=http://127.0.0.1:9091/sms
 CustomerAppSms__ApiKeyHeader=Authorization
 CustomerAppSms__ApiKey=

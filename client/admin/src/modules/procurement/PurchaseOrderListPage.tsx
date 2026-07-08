@@ -32,6 +32,7 @@ import {
   fetchSuppliers,
   fetchVatTreatments,
   purgePurchaseOrder,
+  submitPurchaseOrderForApproval,
 } from '@/shared/api/procurement.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import type {
@@ -58,7 +59,8 @@ import {
   procurementQuantityColumn,
   procurementRemainingQtyColumn,
 } from '@/modules/procurement/procurement-quantity-cell';
-import { useProcurementWrite, useSystemDeletePermanent } from '@/shared/auth/usePermission';
+import { PoWorkflowPendingDrawer } from '@/modules/procurement/PoWorkflowPendingDrawer';
+import { useProcurementWrite, useSystemDeletePermanent, useIsAdmin } from '@/shared/auth/usePermission';
 import { useSearchParams } from 'react-router-dom';
 
 interface PoLineForm {
@@ -76,6 +78,7 @@ export function PurchaseOrderListPage() {
   const { t: tCommon } = useTranslation('common', { keyPrefix: 'actions' });
   const { poStatusLabel } = useProcurementEnums();
   const canWrite = useProcurementWrite();
+  const isAdmin = useIsAdmin();
   const canPurge = useSystemDeletePermanent();
   const [searchParams] = useSearchParams();
   const initialFilters = useMemo((): PurchaseOrderListFilters => {
@@ -105,7 +108,9 @@ export function PurchaseOrderListPage() {
   const [editPoOpen, setEditPoOpen] = useState(false);
   const [approvePoId, setApprovePoId] = useState<string | null>(null);
   const [approvePoNumber, setApprovePoNumber] = useState('');
+  const [approveMode, setApproveMode] = useState<'approve' | 'submit'>('approve');
   const [approving, setApproving] = useState(false);
+  const [workflowDrawerOpen, setWorkflowDrawerOpen] = useState(false);
   const supplierId = Form.useWatch('supplierId', form);
 
   const loadMasterData = useCallback(async () => {
@@ -225,6 +230,7 @@ export function PurchaseOrderListPage() {
       const po = detail?.id === id ? detail : await fetchPurchaseOrder(id);
       const supplier = suppliers.find((s) => s.id === po.supplierId);
       if (supplier && isPlaceholderSupplier(supplier)) {
+        setApproveMode('approve');
         setApprovePoId(id);
         setApprovePoNumber(po.poNumber);
         return;
@@ -238,17 +244,47 @@ export function PurchaseOrderListPage() {
     }
   };
 
+  const handleSubmitForApproval = async (id: string) => {
+    try {
+      const po = detail?.id === id ? detail : await fetchPurchaseOrder(id);
+      const supplier = suppliers.find((s) => s.id === po.supplierId);
+      if (supplier && isPlaceholderSupplier(supplier)) {
+        setApproveMode('submit');
+        setApprovePoId(id);
+        setApprovePoNumber(po.poNumber);
+        return;
+      }
+      await submitPurchaseOrderForApproval(id);
+      message.success(t('messages.submittedForApproval', { poNumber: po.poNumber }));
+      if (detail?.id === id) setDetail(await fetchPurchaseOrder(id));
+      void loadOrders(filters, searchInput, page, pageSize);
+    } catch (error) {
+      message.error(apiErrorMessage(error, t('messages.submitFailed')));
+    }
+  };
+
   const confirmApproveWithSupplier = async (supplierId: string) => {
     if (!approvePoId) return;
     setApproving(true);
     try {
-      const updated = await approvePurchaseOrder(approvePoId, { supplierId });
-      message.success(t('messages.approved', { poNumber: updated.poNumber }));
-      if (detail?.id === approvePoId) setDetail(updated);
+      if (approveMode === 'submit') {
+        await submitPurchaseOrderForApproval(approvePoId, { supplierId });
+        message.success(t('messages.submittedForApproval', { poNumber: approvePoNumber }));
+        if (detail?.id === approvePoId) setDetail(await fetchPurchaseOrder(approvePoId));
+      } else {
+        const updated = await approvePurchaseOrder(approvePoId, { supplierId });
+        message.success(t('messages.approved', { poNumber: updated.poNumber }));
+        if (detail?.id === approvePoId) setDetail(updated);
+      }
       setApprovePoId(null);
       void loadOrders(filters, searchInput, page, pageSize);
     } catch (error) {
-      message.error(apiErrorMessage(error, t('messages.approveFailed')));
+      message.error(
+        apiErrorMessage(
+          error,
+          approveMode === 'submit' ? t('messages.submitFailed') : t('messages.approveFailed'),
+        ),
+      );
     } finally {
       setApproving(false);
     }
@@ -405,11 +441,16 @@ export function PurchaseOrderListPage() {
     <Card
       title={t('title')}
       extra={
-        canWrite ? (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-            {t('create')}
-          </Button>
-        ) : undefined
+        <Space>
+          {isAdmin ? (
+            <Button onClick={() => setWorkflowDrawerOpen(true)}>{t('pendingApprovals')}</Button>
+          ) : null}
+          {canWrite ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              {t('create')}
+            </Button>
+          ) : null}
+        </Space>
       }
     >
       <PurchaseOrderFilterBar
@@ -510,9 +551,14 @@ export function PurchaseOrderListPage() {
                   {t('editOrder')}
                 </Button>
               )}
-              {detail.status === 1 && (
-                <Button type="primary" icon={<CheckOutlined />} onClick={() => handleApprove(detail.id)}>
-                  {tCommon('approve')}
+              {detail.status === 1 && !isAdmin && (
+                <Button type="primary" onClick={() => void handleSubmitForApproval(detail.id)}>
+                  {t('submitForApproval')}
+                </Button>
+              )}
+              {detail.status === 1 && isAdmin && (
+                <Button type="primary" icon={<CheckOutlined />} onClick={() => void handleApprove(detail.id)}>
+                  {t('approve')}
                 </Button>
               )}
               {(detail.status === 1 || detail.status === 2) && (
@@ -608,6 +654,12 @@ export function PurchaseOrderListPage() {
         loading={approving}
         onCancel={() => setApprovePoId(null)}
         onConfirm={(supplierId) => void confirmApproveWithSupplier(supplierId)}
+      />
+
+      <PoWorkflowPendingDrawer
+        open={workflowDrawerOpen}
+        onClose={() => setWorkflowDrawerOpen(false)}
+        onDecided={() => void loadOrders(filters, searchInput, page, pageSize)}
       />
     </Card>
   );

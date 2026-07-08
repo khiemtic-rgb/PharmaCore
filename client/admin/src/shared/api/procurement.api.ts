@@ -347,6 +347,17 @@ export async function approvePurchaseOrder(
   return normalizePoDetail(data);
 }
 
+export async function submitPurchaseOrderForApproval(
+  id: string,
+  payload?: { supplierId?: string },
+): Promise<{ workflowTaskId: string }> {
+  const { data } = await http.post<Record<string, unknown>>(
+    `/procurement/purchase-orders/${id}/submit-for-approval`,
+    payload ?? {},
+  );
+  return { workflowTaskId: String(data.workflowTaskId ?? data.WorkflowTaskId) };
+}
+
 export async function cancelPurchaseOrder(id: string): Promise<PurchaseOrderDetail> {
   const { data } = await http.post<Record<string, unknown>>(`/procurement/purchase-orders/${id}/cancel`);
   return normalizePoDetail(data);
