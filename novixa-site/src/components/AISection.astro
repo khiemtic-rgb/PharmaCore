@@ -1,33 +1,39 @@
 ---
-const aiCards = [
-  { title: 'Dự báo nhập hàng', text: 'Ước tính nhu cầu nhập hàng.' },
-  { title: 'Gợi ý bán FEFO', text: 'Ưu tiên xuất kho thông minh.' },
-  { title: 'Phân tích doanh thu', text: 'Theo dõi hiệu quả kinh doanh.' },
-  { title: 'Phát hiện bất thường', text: 'Cảnh báo lệch dữ liệu vận hành.' },
+const chatMessages = [
+  { role: 'user', text: 'Thuốc Paracetamol còn bao nhiêu lô sắp hết hạn?' },
+  { role: 'ai', text: 'Có 3 lô Paracetamol 500mg hết hạn trong 60 ngày tới. Bạn nên ưu tiên xuất kho theo FEFO.' },
+  { role: 'user', text: 'Gợi ý nhập hàng tuần này?' },
+  { role: 'ai', text: 'Dựa trên tốc độ bán 30 ngày, nên nhập thêm Vitamin C và Oresol. Chi tiết trong báo cáo tuần.' },
 ];
 ---
 
-<section class="section ai-section" id="ai">
+<section class="section ai-section" id="ai-copilot">
   <div class="container ai-grid">
     <div class="section-heading">
-      <p class="eyebrow">AI</p>
-      <h2>AI đồng hành cùng nhà thuốc.</h2>
+      <p class="eyebrow">AI Copilot</p>
+      <h2>Trợ lý thông minh cho nhà thuốc.</h2>
       <p>
-        Không thay thế con người. Giúp con người ra quyết định nhanh hơn.
+        Hỏi đáp tức thì về tồn kho, doanh thu và vận hành — không thay thế dược sĩ, mà giúp ra quyết định nhanh hơn.
       </p>
-      <a class="btn btn-light ai-cta" href="/vi/lien-he">Tìm hiểu về AI</a>
     </div>
 
-    <div class="ai-card-grid">
-      {
-        aiCards.map((card) => (
-          <article class="ai-card">
-            <span></span>
-            <h3>{card.title}</h3>
-            <p>{card.text}</p>
-          </article>
-        ))
-      }
+    <div class="ai-chat" aria-label="Giao diện AI Copilot">
+      <div class="ai-chat-header">
+        <span class="ai-chat-dot"></span>
+        Novixa Copilot
+      </div>
+      <div class="ai-chat-body">
+        {
+          chatMessages.map((msg) => (
+            <div class:list={['ai-chat-bubble', msg.role === 'ai' ? 'is-ai' : 'is-user']}>
+              {msg.text}
+            </div>
+          ))
+        }
+      </div>
+      <div class="ai-chat-input" aria-hidden="true">
+        <span>Hỏi Novixa bất cứ điều gì...</span>
+      </div>
     </div>
   </div>
 </section>

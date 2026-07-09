@@ -1,30 +1,28 @@
 ---
-const solutions = [
-  { title: 'POS bán hàng', icon: '▦', lines: ['Thanh toán nhanh.', 'Đồng bộ doanh thu.'] },
-  { title: 'Kho FEFO', icon: '◆', lines: ['Theo dõi theo lô.', 'Cảnh báo cận date.'] },
-  { title: 'CRM khách hàng', icon: '●●', lines: ['Chăm sóc khách hàng.', 'Tăng tỷ lệ quay lại.'] },
+const modules = [
+  { title: 'POS', icon: '▦', lines: ['Bán hàng nhanh.', 'Đồng bộ doanh thu.'] },
+  { title: 'Kho', icon: '◆', lines: ['Theo dõi theo lô.', 'Cảnh báo cận date.'] },
+  { title: 'CRM', icon: '●●', lines: ['Chăm sóc khách hàng.', 'Tăng tỷ lệ quay lại.'] },
   { title: 'Dashboard', icon: '▥', lines: ['Theo dõi mọi chỉ số.', 'Theo thời gian thực.'] },
-  { title: 'Quản lý chuỗi', icon: '⌘', lines: ['Quản lý nhiều chi nhánh.', 'Một Dashboard.'] },
-  { title: 'AI thông minh', icon: '✣', lines: ['Hỗ trợ phân tích.', 'Đưa ra gợi ý.'] },
+  { title: 'App khách hàng', icon: '▣', lines: ['Đặt thuốc & tích điểm.', 'Giữ chân khách hàng.'] },
+  { title: 'AI Copilot', icon: '✦', lines: ['Gợi ý nhập hàng.', 'Phân tích thông minh.'] },
 ];
 ---
 
 <section class="section solution-section" id="giai-phap">
   <div class="container">
     <div class="section-heading center compact-heading">
-      <h2>Novixa giúp giải quyết như thế nào?</h2>
-      <p>
-        Một nền tảng thống nhất, mọi dữ liệu được kết nối, mọi hoạt động được đồng bộ.
-      </p>
+      <p class="eyebrow">Modules</p>
+      <h2>Một nền tảng. Mọi nghiệp vụ.</h2>
     </div>
 
-    <div class="card-grid solution-grid">
+    <div class="card-grid solution-grid modules-grid">
       {
-        solutions.map((solution) => (
-          <article class="card solution-card">
-            <div class="module-icon">{solution.icon}</div>
-            <h3>{solution.title}</h3>
-            {solution.lines.map((line) => <p>{line}</p>)}
+        modules.map((module) => (
+          <article class="card solution-card module-card">
+            <div class="module-icon">{module.icon}</div>
+            <h3>{module.title}</h3>
+            {module.lines.map((line) => <p>{line}</p>)}
           </article>
         ))
       }

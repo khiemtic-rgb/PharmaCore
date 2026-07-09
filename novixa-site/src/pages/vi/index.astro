@@ -3,23 +3,19 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import Hero from '../../components/Hero.astro';
+import TrustSection from '../../components/TrustSection.astro';
 import AssessmentSection from '../../components/AssessmentSection.astro';
-import PainSection from '../../components/PainSection.astro';
 import SolutionSection from '../../components/SolutionSection.astro';
 import DashboardSection from '../../components/DashboardSection.astro';
-import WorkflowSection from '../../components/WorkflowSection.astro';
-import PlatformSection from '../../components/PlatformSection.astro';
+import CustomerAppSection from '../../components/CustomerAppSection.astro';
 import AISection from '../../components/AISection.astro';
-import ScaleSection from '../../components/ScaleSection.astro';
-import KnowledgeSection from '../../components/KnowledgeSection.astro';
+import TestimonialStrip from '../../components/TestimonialStrip.astro';
+import FaqSection from '../../components/FaqSection.astro';
 import CTASection from '../../components/CTASection.astro';
-import { getCollection } from 'astro:content';
-import { sortPublishedNews } from '../../lib/newsDate';
 import { t } from '../../i18n';
 import '../../styles/global.css';
 
 const m = t('vi');
-const posts = sortPublishedNews(await getCollection('tinTuc')).slice(0, 3);
 ---
 
 <BaseLayout
@@ -28,22 +24,19 @@ const posts = sortPublishedNews(await getCollection('tinTuc')).slice(0, 3);
   canonicalPath="/vi"
 >
   <Header slot="header" />
-  <div class="home-fold">
-    <div class="container home-fold-shell">
-      <div class="home-fold-stage">
-        <Hero />
-        <AssessmentSection />
-      </div>
+  <div class="home-top">
+    <div class="container">
+      <Hero />
+      <TrustSection />
+      <AssessmentSection />
     </div>
   </div>
-  <PainSection />
   <SolutionSection />
   <DashboardSection />
-  <WorkflowSection />
-  <PlatformSection />
+  <CustomerAppSection />
   <AISection />
-  <ScaleSection />
-  <KnowledgeSection posts={posts} />
+  <TestimonialStrip />
+  <FaqSection />
   <CTASection />
   <Footer slot="footer" />
 </BaseLayout>

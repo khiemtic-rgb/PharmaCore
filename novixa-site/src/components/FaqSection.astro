@@ -1,0 +1,38 @@
+---
+const faqs = [
+  {
+    q: 'Novixa phù hợp với nhà thuốc quy mô nào?',
+    a: 'Novixa phù hợp cho nhà thuốc độc lập và chuỗi nhỏ từ 1–20 cửa hàng. Bạn có thể bắt đầu đơn giản và mở rộng dần trên cùng một nền tảng.',
+  },
+  {
+    q: 'Đánh giá miễn phí mất bao lâu?',
+    a: 'Chỉ khoảng 15 phút với 30 câu hỏi. Sau khi hoàn thành, bạn nhận báo cáo PDF và có thể đặt lịch tư vấn cùng chuyên gia.',
+  },
+  {
+    q: 'Triển khai Novixa có phức tạp không?',
+    a: 'Novixa được thiết kế để dễ làm quen. Đội ngũ hỗ trợ đồng hành từ khảo sát, tư vấn đến triển khai theo lộ trình phù hợp nhà thuốc của bạn.',
+  },
+  {
+    q: 'Dữ liệu nhà thuốc có được bảo mật không?',
+    a: 'Thông tin vận hành được bảo vệ theo tiêu chuẩn doanh nghiệp. Novixa chỉ sử dụng dữ liệu để phân tích và tư vấn trong phạm vi bạn đồng ý.',
+  },
+];
+---
+
+<section class="section faq-section" id="faq">
+  <div class="container faq-wrap">
+    <div class="section-heading center compact-heading">
+      <h2>Câu hỏi thường gặp</h2>
+    </div>
+    <div class="faq-list">
+      {
+        faqs.map((item) => (
+          <details class="faq-item">
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>
