@@ -53,15 +53,15 @@
   animation: none !important;
 }
 
-/* ─── Above-the-fold: hero + trust visible together ─── */
+/* ─── Above-the-fold: hero (white) then trust bar (gray) ─── */
 .hp-fold {
-  background: linear-gradient(180deg, #fff 0%, #fff 72%, var(--hp-bg-muted) 72%);
+  background: #fff;
 }
 
 /* ─── Hero ─── */
 .hp-hero-wrap {
-  padding: 20px 0 12px;
-  background: transparent;
+  padding: 20px 0 32px;
+  background: #fff;
 }
 
 .hp-hero {
@@ -198,6 +198,7 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 14px;
+  padding-bottom: 4px;
 }
 
 .hp-tag {
@@ -315,10 +316,11 @@
   overflow: hidden;
 }
 
-/* ─── Trust bar — compact, fully visible below hero ─── */
+/* ─── Trust bar — separate gray band below hero tags ─── */
 .hp-trust {
-  padding: 16px 0 28px;
-  background: transparent;
+  padding: 28px 0 32px;
+  background: var(--hp-bg-muted);
+  border-top: 1px solid var(--hp-border);
 }
 
 .hp-trust__bar {
@@ -437,17 +439,17 @@
   list-style: none;
   margin: 20px 0 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
 }
 
 .hp-health__list li {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  font-size: 14px;
-  line-height: 1.5;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--hp-text);
 }
 
@@ -988,6 +990,10 @@
 
   .hp-health__card {
     padding: 24px 20px;
+  }
+
+  .hp-health__list {
+    grid-template-columns: 1fr;
   }
 
   .hp-trust__bar,
