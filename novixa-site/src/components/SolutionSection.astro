@@ -11,15 +11,15 @@ const modules = [
 
 <section class="hp-modules" id="giai-phap" aria-labelledby="modules-title">
   <div class="container">
-    <div class="hp-section-head hp-reveal">
+    <div class="hp-modules__head">
       <h2 id="modules-title">Một nền tảng.<br />Mọi nghiệp vụ.</h2>
     </div>
 
     <div class="hp-modules__grid">
       {
         modules.map((mod) => (
-          <article class="hp-module-card hp-reveal">
-            <span class:list={['hp-module-card__icon', `hp-module-card__icon--${mod.tone}`]} aria-hidden="true">
+          <article class="hp-module">
+            <span class:list={['hp-module__icon', `hp-module__icon--${mod.tone}`]} aria-hidden="true">
               {mod.icon === 'pos' && (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
                   <rect x="3" y="6" width="18" height="13" rx="2" />
@@ -61,7 +61,7 @@ const modules = [
             </span>
             <h3>{mod.title}</h3>
             <p>{mod.desc}</p>
-            <a class="hp-module-card__link" href="https://survey.novixa.vn">Tìm hiểu thêm →</a>
+            <a class="hp-module__link" href="https://survey.novixa.vn">Tìm hiểu thêm →</a>
           </article>
         ))
       }

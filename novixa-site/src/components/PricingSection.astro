@@ -19,25 +19,25 @@ const plans = [
 ];
 ---
 
-<section class="section pricing-section" id="bang-gia">
+<section class="hp-pricing" id="bang-gia">
   <div class="container">
-    <div class="section-heading center compact-heading">
+    <div class="hp-pricing__head">
       <h2>Bảng giá linh hoạt</h2>
       <p>Bắt đầu với đánh giá miễn phí — nhận tư vấn và báo giá phù hợp quy mô nhà thuốc của bạn.</p>
     </div>
 
-    <div class="pricing-grid">
+    <div class="hp-pricing__grid">
       {
         plans.map((plan) => (
-          <article class:list={['pricing-card', { 'is-featured': plan.featured }]}>
+          <article class:list={['hp-pricing__card', { 'hp-pricing__card--featured': plan.featured }]}>
             <h3>{plan.name}</h3>
-            <p class="pricing-desc">{plan.desc}</p>
+            <p class="hp-pricing__desc">{plan.desc}</p>
             <ul>
               {plan.features.map((f) => (
                 <li>{f}</li>
               ))}
             </ul>
-            <a class="btn btn-assess" href="https://survey.novixa.vn">Nhận tư vấn & báo giá</a>
+            <a class="hp-pricing__btn" href="https://survey.novixa.vn">Nhận tư vấn & báo giá</a>
           </article>
         ))
       }

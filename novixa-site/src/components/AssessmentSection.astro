@@ -1,10 +1,10 @@
 ---
 const steps = [
-  { title: 'Trả lời 30 câu hỏi', icon: 'clipboard' },
-  { title: 'AI phân tích & chấm điểm', icon: 'sparkles' },
-  { title: 'Nhận báo cáo PDF', icon: 'file' },
-  { title: 'Tư vấn 1-1', icon: 'users' },
-  { title: 'Triển khai Novixa', icon: 'rocket' },
+  { title: 'Trả lời 20 câu hỏi', desc: 'Khoảng 15 phút', icon: 'questions' },
+  { title: 'Phân tích & nhận diện', desc: 'AI tự động', icon: 'analysis' },
+  { title: 'Nhận báo cáo PDF', desc: 'Tư vấn chi tiết', icon: 'pdf' },
+  { title: 'Tư vấn 1-1', desc: 'Cùng chuyên gia', icon: 'expert' },
+  { title: 'Triển khai tối ưu', desc: 'Lộ trình rõ ràng', icon: 'novixa' },
 ];
 
 const checklist = [
@@ -26,7 +26,7 @@ const assessmentUrl = 'https://survey.novixa.vn';
 
 <section class="hp-health" id="danh-gia" aria-labelledby="health-title">
   <div class="container">
-    <div class="hp-health__card hp-reveal">
+    <div class="hp-health__card">
       <div class="hp-health__grid">
         <div class="hp-health__content">
           <span class="hp-health__badge">AI HEALTH CHECK</span>
@@ -55,59 +55,52 @@ const assessmentUrl = 'https://survey.novixa.vn';
           </a>
         </div>
 
-        <div class="hp-timeline" aria-label="Quy trình đánh giá AI Health Check">
+        <div class="hp-flow" aria-label="Quy trình đánh giá">
           {
             steps.map((step, i) => (
-              <div class="hp-timeline__step">
-                <div class="hp-timeline__card">
-                  <div class="hp-timeline__icon-wrap">
-                    <span class="hp-timeline__icon" aria-hidden="true">
-                      {step.icon === 'clipboard' && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-                          <rect x="5" y="4" width="14" height="17" rx="2" />
-                          <path d="M9 4V3a1 1 0 011-1h4a1 1 0 011 1v1" />
-                          <path d="M9 10h6M9 14h4" />
-                        </svg>
-                      )}
-                      {step.icon === 'sparkles' && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-                          <path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3z" />
-                          <path d="M5 19l.8 2.4L8 22l-2.2-.7L5 19l-.8-2.3L2 16l2.2-.7L5 13l.8 2.4L8 16l-2.2.7L5 19z" />
-                        </svg>
-                      )}
-                      {step.icon === 'file' && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-                          <path d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" />
-                          <path d="M14 3v5h5" />
-                        </svg>
-                      )}
-                      {step.icon === 'users' && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-                          <circle cx="9" cy="8" r="3" />
-                          <path d="M3 20c0-3 2.7-5 6-5" />
-                          <circle cx="17" cy="9" r="2.5" />
-                          <path d="M14 20c0-2.5 1.8-4 4-4" />
-                        </svg>
-                      )}
-                      {step.icon === 'rocket' && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
-                          <path d="M4.5 16.5c-1.5-1.26-2-5-2-5s3.74-.5 5 2c.71-.84 2.6-2.5 4.5-2.5 0 0 .84 2.5-.5 4.5" />
-                          <path d="M12 15l-3 3 2 2 3-3" />
-                          <path d="M9 18H5v4" />
-                        </svg>
-                      )}
-                    </span>
-                    <span class="hp-timeline__num">{i + 1}</span>
-                  </div>
-                  <strong>{step.title}</strong>
-                </div>
-                {i < steps.length - 1 && (
-                  <span class="hp-timeline__connector" aria-hidden="true">
-                    <svg viewBox="0 0 12 8" fill="none">
-                      <path d="M0 4h8M6 1l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2" />
-                    </svg>
+              <div class="hp-flow__step">
+                <div class="hp-flow__icon-wrap">
+                  <span class:list={['hp-flow__icon', step.icon === 'novixa' && 'hp-flow__icon--novixa']} aria-hidden="true">
+                    {step.icon === 'questions' && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="3" width="14" height="18" rx="2" />
+                        <path d="M9 3v2M15 3v2" />
+                        <path d="M8.5 9.5l1.5 1.5 3-3" />
+                        <path d="M8 14h8M8 17h5" />
+                      </svg>
+                    )}
+                    {step.icon === 'analysis' && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M16 16l4.5 4.5" />
+                        <path d="M8 11h6M11 8v6" />
+                      </svg>
+                    )}
+                    {step.icon === 'pdf' && (
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.75" />
+                        <path d="M14 3v5h5" stroke="currentColor" stroke-width="1.75" />
+                        <rect x="7.5" y="13" width="9" height="4.5" rx="1" fill="#ef4444" />
+                        <text x="12" y="16.2" text-anchor="middle" fill="#fff" font-size="3.2" font-weight="700" font-family="Inter,sans-serif">PDF</text>
+                      </svg>
+                    )}
+                    {step.icon === 'expert' && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="9" r="3" />
+                        <path d="M6 19c0-2.8 2.7-5 6-5s6 2.2 6 5" />
+                        <path d="M4 12.5a8 8 0 0116 0" />
+                        <path d="M6 12.5v1.5a2 2 0 002 2h1" />
+                        <path d="M18 12.5v1.5a2 2 0 01-2 2h-1" />
+                      </svg>
+                    )}
+                    {step.icon === 'novixa' && (
+                      <img src="/images/logo.png" alt="" width="24" height="24" decoding="async" />
+                    )}
                   </span>
-                )}
+                  <span class="hp-flow__num">{i + 1}</span>
+                </div>
+                <span class="hp-flow__title">{step.title}</span>
+                <span class="hp-flow__desc">{step.desc}</span>
               </div>
             ))
           }
@@ -117,8 +110,8 @@ const assessmentUrl = 'https://survey.novixa.vn';
       <div class="hp-health__benefits" aria-label="Lợi ích sau đánh giá">
         {
           benefits.map((b) => (
-            <article class="hp-health-benefit">
-              <span class="hp-health-benefit__icon" aria-hidden="true">
+            <article class="hp-health__benefit">
+              <span class="hp-health__benefit-icon" aria-hidden="true">
                 {b.icon === 'trending' && (
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 17l6-6 4 4 8-10" />

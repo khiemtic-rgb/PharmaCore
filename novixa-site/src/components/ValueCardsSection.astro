@@ -1,19 +1,19 @@
 ---
 const cards = [
   { icon: 'clock', title: '15 phút', desc: 'Hoàn thành đánh giá' },
-  { icon: 'clipboard', title: '30 câu hỏi', desc: 'Đánh giá toàn diện' },
+  { icon: 'clipboard', title: '20 câu hỏi', desc: 'Đánh giá toàn diện' },
   { icon: 'pdf', title: 'Báo cáo PDF', desc: 'Tư vấn chuyên sâu' },
   { icon: 'message', title: 'Tư vấn miễn phí', desc: 'Cùng chuyên gia Novixa' },
 ];
 ---
 
-<section class="hp-trust-strip" aria-label="Thông tin đánh giá nhanh">
+<section class="hp-trust" aria-label="Thông tin đánh giá nhanh">
   <div class="container">
-    <div class="hp-trust-bar hp-reveal">
+    <div class="hp-trust__bar">
       {
-        cards.map((card, i) => (
-          <article class="hp-trust-item">
-            <span class="hp-trust-item__icon" aria-hidden="true">
+        cards.map((card) => (
+          <article class="hp-trust__item">
+            <span class="hp-trust__icon" aria-hidden="true">
               {card.icon === 'clock' && (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
                   <circle cx="12" cy="12" r="9" />

@@ -1,12 +1,18 @@
 ---
-const faqs = [
+interface Props {
+  home?: boolean;
+}
+
+const { home = false } = Astro.props;
+
+const allFaqs = [
   {
     q: 'Novixa phù hợp với nhà thuốc quy mô nào?',
     a: 'Novixa phù hợp cho nhà thuốc độc lập và chuỗi nhỏ từ 1–20 cửa hàng. Bạn có thể bắt đầu đơn giản và mở rộng dần trên cùng một nền tảng.',
   },
   {
     q: 'Đánh giá miễn phí mất bao lâu?',
-    a: 'Chỉ khoảng 15 phút với 30 câu hỏi. Sau khi hoàn thành, bạn nhận báo cáo PDF và có thể đặt lịch tư vấn cùng chuyên gia.',
+    a: 'Chỉ khoảng 15 phút với 20 câu hỏi. Sau khi hoàn thành, bạn nhận báo cáo PDF và có thể đặt lịch tư vấn cùng chuyên gia.',
   },
   {
     q: 'Triển khai Novixa có phức tạp không?',
@@ -17,22 +23,46 @@ const faqs = [
     a: 'Thông tin vận hành được bảo vệ theo tiêu chuẩn doanh nghiệp. Novixa chỉ sử dụng dữ liệu để phân tích và tư vấn trong phạm vi bạn đồng ý.',
   },
 ];
+
+const faqs = home ? allFaqs.slice(0, 2) : allFaqs;
 ---
 
-<section class="section faq-section" id="faq">
-  <div class="container faq-wrap">
-    <div class="section-heading center compact-heading">
-      <h2>Câu hỏi thường gặp</h2>
-    </div>
-    <div class="faq-list">
-      {
-        faqs.map((item) => (
-          <details class="faq-item">
-            <summary>{item.q}</summary>
-            <p>{item.a}</p>
-          </details>
-        ))
-      }
-    </div>
-  </div>
-</section>
+{
+  home ? (
+    <section class="hp-faq" id="faq">
+      <div class="container">
+        <div class="hp-faq__head">
+          <h2>Câu hỏi thường gặp</h2>
+        </div>
+        <div class="hp-faq__list">
+          {
+            faqs.map((item) => (
+              <details class="hp-faq__item">
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+  ) : (
+    <section class="section faq-section" id="faq">
+      <div class="container faq-wrap">
+        <div class="section-heading center compact-heading">
+          <h2>Câu hỏi thường gặp</h2>
+        </div>
+        <div class="faq-list">
+          {
+            faqs.map((item) => (
+              <details class="faq-item">
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+  )
+}
