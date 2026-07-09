@@ -1495,12 +1495,13 @@ main {
   z-index: 0;
 }
 
-.hero .container.hero-grid {
+.hero .hero-grid {
   position: relative;
   z-index: 1;
 }
 
 .hero-grid {
+  display: grid;
   grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
   gap: clamp(0.75rem, 1.8vw, 1.25rem);
   align-items: center;
@@ -2279,42 +2280,63 @@ main {
 /* --- Home above-fold (hero + assessment = 1 screen) --- */
 .home-fold {
   --header-h: 66px;
-  --fold-design-h: 920px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  --fold-design-h: 900px;
   height: calc(100svh - var(--header-h));
   max-height: calc(100svh - var(--header-h));
   overflow: hidden;
-  background: #fff;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(24, 183, 106, 0.08), transparent 24%),
+    radial-gradient(circle at 88% 72%, rgba(15, 127, 208, 0.07), transparent 28%),
+    #fff;
 }
 
-.home-fold-inner {
-  width: min(100%, var(--max-width));
-  margin-inline: auto;
-  padding-inline: 0.75rem;
-  transform: scale(min(1, calc((100svh - var(--header-h)) / var(--fold-design-h))));
-  transform-origin: top center;
+.home-fold-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-block: 0.35rem 0.25rem;
 }
 
-.home-fold-inner > .hero {
-  margin-top: calc(-1 * var(--header-h));
-}
-
-.hero {
-  margin-top: -66px;
-  padding: calc(66px + 0.55rem) 0 0.25rem;
-  position: relative;
-  background: #fff;
+.home-fold-stage {
+  --fold-scale: min(1, calc((100svh - var(--header-h) - 16px) / var(--fold-design-h)));
+  width: 100%;
+  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(0.35rem, 0.9svh, 0.55rem);
+  transform: scale(var(--fold-scale));
+  transform-origin: bottom center;
 }
 
-.home-fold-inner > .hero {
-  margin-top: calc(-1 * var(--header-h));
+.home-fold-stage .hero {
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.hero .container.hero-grid {
-  align-content: center;
+.home-fold-stage .hero-grid {
+  width: 100%;
+}
+
+.home-fold-stage .hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: clamp(0.75rem, 1.8vw, 1.25rem);
+  align-items: center;
+}
+
+.home-fold-stage .assessment-section {
+  padding: 0;
+  background: transparent;
+  flex-shrink: 0;
 }
 
 /* --- Green CTA + assessment button --- */
@@ -2705,9 +2727,9 @@ main {
 
 .assessment-card {
   border: 1px solid #e6eef7;
-  border-radius: 16px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 8px 28px rgba(15, 76, 129, 0.07);
+  box-shadow: 0 12px 32px rgba(15, 76, 129, 0.08);
   overflow: hidden;
 }
 
@@ -2746,6 +2768,9 @@ main {
 }
 
 .check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 16px;
   height: 16px;
   flex-shrink: 0;
@@ -2754,10 +2779,16 @@ main {
   color: var(--color-green);
 }
 
+.check-icon svg {
+  width: 10px;
+  height: 10px;
+}
+
 .assessment-cta {
-  min-height: 34px;
-  padding: 0 0.85rem;
-  font-size: 0.68rem;
+  min-height: 38px;
+  padding: 0 0.95rem;
+  font-size: 0.72rem;
+  border-radius: 10px;
 }
 
 .assessment-steps {
@@ -2810,13 +2841,20 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
-  background: #e9f9f1;
+  background: #fff;
   color: #18b76a;
-  border: 1.5px solid rgba(24, 183, 106, 0.18);
+  border: 1.5px solid rgba(24, 183, 106, 0.22);
+  box-shadow: 0 4px 12px rgba(15, 76, 129, 0.06);
 }
+
+.step-icon--quiz { background: #e9f9f1; color: #18b76a; }
+.step-icon--chart { background: #e8f2fc; color: #0f7fd0; }
+.step-icon--pdf { background: #fff3e6; color: #f59e0b; }
+.step-icon--consult { background: #f0ebfc; color: #8b5cf6; }
+.step-icon--launch { background: #fff; border-color: rgba(15, 127, 208, 0.18); }
 
 .step-icon svg {
   width: 14px;
@@ -2842,11 +2880,16 @@ main {
   border-top: 1.5px dashed #c8d9ea;
 }
 
+.feature-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
 .assessment-features {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   border-top: 1px solid #e6eef7;
-  background: #f7fbff;
+  background: linear-gradient(180deg, #f9fcff 0%, #f3f8fd 100%);
 }
 
 .assessment-feature {
@@ -2962,9 +3005,20 @@ main {
     overflow: visible;
   }
 
-  .home-fold-inner {
+  .home-fold-shell {
+    height: auto;
+    padding-block: 0;
+  }
+
+  .home-fold-stage {
     transform: none;
-    padding-inline: 0;
+    gap: 1rem;
+  }
+
+  .home-fold-stage .hero {
+    margin-top: calc(-1 * var(--header-h));
+    padding: calc(var(--header-h) + 0.55rem) 0 0.25rem;
+    background: #fff;
   }
 
   .assessment-checklist {
