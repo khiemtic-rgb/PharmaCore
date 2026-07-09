@@ -1,17 +1,17 @@
 ---
+const steps = [
+  { title: 'Trả lời 30 câu hỏi', icon: 'clipboard' },
+  { title: 'AI phân tích & chấm điểm', icon: 'sparkles' },
+  { title: 'Nhận báo cáo PDF', icon: 'file' },
+  { title: 'Tư vấn 1-1', icon: 'users' },
+  { title: 'Triển khai Novixa', icon: 'rocket' },
+];
+
 const checklist = [
   'Biết điểm mạnh và điểm yếu',
   'Phát hiện vấn đề làm giảm doanh thu',
   'Xác định rủi ro tồn kho & vận hành',
   'Nhận lộ trình cải thiện',
-];
-
-const steps = [
-  'Trả lời 30 câu hỏi',
-  'AI phân tích & chấm điểm',
-  'Nhận báo cáo PDF',
-  'Tư vấn 1-1',
-  'Triển khai Novixa',
 ];
 
 const benefits = [
@@ -38,7 +38,7 @@ const assessmentUrl = 'https://survey.novixa.vn';
               checklist.map((item) => (
                 <li>
                   <span class="hp-health__check" aria-hidden="true">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M3 8.5L6.5 12L13 4" />
                     </svg>
                   </span>
@@ -49,8 +49,8 @@ const assessmentUrl = 'https://survey.novixa.vn';
           </ul>
           <a class="hp-health__cta" href={assessmentUrl}>
             Bắt đầu đánh giá ngay
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </a>
         </div>
@@ -60,10 +60,54 @@ const assessmentUrl = 'https://survey.novixa.vn';
             steps.map((step, i) => (
               <div class="hp-timeline__step">
                 <div class="hp-timeline__card">
-                  <span class="hp-timeline__num">{i + 1}</span>
-                  <strong>{step}</strong>
+                  <div class="hp-timeline__icon-wrap">
+                    <span class="hp-timeline__icon" aria-hidden="true">
+                      {step.icon === 'clipboard' && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+                          <rect x="5" y="4" width="14" height="17" rx="2" />
+                          <path d="M9 4V3a1 1 0 011-1h4a1 1 0 011 1v1" />
+                          <path d="M9 10h6M9 14h4" />
+                        </svg>
+                      )}
+                      {step.icon === 'sparkles' && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+                          <path d="M12 3l1.2 3.6L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3z" />
+                          <path d="M5 19l.8 2.4L8 22l-2.2-.7L5 19l-.8-2.3L2 16l2.2-.7L5 13l.8 2.4L8 16l-2.2.7L5 19z" />
+                        </svg>
+                      )}
+                      {step.icon === 'file' && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+                          <path d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" />
+                          <path d="M14 3v5h5" />
+                        </svg>
+                      )}
+                      {step.icon === 'users' && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+                          <circle cx="9" cy="8" r="3" />
+                          <path d="M3 20c0-3 2.7-5 6-5" />
+                          <circle cx="17" cy="9" r="2.5" />
+                          <path d="M14 20c0-2.5 1.8-4 4-4" />
+                        </svg>
+                      )}
+                      {step.icon === 'rocket' && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+                          <path d="M4.5 16.5c-1.5-1.26-2-5-2-5s3.74-.5 5 2c.71-.84 2.6-2.5 4.5-2.5 0 0 .84 2.5-.5 4.5" />
+                          <path d="M12 15l-3 3 2 2 3-3" />
+                          <path d="M9 18H5v4" />
+                        </svg>
+                      )}
+                    </span>
+                    <span class="hp-timeline__num">{i + 1}</span>
+                  </div>
+                  <strong>{step.title}</strong>
                 </div>
-                {i < steps.length - 1 && <span class="hp-timeline__connector" aria-hidden="true" />}
+                {i < steps.length - 1 && (
+                  <span class="hp-timeline__connector" aria-hidden="true">
+                    <svg viewBox="0 0 12 8" fill="none">
+                      <path d="M0 4h8M6 1l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 2" />
+                    </svg>
+                  </span>
+                )}
               </div>
             ))
           }
@@ -76,24 +120,24 @@ const assessmentUrl = 'https://survey.novixa.vn';
             <article class="hp-health-benefit">
               <span class="hp-health-benefit__icon" aria-hidden="true">
                 {b.icon === 'trending' && (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 17l6-6 4 4 8-10" />
                     <path d="M14 5h7v7" />
                   </svg>
                 )}
                 {b.icon === 'shield' && (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <path d="M12 3l8 4v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7l8-4z" />
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
                 )}
                 {b.icon === 'clock' && (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
                     <circle cx="12" cy="12" r="9" />
                     <path d="M12 7v5l3 2" />
                   </svg>
                 )}
                 {b.icon === 'chart' && (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
                     <path d="M4 19V5" />
                     <path d="M4 19h16" />
                     <rect x="7" y="10" width="3" height="6" rx="0.5" />

@@ -6,8 +6,8 @@ const base = '/vi';
 const path = Astro.url.pathname;
 
 const links = [
-  { href: `${base}#giai-phap`, label: m.nav.platform },
-  { href: `${base}#giai-phap`, label: m.nav.solutions },
+  { href: `${base}#giai-phap`, label: m.nav.platform, dropdown: true },
+  { href: `${base}#giai-phap`, label: m.nav.solutions, dropdown: true },
   { href: `${base}#danh-gia`, label: m.nav.customers },
   { href: `${base}/tin-tuc`, label: m.nav.news, active: path.startsWith(`${base}/tin-tuc`) },
   { href: `${base}/ve-chung-toi`, label: m.nav.about, active: path.startsWith(`${base}/ve-chung-toi`) },
@@ -44,6 +44,7 @@ const links = [
         links.map((link) => (
           <a href={link.href} class:list={{ active: link.active }}>
             {link.label}
+            {link.dropdown && <span class="nav-chevron" aria-hidden="true">▾</span>}
           </a>
         ))
       }
@@ -188,10 +189,17 @@ const links = [
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2rem;
+    gap: 2.25rem;
     font-size: 0.875rem;
     font-weight: 600;
     grid-column: 2;
+  }
+
+  .nav-chevron {
+    margin-left: 0.2rem;
+    color: var(--hp-primary, #16c784);
+    font-size: 0.65rem;
+    vertical-align: middle;
   }
 
   .nav a {
@@ -241,17 +249,17 @@ const links = [
     min-height: 40px;
     padding: 0 1.1rem;
     border-radius: 10px;
-    background: #18c37e;
+    background: #16c784;
     color: #fff !important;
     font-size: 0.875rem;
     font-weight: 600;
     text-decoration: none;
-    box-shadow: 0 6px 20px rgba(24, 195, 126, 0.25);
+    box-shadow: 0 6px 20px rgba(22, 199, 132, 0.25);
     transition: background 300ms ease, transform 300ms ease;
   }
 
   .nav-cta:hover {
-    background: #14a86d;
+    background: #13b374;
     transform: scale(1.02);
     text-decoration: none;
   }
