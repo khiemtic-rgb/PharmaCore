@@ -1,7 +1,7 @@
 ---
 import DashboardPreview from './DashboardPreview.astro';
 
-const chips = [
+const tags = [
   { label: 'POS', icon: 'pos' },
   { label: 'Kho FEFO', icon: 'warehouse' },
   { label: 'CRM', icon: 'customers' },
@@ -12,90 +12,88 @@ const chips = [
 const assessmentUrl = 'https://survey.novixa.vn';
 ---
 
-<section class="hero" id="hero">
-  <div class="hero-glow hero-glow--tl" aria-hidden="true"></div>
-  <div class="hero-glow hero-glow--br" aria-hidden="true"></div>
-  <div class="hero-grid">
-    <div class="hero-content motion-in">
-      <p class="eyebrow">Giải pháp quản trị nhà thuốc toàn diện</p>
-      <h1>
-        Vận hành nhà thuốc<br />
-        <span>thông minh hơn</span><br />
-        mỗi ngày.
-      </h1>
-      <p class="hero-lead">
-        Novixa giúp bạn kiểm soát tồn kho, tăng doanh thu, giữ chân khách hàng
-        và vận hành nhà thuốc hiệu quả hơn trên một nền tảng duy nhất.
-      </p>
-      <div class="hero-actions">
-        <a class="btn btn-green btn-hero-primary" href={assessmentUrl}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
-            <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-          <span class="btn-hero-text">
-            <strong>Đánh giá miễn phí</strong>
-            <small>Nhận báo cáo tư vấn chi tiết</small>
-          </span>
-        </a>
-        <a class="btn btn-demo-outline btn-hero-secondary" href="/vi/lien-he">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8" />
-            <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-          Đăng ký Demo
-        </a>
-      </div>
-      <div class="hero-chips" aria-label="Các module chính của Novixa">
-        {
-          chips.map((chip) => (
-            <span class="hero-chip">
-              <span class={`hero-chip-icon hero-chip-icon--${chip.icon}`} aria-hidden="true">
-                {chip.icon === 'pos' && (
-                  <svg viewBox="0 0 20 20" fill="none">
-                    <rect x="3" y="5" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-                    <path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                  </svg>
-                )}
-                {chip.icon === 'warehouse' && (
-                  <svg viewBox="0 0 20 20" fill="none">
-                    <path d="M3 8l7-4 7 4v8H3V8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                    <path d="M8 16v-5h4v5" stroke="currentColor" stroke-width="1.5" />
-                  </svg>
-                )}
-                {chip.icon === 'customers' && (
-                  <svg viewBox="0 0 20 20" fill="none">
-                    <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5" />
-                    <path d="M4 16c0-3 2.7-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                  </svg>
-                )}
-                {chip.icon === 'reports' && (
-                  <svg viewBox="0 0 20 20" fill="none">
-                    <path d="M4 16V8l4-2 4 3 4-2v9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                  </svg>
-                )}
-                {chip.icon === 'app' && (
-                  <svg viewBox="0 0 20 20" fill="none">
-                    <rect x="6" y="2" width="8" height="16" rx="2" stroke="currentColor" stroke-width="1.5" />
-                    <circle cx="10" cy="15" r="0.8" fill="currentColor" />
-                  </svg>
-                )}
-              </span>
-              {chip.label}
-            </span>
-          ))
-        }
-      </div>
+<section class="hp-hero" id="hero" aria-labelledby="hero-title">
+  <div class="hp-hero__content hp-reveal">
+    <p class="hp-hero__badge">Giải pháp quản trị nhà thuốc toàn diện</p>
+    <h1 class="hp-hero__title" id="hero-title">
+      Vận hành nhà thuốc<br />
+      <span>thông minh hơn</span><br />
+      mỗi ngày.
+    </h1>
+    <p class="hp-hero__desc">
+      Novixa giúp bạn kiểm soát tồn kho, tăng doanh thu, giữ chân khách hàng
+      và vận hành nhà thuốc hiệu quả hơn trên một nền tảng duy nhất.
+    </p>
+    <div class="hp-hero__actions">
+      <a class="hp-btn hp-btn--primary" href={assessmentUrl}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke-linecap="round" />
+        </svg>
+        <span class="hp-btn__stack">
+          <strong>Đánh giá miễn phí</strong>
+          <small>Nhận báo cáo tư vấn chi tiết</small>
+        </span>
+      </a>
+      <a class="hp-btn hp-btn--secondary" href="/vi/lien-he">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round" />
+        </svg>
+        <span class="hp-btn__stack">
+          <strong>Đăng ký Demo</strong>
+          <small>Trải nghiệm nền tảng</small>
+        </span>
+      </a>
     </div>
+    <div class="hp-hero__tags" aria-label="Các module chính">
+      {
+        tags.map((tag) => (
+          <span class="hp-tag">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              {tag.icon === 'pos' && (
+                <>
+                  <rect x="3" y="5" width="14" height="10" rx="1.5" />
+                  <path d="M7 9h6M7 12h4" stroke-linecap="round" />
+                </>
+              )}
+              {tag.icon === 'warehouse' && (
+                <>
+                  <path d="M3 8l7-4 7 4v8H3V8z" stroke-linejoin="round" />
+                  <path d="M8 16v-5h4v5" />
+                </>
+              )}
+              {tag.icon === 'customers' && (
+                <>
+                  <circle cx="10" cy="7" r="3" />
+                  <path d="M4 16c0-3 2.7-5 6-5s6 2 6 5" stroke-linecap="round" />
+                </>
+              )}
+              {tag.icon === 'reports' && (
+                <path d="M4 16V8l4-2 4 3 4-2v9" stroke-linejoin="round" />
+              )}
+              {tag.icon === 'app' && (
+                <>
+                  <rect x="6" y="2" width="8" height="16" rx="2" />
+                  <circle cx="10" cy="15" r="0.8" fill="currentColor" stroke="none" />
+                </>
+              )}
+            </svg>
+            {tag.label}
+          </span>
+        ))
+      }
+    </div>
+  </div>
 
-    <div class="hero-visual motion-in motion-delay">
-      <div class="hero-mockup-wrap" aria-label="Dashboard Novixa">
-        <DashboardPreview compact variant="hero" />
-        <div class="phone-frame" aria-label="Novixa trên điện thoại">
-          <div class="phone-notch"></div>
-          <div class="phone-screen">
-            <DashboardPreview compact variant="phone" />
-          </div>
+  <div class="hp-hero__visual hp-reveal" aria-hidden="true">
+    <div class="hp-hero__mockup">
+      <DashboardPreview compact variant="hero" />
+      <div class="hp-hero__phone">
+        <div class="hp-hero__phone-notch"></div>
+        <div class="hp-hero__phone-screen">
+          <DashboardPreview compact variant="phone" />
         </div>
       </div>
     </div>

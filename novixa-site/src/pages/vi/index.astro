@@ -3,17 +3,15 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Header from '../../components/Header.astro';
 import Footer from '../../components/Footer.astro';
 import Hero from '../../components/Hero.astro';
+import ValueCardsSection from '../../components/ValueCardsSection.astro';
 import AssessmentSection from '../../components/AssessmentSection.astro';
-import BenefitsSection from '../../components/BenefitsSection.astro';
-import DashboardSection from '../../components/DashboardSection.astro';
 import SolutionSection from '../../components/SolutionSection.astro';
-import CustomerAppSection from '../../components/CustomerAppSection.astro';
-import AISection from '../../components/AISection.astro';
 import PricingSection from '../../components/PricingSection.astro';
 import FaqSection from '../../components/FaqSection.astro';
 import CTASection from '../../components/CTASection.astro';
 import { t } from '../../i18n';
 import '../../styles/global.css';
+import '../../styles/homepage.css';
 
 const m = t('vi');
 ---
@@ -24,19 +22,37 @@ const m = t('vi');
   canonicalPath="/vi"
 >
   <Header slot="header" />
-  <div class="home-fold">
-    <div class="container home-fold-inner">
-      <Hero />
-      <AssessmentSection />
+
+  <div class="home-page">
+    <div class="hp-hero-block">
+      <div class="container">
+        <Hero />
+        <ValueCardsSection />
+      </div>
     </div>
+
+    <AssessmentSection />
+    <SolutionSection />
+    <PricingSection />
+    <FaqSection />
+    <CTASection />
   </div>
-  <BenefitsSection />
-  <DashboardSection />
-  <SolutionSection />
-  <CustomerAppSection />
-  <AISection />
-  <PricingSection />
-  <FaqSection />
-  <CTASection />
+
   <Footer slot="footer" />
 </BaseLayout>
+
+<script>
+  const reveals = document.querySelectorAll('.hp-reveal');
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+  );
+  reveals.forEach((el) => observer.observe(el));
+</script>

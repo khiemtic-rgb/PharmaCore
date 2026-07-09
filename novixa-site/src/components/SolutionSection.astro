@@ -1,28 +1,91 @@
 ---
 const modules = [
-  { title: 'POS', icon: '▦', lines: ['Bán hàng nhanh.', 'Đồng bộ doanh thu.'] },
-  { title: 'Kho', icon: '◆', lines: ['Theo dõi theo lô.', 'Cảnh báo cận date.'] },
-  { title: 'CRM', icon: '●●', lines: ['Chăm sóc khách hàng.', 'Tăng tỷ lệ quay lại.'] },
-  { title: 'Dashboard', icon: '▥', lines: ['Theo dõi mọi chỉ số.', 'Theo thời gian thực.'] },
-  { title: 'App khách hàng', icon: '▣', lines: ['Đặt thuốc & tích điểm.', 'Giữ chân khách hàng.'] },
-  { title: 'AI Copilot', icon: '✦', lines: ['Gợi ý nhập hàng.', 'Phân tích thông minh.'] },
+  {
+    title: 'POS bán hàng',
+    desc: 'Bán hàng nhanh tại quầy, đồng bộ doanh thu và tồn kho theo thời gian thực.',
+    icon: 'pos',
+  },
+  {
+    title: 'Kho FEFO',
+    desc: 'Theo dõi lô, hạn dùng và cảnh báo hàng cận date — giảm thất thoát tồn kho.',
+    icon: 'warehouse',
+  },
+  {
+    title: 'CRM khách hàng',
+    desc: 'Chăm sóc khách hàng, tích điểm và tăng tỷ lệ quay lại mua thuốc.',
+    icon: 'crm',
+  },
+  {
+    title: 'Dashboard',
+    desc: 'Theo dõi doanh thu, lợi nhuận và KPI vận hành trên một màn hình.',
+    icon: 'dashboard',
+  },
+  {
+    title: 'App khách hàng',
+    desc: 'Đặt thuốc, nhắc uống thuốc và tích điểm — giữ chân khách hàng trung thành.',
+    icon: 'app',
+  },
+  {
+    title: 'AI Copilot',
+    desc: 'Gợi ý nhập hàng, phân tích xu hướng và hỗ trợ ra quyết định vận hành.',
+    icon: 'ai',
+  },
 ];
 ---
 
-<section class="section solution-section" id="giai-phap">
+<section class="hp-modules" id="giai-phap" aria-labelledby="modules-title">
   <div class="container">
-    <div class="section-heading center compact-heading">
-      <p class="eyebrow">Modules</p>
-      <h2>Một nền tảng. Mọi nghiệp vụ.</h2>
+    <div class="hp-section-head hp-reveal">
+      <h2 id="modules-title">Một nền tảng.<br />Mọi nghiệp vụ.</h2>
     </div>
 
-    <div class="card-grid solution-grid modules-grid">
+    <div class="hp-modules__grid">
       {
-        modules.map((module) => (
-          <article class="card solution-card module-card">
-            <div class="module-icon">{module.icon}</div>
-            <h3>{module.title}</h3>
-            {module.lines.map((line) => <p>{line}</p>)}
+        modules.map((mod) => (
+          <article class="hp-module-card hp-reveal">
+            <span class="hp-module-card__icon" aria-hidden="true">
+              {mod.icon === 'pos' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <rect x="3" y="6" width="18" height="13" rx="2" />
+                  <path d="M7 11h10M7 15h6" />
+                </svg>
+              )}
+              {mod.icon === 'warehouse' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M3 9l9-5 9 5v11H3V9z" stroke-linejoin="round" />
+                  <path d="M9 20v-6h6v6" />
+                </svg>
+              )}
+              {mod.icon === 'crm' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+              )}
+              {mod.icon === 'dashboard' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <rect x="3" y="3" width="7" height="9" rx="1" />
+                  <rect x="14" y="3" width="7" height="5" rx="1" />
+                  <rect x="14" y="12" width="7" height="9" rx="1" />
+                  <rect x="3" y="16" width="7" height="5" rx="1" />
+                </svg>
+              )}
+              {mod.icon === 'app' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <rect x="7" y="2" width="10" height="20" rx="2" />
+                  <circle cx="12" cy="18" r="0.5" fill="currentColor" />
+                </svg>
+              )}
+              {mod.icon === 'ai' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+                  <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
+                </svg>
+              )}
+            </span>
+            <h3>{mod.title}</h3>
+            <p>{mod.desc}</p>
+            <a class="hp-module-card__link" href="https://survey.novixa.vn">Tìm hiểu thêm →</a>
           </article>
         ))
       }
