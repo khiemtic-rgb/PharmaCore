@@ -4,5 +4,11 @@ export const DEFAULT_OG_IMAGE = '/og-novixa.svg';
 
 export function absoluteUrl(path: string): string {
   if (path.startsWith('http')) return path;
-  return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  const withSlash = path.startsWith('/') ? path : `/${path}`;
+  // Canonicals must match Cloudflare Pages live URLs (trailing slash).
+  const normalized =
+    withSlash === '/' || withSlash.endsWith('/') || withSlash.includes('.')
+      ? withSlash
+      : `${withSlash}/`;
+  return `${SITE_URL}${normalized}`;
 }
