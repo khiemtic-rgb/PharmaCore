@@ -4,6 +4,10 @@ export const DEFAULT_TENANT_CODE =
 
 export const TENANT_CODE_STORAGE_KEY = 'novixa_customer_tenant_code';
 
+export function isTenantCodeLocked(): boolean {
+  return DEFAULT_TENANT_CODE.length > 0;
+}
+
 export function loadStoredTenantCode(): string {
   if (typeof window === 'undefined') return DEFAULT_TENANT_CODE;
   return window.localStorage.getItem(TENANT_CODE_STORAGE_KEY)?.trim() || DEFAULT_TENANT_CODE;

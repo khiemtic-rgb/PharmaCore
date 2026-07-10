@@ -7,10 +7,15 @@
   "quickActions": {
     "title": "Quick actions",
     "pos": "POS",
+    "posStaffHint": "Staff POS: open pos.novixa.vn",
     "procurement": "Procurement",
     "receivables": "Customer AR",
     "lowStock": "Low stock",
     "appDrafts": "App orders"
+  },
+  "workspaceHint": {
+    "title": "Two Novixa workspaces",
+    "description": "This site (admin.novixa.vn) is for management — catalog, inventory, receivables, reports. Counter staff use pos.novixa.vn with the same store code and login."
   },
   "hero": {
     "weekRevenue": "7-day revenue",
@@ -75,12 +80,12 @@
       "title": "Near expiry ({{days}} days)"
     },
     "lowStockProducts": {
-      "title": "Low-stock products",
-      "hint": "By product / category / default threshold"
+      "title": "Low-stock SKUs",
+      "hint": "Product × warehouse below threshold (not batch count)"
     },
     "lowStockBatches": {
-      "title": "Low-stock batches (≤10)",
-      "hint": "Batches with stock but low quantity"
+      "title": "Low-stock batches",
+      "hint": "Individual batches with low on-hand qty"
     },
     "pendingPoReceipt": {
       "title": "POs pending receipt"

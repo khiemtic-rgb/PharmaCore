@@ -20,14 +20,14 @@ export function InventoryLayout() {
 
   const tabs = useMemo(
     () => [
+      { key: 'stock', label: t('stock'), path: '/inventory/stock', icon: <DatabaseOutlined /> },
+      { key: 'low-stock', label: t('lowStock'), path: '/inventory/low-stock', icon: <WarningOutlined /> },
       {
         key: 'opening',
         label: t('opening'),
         path: '/inventory/opening-balance',
         icon: <ImportOutlined />,
       },
-      { key: 'stock', label: t('stock'), path: '/inventory/stock', icon: <DatabaseOutlined /> },
-      { key: 'low-stock', label: t('lowStock'), path: '/inventory/low-stock', icon: <WarningOutlined /> },
       { key: 'gpp-checklist', label: t('gppChecklist'), path: '/inventory/gpp-checklist', icon: <CheckSquareOutlined /> },
       { key: 'transfers', label: t('transfers'), path: '/inventory/transfers', icon: <SwapOutlined /> },
       { key: 'adjustments', label: t('adjustments'), path: '/inventory/adjustments', icon: <AuditOutlined /> },
@@ -39,11 +39,11 @@ export function InventoryLayout() {
 
   useEffect(() => {
     if (location.pathname === '/inventory' || location.pathname === '/inventory/') {
-      navigate('/inventory/opening-balance', { replace: true });
+      navigate('/inventory/stock', { replace: true });
     }
   }, [location.pathname, navigate]);
 
-  const activeKey = tabs.find((tab) => location.pathname.startsWith(tab.path))?.key ?? 'opening';
+  const activeKey = tabs.find((tab) => location.pathname.startsWith(tab.path))?.key ?? 'stock';
 
   useRegisterSimpleModuleSubnav(tabs, activeKey, navigate);
 

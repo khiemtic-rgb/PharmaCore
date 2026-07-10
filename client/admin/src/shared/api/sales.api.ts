@@ -26,11 +26,14 @@ import type {
   SalesShiftListItem,
   SalesShiftSummary,
   SalesPaymentLine,
+  TenantRxSettings,
   CustomerPaymentListFilters,
   CustomerPaymentListItem,
   CustomerReceivablesDetail,
   CustomerReceivablesRow,
 } from '@/shared/api/sales.types';
+
+export type { TenantRxSettings } from '@/shared/api/sales.types';
 
 function normalizeSalesOrderListItem(row: Record<string, unknown>): SalesOrderListItem {
   return {
@@ -200,6 +203,7 @@ function normalizePosProductLookup(data: Record<string, unknown>): PosProductLoo
     conversionFactor: Number(data.conversionFactor ?? data.ConversionFactor ?? 1),
     unitPrice: Number(data.unitPrice ?? data.UnitPrice ?? 0),
     stockAvailable: Number(data.stockAvailable ?? data.StockAvailable ?? 0),
+    dispensingClass: String(data.dispensingClass ?? data.DispensingClass ?? 'otc'),
     batchHints: rawHints?.map((row) => normalizePosBatchHint(row)),
     stockSourceLabel: String(
       data.stockSourceLabel ?? data.StockSourceLabel ?? salesT()('pos.allocation.stockSourceSystem'),
@@ -362,6 +366,35 @@ export async function updateBatchModeSettings(
   return String(data.batchMode ?? data.BatchMode ?? batchMode) as TenantBatchModeValue;
 }
 
+export async function fetchRxSettings(): Promise<TenantRxSettings> {
+  const { data } = await http.get<Record<string, unknown>>('/pharmacy/rx/settings');
+  return {
+    enforcementMode: normalizeRxEnforcementMode(data.enforcementMode ?? data.EnforcementMode),
+    posBlockedAudit: Boolean(data.posBlockedAudit ?? data.PosBlockedAudit ?? true),
+  };
+}
+
+export async function updateRxSettings(settings: TenantRxSettings): Promise<TenantRxSettings> {
+  const { data } = await http.put<Record<string, unknown>>('/pharmacy/rx/settings', {
+    enforcementMode: settings.enforcementMode,
+    posBlockedAudit: settings.posBlockedAudit,
+  });
+  return {
+    enforcementMode: normalizeRxEnforcementMode(data.enforcementMode ?? data.EnforcementMode),
+    posBlockedAudit: Boolean(data.posBlockedAudit ?? data.PosBlockedAudit ?? settings.posBlockedAudit),
+  };
+}
+
+export async function reportRxPosBlock(productId: string, warehouseId: string): Promise<void> {
+  await http.post('/pharmacy/rx/pos-block', { productId, warehouseId });
+}
+
+function normalizeRxEnforcementMode(value: unknown): TenantRxSettings['enforcementMode'] {
+  const mode = String(value ?? 'off').toLowerCase();
+  if (mode === 'strict' || mode === 'warn') return mode;
+  return 'off';
+}
+
 function normalizeCustomerAppSettings(row: Record<string, unknown>): CustomerAppStoreSettings {
   return {
     appName: String(row.appName ?? row.AppName ?? ''),
@@ -434,7 +467,9 @@ export async function fetchSalesOrder(id: string): Promise<SalesOrderDetail> {
 export type SaleLinePayload = Required<
   Pick<CreateSaleLineRequest, 'productId' | 'productUnitId' | 'quantity'>
 > &
-  Pick<CreateSaleLineRequest, 'batchNumber' | 'discountType' | 'discountValue'>;
+  Pick<CreateSaleLineRequest, 'batchNumber' | 'discountType' | 'discountValue'> & {
+    prescriptionLineId?: string;
+  };
 
 type CreateSalePayload = Pick<
   CreateSaleRequest,
@@ -450,6 +485,7 @@ type CreateSalePayload = Pick<
   customerVoucherId?: string;
   orderReminderLabel?: string | null;
   orderReminderDaysSupply?: number;
+  prescriptionId?: string;
 };
 
 export type CompleteDraftSaleOptions = CompleteDraftSaleRequest & {
@@ -457,6 +493,7 @@ export type CompleteDraftSaleOptions = CompleteDraftSaleRequest & {
   items?: SaleLinePayload[];
   orderReminderLabel?: string | null;
   orderReminderDaysSupply?: number;
+  prescriptionId?: string;
 };
 
 export function normalizePosCustomerLoyalty(row: Record<string, unknown>): PosCustomerLoyalty {
@@ -535,6 +572,7 @@ export async function completeDraftSale(
       ? { loyaltyDiscountAmount: options.loyaltyDiscountAmount }
       : {}),
     ...(options?.customerVoucherId ? { customerVoucherId: options.customerVoucherId } : {}),
+    ...(options?.prescriptionId ? { prescriptionId: options.prescriptionId } : {}),
     ...(options?.orderReminderDaysSupply != null && options.orderReminderDaysSupply >= 1
       ? {
           orderReminderLabel: options.orderReminderLabel ?? null,

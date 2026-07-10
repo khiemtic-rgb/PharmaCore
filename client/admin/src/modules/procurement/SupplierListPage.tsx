@@ -306,13 +306,6 @@ export function SupplierListPage() {
           <Form.Item name="taxCode" label={tShared('columns.taxCode')}>
             <Input />
           </Form.Item>
-          <Form.Item
-            name="wholesaleFacilityCode"
-            label={t('wholesaleFacilityCode')}
-            tooltip={t('wholesaleFacilityCodeHint')}
-          >
-            <Input maxLength={12} />
-          </Form.Item>
           <Form.Item name="contactName" label={tShared('columns.contactName')}>
             <Input />
           </Form.Item>
@@ -324,6 +317,13 @@ export function SupplierListPage() {
           </Form.Item>
           <Form.Item name="address" label={tShared('columns.address')}>
             <Input.TextArea rows={2} />
+          </Form.Item>
+          <Form.Item
+            name="wholesaleFacilityCode"
+            label={t('wholesaleFacilityCode')}
+            tooltip={t('wholesaleFacilityCodeHint')}
+          >
+            <Input maxLength={12} placeholder="012345678901" />
           </Form.Item>
           <Form.Item name="paymentTerms" label={tShared('columns.paymentTermsFull')}>
             <InputNumber min={0} style={{ width: '100%' }} />

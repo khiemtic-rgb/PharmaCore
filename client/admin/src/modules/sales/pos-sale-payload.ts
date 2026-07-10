@@ -19,6 +19,7 @@ export function buildSaleLineItems(cart: CartLine[]) {
       ...(line.discountType
         ? { discountType: line.discountType, discountValue: line.discountValue ?? 0 }
         : {}),
+      ...(line.prescriptionLineId ? { prescriptionLineId: line.prescriptionLineId } : {}),
     };
   });
 }
@@ -32,6 +33,7 @@ export function buildCreateSalePayload(
   loyaltyDiscountAmount?: number,
   customerVoucherId?: string,
   orderReminder?: { label?: string; daysSupply?: number },
+  prescriptionId?: string,
 ) {
   return {
     warehouseId,
@@ -42,6 +44,7 @@ export function buildCreateSalePayload(
     payments: payments?.map((p) => ({ paymentMethod: p.paymentMethod, amount: p.amount })),
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
     ...(customerVoucherId ? { customerVoucherId } : {}),
+    ...(prescriptionId ? { prescriptionId } : {}),
     ...(orderReminder?.daysSupply != null && orderReminder.daysSupply >= 1
       ? {
           orderReminderLabel: orderReminder.label ?? null,
@@ -60,6 +63,7 @@ export function buildDraftCompletePayload(
   loyaltyDiscountAmount?: number,
   customerVoucherId?: string,
   orderReminder?: { label?: string; daysSupply?: number },
+  prescriptionId?: string,
 ) {
   return {
     customerId: customerId ?? null,
@@ -68,6 +72,7 @@ export function buildDraftCompletePayload(
     notes: notes ?? null,
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
     ...(customerVoucherId ? { customerVoucherId } : {}),
+    ...(prescriptionId ? { prescriptionId } : {}),
     ...(orderReminder?.daysSupply != null && orderReminder.daysSupply >= 1
       ? {
           orderReminderLabel: orderReminder.label ?? null,

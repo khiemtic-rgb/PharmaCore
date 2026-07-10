@@ -234,15 +234,15 @@ export function BranchListPage() {
           <Form.Item name="phone" label={t('form.phone')}>
             <Input />
           </Form.Item>
+          <Form.Item name="address" label={t('form.address')}>
+            <Input.TextArea rows={2} />
+          </Form.Item>
           <Form.Item
             name="retailFacilityCode"
             label={t('form.retailFacilityCode')}
             tooltip={t('form.retailFacilityCodeHint')}
           >
             <Input maxLength={12} placeholder="012345678901" />
-          </Form.Item>
-          <Form.Item name="address" label={t('form.address')}>
-            <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item name="isHeadOffice" label={t('form.isHeadOffice')} valuePropName="checked">
             <Switch />

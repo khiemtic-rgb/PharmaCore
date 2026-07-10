@@ -19,6 +19,11 @@ export interface AssessmentSubmissionListItem {
   respondentPhone?: string | null;
   respondentEmail?: string | null;
   respondentOrgName?: string | null;
+  partnerId?: string | null;
+  partnerCode?: string | null;
+  partnerName?: string | null;
+  leadPipelineStatus?: string;
+  commissionStatus?: string;
 }
 
 export interface AssessmentSubmissionListResult {
@@ -55,6 +60,8 @@ export async function fetchAssessmentSubmissions(params: {
   pageSize?: number;
   status?: string;
   hasLead?: boolean;
+  partnerId?: string;
+  leadPipelineStatus?: string;
 }): Promise<AssessmentSubmissionListResult> {
   const { data } = await http.get<AssessmentSubmissionListResult>('/system/assessment/submissions', {
     params,
@@ -62,9 +69,34 @@ export async function fetchAssessmentSubmissions(params: {
   return data;
 }
 
+export async function updateAssessmentLeadPipeline(
+  id: string,
+  payload: { leadPipelineStatus: string; commissionStatus?: string },
+): Promise<void> {
+  await http.patch(`/system/assessment/submissions/${id}/pipeline`, payload);
+}
+
 export async function fetchAssessmentSubmissionDetail(id: string): Promise<AssessmentSubmissionDetail> {
   const { data } = await http.get<AssessmentSubmissionDetail>(`/system/assessment/submissions/${id}`);
   return data;
+}
+
+export type KapReportPdfKind = 'consulting' | 'executive' | 'appendix';
+
+export async function fetchAssessmentReportPdf(
+  id: string,
+  kind: KapReportPdfKind = 'consulting',
+): Promise<Blob> {
+  const { data } = await http.get<Blob>(`/system/assessment/submissions/${id}/report.pdf`, {
+    params: { kind },
+    responseType: 'blob',
+    timeout: 120_000,
+  });
+  return data;
+}
+
+export function canViewAssessmentReport(status: string): boolean {
+  return status === 'lead_captured' || status === 'report_ready';
 }
 
 export function scoreTo100(scorePct?: number | null): number | null {

@@ -5,7 +5,9 @@ import {
   Card,
   Descriptions,
   Drawer,
+  Dropdown,
   Segmented,
+  Select,
   Space,
   Spin,
   Table,
@@ -13,15 +15,21 @@ import {
   Typography,
   message,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DownOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
+  canViewAssessmentReport,
+  fetchAssessmentReportPdf,
   fetchAssessmentSubmissionDetail,
   fetchAssessmentSubmissions,
   scoreTo100,
+  updateAssessmentLeadPipeline,
   type AssessmentSubmissionDetail,
   type AssessmentSubmissionListItem,
+  type KapReportPdfKind,
 } from '@/shared/api/assessment-admin.api';
+import { fetchKapPartners, type KapPartnerListItem } from '@/shared/api/kap-admin.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { formatDisplayDateTime } from '@/shared/utils/date';
 
@@ -36,9 +44,30 @@ const STATUS_COLORS: Record<string, string> = {
   report_ready: 'cyan',
 };
 
+const PIPELINE_OPTIONS = [
+  { value: 'new', label: 'new' },
+  { value: 'contacted', label: 'contacted' },
+  { value: 'demo_scheduled', label: 'demo' },
+  { value: 'demo_done', label: 'demo_done' },
+  { value: 'won', label: 'won' },
+  { value: 'lost', label: 'lost' },
+  { value: 'nurturing', label: 'nurturing' },
+];
+
+const COMMISSION_OPTIONS = [
+  { value: 'none', label: 'none' },
+  { value: 'pending', label: 'pending' },
+  { value: 'approved', label: 'approved' },
+  { value: 'paid', label: 'paid' },
+  { value: 'void', label: 'void' },
+];
+
 export function AssessmentLeadsPage() {
   const { t } = useTranslation('system', { keyPrefix: 'assessmentLeads' });
   const [leadFilter, setLeadFilter] = useState<LeadFilter>('all');
+  const [partnerId, setPartnerId] = useState<string | undefined>();
+  const [pipelineFilter, setPipelineFilter] = useState<string | undefined>();
+  const [partners, setPartners] = useState<KapPartnerListItem[]>([]);
   const [items, setItems] = useState<AssessmentSubmissionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -47,6 +76,30 @@ export function AssessmentLeadsPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<AssessmentSubmissionDetail | null>(null);
+  const [reportLoadingId, setReportLoadingId] = useState<string | null>(null);
+
+  const openReportPdf = useCallback(async (id: string, kind: KapReportPdfKind = 'consulting') => {
+    setReportLoadingId(id);
+    try {
+      const blob = await fetchAssessmentReportPdf(id, kind);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      message.error(apiErrorMessage(error, t('messages.reportFailed')));
+    } finally {
+      setReportLoadingId(null);
+    }
+  }, [t]);
+
+  const reportMenuItems: MenuProps['items'] = useMemo(
+    () => [
+      { key: 'consulting', label: t('actions.reportConsulting') },
+      { key: 'executive', label: t('actions.reportExecutive') },
+      { key: 'appendix', label: t('actions.reportAppendix') },
+    ],
+    [t],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,6 +108,8 @@ export function AssessmentLeadsPage() {
         page,
         pageSize,
         hasLead: leadFilter === 'withLead' ? true : undefined,
+        partnerId,
+        leadPipelineStatus: pipelineFilter,
       });
       setItems(result.items);
       setTotal(result.total);
@@ -63,15 +118,21 @@ export function AssessmentLeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [leadFilter, page, pageSize, t]);
+  }, [leadFilter, partnerId, pipelineFilter, page, pageSize, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
+    void fetchKapPartners()
+      .then(setPartners)
+      .catch(() => setPartners([]));
+  }, []);
+
+  useEffect(() => {
     setPage(1);
-  }, [leadFilter]);
+  }, [leadFilter, partnerId, pipelineFilter]);
 
   const openDetail = useCallback(async (id: string) => {
     setDetailOpen(true);
@@ -143,18 +204,93 @@ export function AssessmentLeadsPage() {
         key: 'progress',
         width: 90,
         align: 'center',
-        render: (_, row) => `${row.responseCount}/30`,
+        render: (_, row) => String(row.responseCount),
+      },
+      {
+        title: 'Đối tác',
+        dataIndex: 'partnerCode',
+        width: 100,
+        render: (v: string | null | undefined) => v || '—',
+      },
+      {
+        title: 'Pipeline',
+        dataIndex: 'leadPipelineStatus',
+        width: 150,
+        render: (v: string | undefined, row) => (
+          <Select
+            size="small"
+            style={{ width: 140 }}
+            value={v || 'new'}
+            options={PIPELINE_OPTIONS}
+            onChange={async (next) => {
+              try {
+                await updateAssessmentLeadPipeline(row.id, {
+                  leadPipelineStatus: next,
+                  commissionStatus: row.commissionStatus,
+                });
+                message.success('Đã cập nhật pipeline');
+                void load();
+              } catch (error) {
+                message.error(apiErrorMessage(error, 'Không cập nhật được pipeline'));
+              }
+            }}
+          />
+        ),
+      },
+      {
+        title: 'Hoa hồng',
+        dataIndex: 'commissionStatus',
+        width: 130,
+        render: (v: string | undefined, row) => (
+          <Select
+            size="small"
+            style={{ width: 120 }}
+            value={v || 'none'}
+            options={COMMISSION_OPTIONS}
+            onChange={async (next) => {
+              try {
+                await updateAssessmentLeadPipeline(row.id, {
+                  leadPipelineStatus: row.leadPipelineStatus || 'new',
+                  commissionStatus: next,
+                });
+                message.success('Đã cập nhật hoa hồng');
+                void load();
+              } catch (error) {
+                message.error(apiErrorMessage(error, 'Không cập nhật được hoa hồng'));
+              }
+            }}
+          />
+        ),
       },
       {
         title: t('columns.actions'),
         key: 'actions',
-        width: 80,
+        width: 220,
         render: (_, row) => (
-          <Button type="link" icon={<EyeOutlined />} onClick={() => openDetail(row.id)} />
+          <Space size={4} wrap>
+            <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(row.id)}>
+              {t('actions.detail')}
+            </Button>
+            {canViewAssessmentReport(row.status) && (
+              <Dropdown.Button
+                type="link"
+                size="small"
+                icon={<DownOutlined />}
+                loading={reportLoadingId === row.id}
+                menu={{
+                  items: reportMenuItems,
+                  onClick: ({ key }) => void openReportPdf(row.id, key as KapReportPdfKind),
+                }}
+                onClick={() => void openReportPdf(row.id, 'consulting')}
+              >
+                {t('actions.viewReport')}
+              </Dropdown.Button>
+            )}
+          </Space>
         ),
       },
     ],
-    [t, openDetail],
+    [t, openDetail, openReportPdf, reportLoadingId, reportMenuItems, load],
   );
 
   return (
@@ -168,14 +304,37 @@ export function AssessmentLeadsPage() {
         }
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Segmented
-            value={leadFilter}
-            onChange={(v) => setLeadFilter(v as LeadFilter)}
-            options={[
-              { label: t('filters.all'), value: 'all' },
-              { label: t('filters.withLead'), value: 'withLead' },
-            ]}
-          />
+          <Space wrap size="middle">
+            <Segmented
+              value={leadFilter}
+              onChange={(v) => setLeadFilter(v as LeadFilter)}
+              options={[
+                { label: t('filters.all'), value: 'all' },
+                { label: t('filters.withLead'), value: 'withLead' },
+              ]}
+            />
+            <Select
+              allowClear
+              placeholder="Đối tác"
+              style={{ minWidth: 200 }}
+              value={partnerId}
+              options={partners.map((p) => ({
+                value: p.id,
+                label: `${p.code} — ${p.name}`,
+              }))}
+              onChange={(v) => setPartnerId(v)}
+              showSearch
+              optionFilterProp="label"
+            />
+            <Select
+              allowClear
+              placeholder="Pipeline"
+              style={{ minWidth: 160 }}
+              value={pipelineFilter}
+              options={PIPELINE_OPTIONS}
+              onChange={(v) => setPipelineFilter(v)}
+            />
+          </Space>
           <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
             {t('hint')}
           </Typography.Paragraph>
@@ -203,6 +362,22 @@ export function AssessmentLeadsPage() {
         width={560}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
+        extra={
+          detail && canViewAssessmentReport(detail.status) ? (
+            <Dropdown.Button
+              type="primary"
+              loading={reportLoadingId === detail.id}
+              icon={<DownOutlined />}
+              menu={{
+                items: reportMenuItems,
+                onClick: ({ key }) => void openReportPdf(detail.id, key as KapReportPdfKind),
+              }}
+              onClick={() => void openReportPdf(detail.id, 'consulting')}
+            >
+              {t('actions.viewReport')}
+            </Dropdown.Button>
+          ) : null
+        }
       >
         {detailLoading ? (
           <Spin style={{ display: 'block', margin: '48px auto' }} />
@@ -279,6 +454,18 @@ export function AssessmentLeadsPage() {
                   <Card key={i.title} size="small" type="inner">
                     <Text strong>{i.title}</Text>
                     <div>{i.body}</div>
+                  </Card>
+                ))}
+              </>
+            )}
+
+            {detail.recommendations.length > 0 && (
+              <>
+                <Typography.Title level={5}>Đề xuất</Typography.Title>
+                {detail.recommendations.map((r) => (
+                  <Card key={r.title} size="small" type="inner">
+                    <Text strong>{r.title}</Text>
+                    <div>{r.body}</div>
                   </Card>
                 ))}
               </>

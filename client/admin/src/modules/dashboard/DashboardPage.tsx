@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Col, Row, Segmented, Spin, Tag, Typography, message } from 'antd';
+import { Button, Col, Row, Segmented, Spin, Tag, Typography, Alert, message } from 'antd';
 import {
   AccountBookOutlined,
   CalendarOutlined,
@@ -148,7 +148,7 @@ export function DashboardPage() {
         key: 'app-drafts',
         label: t('kpis.draftOrdersAwaiting.title'),
         count: o2o!.draftOrdersAwaitingCount,
-        to: '/sales/customer-drafts?actionable=1',
+        to: '/sales/app-orders/drafts?actionable=1',
         tone: 'warning',
       });
     }
@@ -157,7 +157,7 @@ export function DashboardPage() {
         key: 'reservations',
         label: t('kpis.reservationsAwaiting.title'),
         count: o2o!.reservationsAwaitingCount,
-        to: '/sales/customer-reservations?awaiting=1',
+        to: '/sales/app-orders/reservations?awaiting=1',
         tone: 'warning',
       });
     }
@@ -212,7 +212,7 @@ export function DashboardPage() {
       items.push({
         key: 'app-drafts',
         label: t('quickActions.appDrafts'),
-        to: '/sales/customer-drafts?actionable=1',
+        to: '/sales/app-orders/drafts?actionable=1',
         icon: <TeamOutlined />,
       });
     }
@@ -233,7 +233,7 @@ export function DashboardPage() {
         title: t('kpis.draftOrdersAwaiting.title'),
         value: o2o?.draftOrdersAwaitingCount ?? '—',
         icon: <ShoppingCartOutlined />,
-        to: '/sales/customer-drafts?actionable=1',
+        to: '/sales/app-orders/drafts?actionable=1',
         tone: (o2o?.draftOrdersAwaitingCount ?? 0) > 0 ? 'warning' : 'default',
       });
     }
@@ -265,6 +265,7 @@ export function DashboardPage() {
         icon: <WarningOutlined />,
         to: '/inventory/low-stock',
         tone: (inventory?.lowStockProductCount ?? 0) > 0 ? 'warning' : 'default',
+        hint: t('kpis.lowStockProducts.hint'),
       });
     }
     if (canProcurement) {
@@ -281,7 +282,7 @@ export function DashboardPage() {
         title: t('kpis.reservationsAwaiting.title'),
         value: o2o?.reservationsAwaitingCount ?? '—',
         icon: <CalendarOutlined />,
-        to: '/sales/customer-reservations?awaiting=1',
+        to: '/sales/app-orders/reservations?awaiting=1',
         tone: (o2o?.reservationsAwaitingCount ?? 0) > 0 ? 'warning' : 'default',
       });
     }
@@ -332,6 +333,14 @@ export function DashboardPage() {
             {tc('actions.reload')}
           </Button>
         </header>
+
+        <Alert
+          type="info"
+          showIcon
+          message={t('workspaceHint.title')}
+          description={t('workspaceHint.description')}
+          style={{ marginBottom: 16 }}
+        />
 
         {quickActions.length > 0 ? (
           <div className="dashboard-actions">

@@ -36,7 +36,7 @@ export function OpenShiftSheet({ open, warehouseId, onClose, onOpened }: Props) 
       okText="Mở ca"
       cancelText="Hủy"
       confirmLoading={loading}
-      onOk={() => void submit()}
+      onOk={submit}
       onCancel={onClose}
       destroyOnClose
     >

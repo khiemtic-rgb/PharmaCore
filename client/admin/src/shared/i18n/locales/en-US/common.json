@@ -58,12 +58,14 @@
   "modules": {
     "dashboard": "Overview",
     "sales": "Sales",
+    "rx": "Prescriptions",
     "procurement": "Procurement",
     "inventory": "Inventory",
     "receivables": "Receivables",
     "customer": "Customers",
     "catalog": "Products",
     "reports": "Reports",
+    "kap": "KAP",
     "system": "Settings",
     "comingSoon": "{{name}} (coming soon)"
   },

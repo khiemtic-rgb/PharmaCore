@@ -61,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<IBranchAccessService, BranchAccessService>();
         services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
         services.AddScoped<ICurrentCustomerAccessor, CurrentCustomerAccessor>();
+        services.AddScoped<ICurrentPrescriberAccessor, CurrentPrescriberAccessor>();
 
         services.AddScoped<AuthRepository>();
         services.AddSingleton<JwtTokenService>();
@@ -101,6 +102,7 @@ public static class DependencyInjection
 
         services.AddScoped<CustomerPushRepository>();
         services.AddScoped<CustomerEngagementRepository>();
+        services.AddScoped<ICustomerNotificationTextService, CustomerNotificationTextService>();
         services.AddScoped<ICustomerPushService, CustomerPushService>();
         services.AddScoped<CustomerEngagementEventRepository>();
         services.AddScoped<ICustomerEngagementEventService, CustomerEngagementEventService>();

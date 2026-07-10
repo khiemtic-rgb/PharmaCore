@@ -5,7 +5,8 @@
 > Dành cho **chủ nhà thuốc / dược sĩ quản lý** — ngôn ngữ vận hành, không jargon kỹ thuật.  
 > Novixa và quý nhà thuốc **cùng tick** trước ngày bán hàng thật trên Novixa.
 
-**Liên quan:** [Onboarding playbook](./onboarding-playbook-v1.md) · Checklist kỹ thuật nội bộ: `client/admin/pilot-go-live-checklist.md`
+**Liên quan:** [Onboarding playbook](./onboarding-playbook-v1.md) · Checklist kỹ thuật nội bộ: `client/admin/pilot-go-live-checklist.md`  
+> App khách P11b: [customer-app-phase-gates-v1.md](./customer-app-phase-gates-v1.md) · Handoff: `.cursor/handoff/customer-app-p11b.md`
 
 ---
 

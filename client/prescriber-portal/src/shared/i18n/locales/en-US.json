@@ -1,0 +1,95 @@
+{
+  "common": {
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "search": "Search",
+    "loading": "Loading…",
+    "empty": "No data yet",
+    "logout": "Sign out"
+  },
+  "auth": {
+    "booting": "Restoring session…",
+    "title": "Novixa Prescriber Portal",
+    "subtitle": "E-prescriptions & pharmacy network",
+    "phone": "Phone number",
+    "otp": "OTP code",
+    "sendOtp": "Send OTP",
+    "verifyOtp": "Verify & sign in",
+    "invalidPhone": "Enter a valid phone number",
+    "otpSent": "OTP sent",
+    "otpSendFailed": "Could not send OTP",
+    "otpInvalid": "Invalid or expired OTP",
+    "welcome": "Welcome, {{name}}",
+    "resendIn": "Resend in {{time}}"
+  },
+  "nav": {
+    "home": "Overview",
+    "pharmacies": "Pharmacies",
+    "directory": "Find pharmacy",
+    "invites": "Invites",
+    "prescriptions": "Prescriptions"
+  },
+  "home": {
+    "title": "Overview",
+    "signedThisMonth": "This month",
+    "signedTotal": "Total signed",
+    "linkedPharmacies": "Linked pharmacies",
+    "pendingInvites": "Pending invites",
+    "byPharmacy": "By pharmacy",
+    "phaseNote": "Phase B — dashboard and POS deep links are live."
+  },
+  "pharmacies": {
+    "title": "My pharmacies",
+    "active": "Active",
+    "empty": "No linked pharmacies yet"
+  },
+  "directory": {
+    "title": "Find pharmacy",
+    "placeholder": "Pharmacy code or name",
+    "requestLink": "Request link",
+    "requestSuccess": "Link request sent",
+    "requestFailed": "Could not send request"
+  },
+  "invites": {
+    "title": "Link invitations",
+    "accept": "Accept",
+    "reject": "Decline",
+    "empty": "No pending invitations",
+    "acceptSuccess": "Link accepted",
+    "rejectSuccess": "Invitation declined"
+  },
+  "prescriptions": {
+    "title": "Prescriptions",
+    "new": "New Rx",
+    "newTitle": "E-prescription",
+    "empty": "No prescriptions yet",
+    "comingSoon": "Signed prescribing — next Rx-2 sprint.",
+    "pharmacy": "Pharmacy",
+    "selectPharmacy": "Select linked pharmacy",
+    "searchCustomer": "Find patient",
+    "customerPlaceholder": "Type at least 2 characters",
+    "customer": "Patient",
+    "selectCustomer": "Select patient",
+    "searchProduct": "Find product",
+    "productPlaceholder": "Type Amox / Para / RXDEMO…",
+    "product": "Product",
+    "selectProduct": "Pick from pharmacy catalog",
+    "productEmpty": "No match — try RXDEMO-AMOX or RXDEMO-PARA",
+    "catalogHint": "Catalog is scoped to the selected pharmacy (Rx + OTC). Type to filter — try RXDEMO.",
+    "qty": "Qty",
+    "unit": "Unit",
+    "selectUnit": "Select unit",
+    "unitRequired": "Choose a unit (tablet/box…)",
+    "dosage": "Dosage",
+    "lines": "Lines",
+    "addLine": "Add line",
+    "notes": "Notes",
+    "submitSigned": "Sign & send",
+    "createSuccess": "Prescription {{code}} created",
+    "createFailed": "Could not create prescription",
+    "copyPosLink": "POS link",
+    "linkCopied": "Admin link copied",
+    "linkCopyFailed": "Could not get link"
+  }
+}

@@ -1,4 +1,4 @@
-﻿namespace KitPlatform.Packs.Survey;
+namespace KitPlatform.Packs.Survey;
 
 public static class AssessmentErrorCodes
 {
@@ -7,6 +7,8 @@ public static class AssessmentErrorCodes
     public const string ReportLocked = "report_locked";
     public const string NotFound = "not_found";
     public const string AlreadyCompleted = "already_completed";
+    public const string RateLimited = "rate_limited";
+    public const string InternalError = "internal_error";
 }
 
 public sealed class AssessmentException : Exception
@@ -51,7 +53,8 @@ public sealed record AssessmentQuestionDto(
     bool Scorable,
     bool Required,
     int SortOrder,
-    IReadOnlyList<AssessmentOptionDto> Options);
+    IReadOnlyList<AssessmentOptionDto> Options,
+    IReadOnlyDictionary<string, object>? Metadata = null);
 
 public sealed record AssessmentOptionDto(
     Guid Id,
@@ -66,7 +69,8 @@ public sealed record CreateAssessmentSubmissionRequest(
     string TemplateCode,
     string? TemplateVersion,
     string Source,
-    string? Locale);
+    string? Locale,
+    string? PartnerCode = null);
 
 public sealed record CreateAssessmentSubmissionResult(
     Guid Id,
@@ -121,7 +125,8 @@ public sealed record CaptureAssessmentLeadRequest(
     string RespondentEmail,
     string RespondentOrgName,
     string? RespondentNote,
-    bool ConsentMarketing);
+    bool ConsentMarketing,
+    string? OrgScale = null);
 
 public sealed record CaptureAssessmentLeadResult(
     string Status,
@@ -168,7 +173,9 @@ public sealed record AssessmentFullReportDto(
     IReadOnlyList<AssessmentInsightDto> Insights,
     IReadOnlyList<AssessmentRecommendationDto> Recommendations,
     AssessmentQualitativeTagsDto QualitativeTags,
-    AssessmentReportPdfDto Pdf);
+    AssessmentReportPdfDto Pdf,
+    AssessmentReportIntelligenceDto? Intelligence = null,
+    string? OrgScale = null);
 
 public sealed record AssessmentReportPdfDto(
     bool Available,
@@ -188,7 +195,9 @@ public sealed record AssessmentSubmissionListQuery(
     int Page = 1,
     int PageSize = 20,
     string? Status = null,
-    bool? HasLead = null);
+    bool? HasLead = null,
+    Guid? PartnerId = null,
+    string? LeadPipelineStatus = null);
 
 public sealed record AssessmentSubmissionListItemDto(
     Guid Id,
@@ -204,7 +213,12 @@ public sealed record AssessmentSubmissionListItemDto(
     string? RespondentName,
     string? RespondentPhone,
     string? RespondentEmail,
-    string? RespondentOrgName);
+    string? RespondentOrgName,
+    Guid? PartnerId = null,
+    string? PartnerCode = null,
+    string? PartnerName = null,
+    string LeadPipelineStatus = "new",
+    string CommissionStatus = "none");
 
 public sealed record AssessmentSubmissionListResultDto(
     IReadOnlyList<AssessmentSubmissionListItemDto> Items,
@@ -246,6 +260,20 @@ public interface IAssessmentAdminService
     Task<AssessmentSubmissionDetailAdminDto?> GetSubmissionAsync(
         Guid submissionId,
         CancellationToken cancellationToken = default);
+
+    Task<AssessmentFullReportDto> GetReportAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken = default);
+
+    Task<(byte[] Content, string FileName, string ContentType)> GetReportPdfAsync(
+        Guid submissionId,
+        KapReportPdfKind kind = KapReportPdfKind.Consulting,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> UpdateLeadPipelineAsync(
+        Guid submissionId,
+        UpdateLeadPipelineRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IAssessmentSubmissionService
@@ -286,5 +314,15 @@ public interface IAssessmentSubmissionService
     Task<(byte[] Content, string FileName, string ContentType)> GetReportPdfAsync(
         Guid submissionId,
         string sessionToken,
+        KapReportPdfKind kind = KapReportPdfKind.Consulting,
+        CancellationToken cancellationToken = default);
+
+    Task<AssessmentFullReportDto> GetReportForAdminAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken = default);
+
+    Task<(byte[] Content, string FileName, string ContentType)> GetReportPdfForAdminAsync(
+        Guid submissionId,
+        KapReportPdfKind kind = KapReportPdfKind.Consulting,
         CancellationToken cancellationToken = default);
 }

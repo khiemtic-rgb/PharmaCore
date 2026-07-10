@@ -12,15 +12,18 @@ internal sealed class CustomerCareReminderService : ICustomerCareReminderService
     private readonly CustomerCareReminderRepository _repo;
     private readonly CustomerEngagementRepository _engagement;
     private readonly CustomerNotificationRepository _notifications;
+    private readonly ICustomerNotificationTextService _notifyText;
 
     public CustomerCareReminderService(
         CustomerCareReminderRepository repo,
         CustomerEngagementRepository engagement,
-        CustomerNotificationRepository notifications)
+        CustomerNotificationRepository notifications,
+        ICustomerNotificationTextService notifyText)
     {
         _repo = repo;
         _engagement = engagement;
         _notifications = notifications;
+        _notifyText = notifyText;
     }
 
     public async Task<CustomerCareReminderListResult> ListAsync(
@@ -66,14 +69,31 @@ internal sealed class CustomerCareReminderService : ICustomerCareReminderService
         var customerId = await _engagement.GetCustomerIdForAccountAsync(tenantId, accountId, cancellationToken);
         if (customerId is Guid cid)
         {
+            var locale = await _notifyText.ResolveLocaleAsync(tenantId, cid, cancellationToken);
             var when = request.RemindAt.ToOffset(TimeSpan.FromHours(7)).ToString("dd/MM/yyyy HH:mm");
+            var titleText = NormalizeRequired(request.Title, "Tiêu đề");
+            var title = await _notifyText.FormatAsync(
+                tenantId,
+                locale,
+                CustomerNotificationTextKeys.CareScheduledTitle,
+                cancellationToken: cancellationToken);
+            var body = await _notifyText.FormatAsync(
+                tenantId,
+                locale,
+                CustomerNotificationTextKeys.CareScheduledBody,
+                new Dictionary<string, string>
+                {
+                    ["title"] = titleText,
+                    ["when"] = when,
+                },
+                cancellationToken);
             await _notifications.InsertAsync(
                 tenantId,
                 cid,
                 channel: 0,
                 category: "care",
-                title: "Đã lên lịch nhắc",
-                body: $"{NormalizeRequired(request.Title, "Tiêu đề")} — {when}",
+                title: title,
+                body: body,
                 href: "/health",
                 payloadJson: System.Text.Json.JsonSerializer.Serialize(new { type = "care_reminder_scheduled", careReminderId = id }),
                 cancellationToken);

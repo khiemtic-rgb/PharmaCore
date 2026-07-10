@@ -265,4 +265,14 @@ internal sealed class CatalogService : ICatalogService
 
         return list;
     }
+
+    public Task<DispensingClassSummaryDto> GetDispensingClassSummaryAsync(CancellationToken cancellationToken = default) =>
+        _repository.GetDispensingClassSummaryAsync(cancellationToken);
+
+    public async Task<SyncDispensingClassResultDto> SyncDispensingClassFromDrugTypeAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var updated = await _repository.SyncDispensingClassFromDrugTypeAsync(cancellationToken);
+        return new SyncDispensingClassResultDto(updated);
+    }
 }

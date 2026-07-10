@@ -10,6 +10,7 @@ public sealed record ProductListItemDto(
     string ProductName,
     string? GenericName,
     short DrugType,
+    string DispensingClass,
     string? CategoryName,
     string? BrandName,
     string? PrimaryBarcode,
@@ -211,6 +212,8 @@ public sealed record UpdateBrandRequest(
 public sealed record BulkDeleteProductsRequest(IReadOnlyList<Guid> Ids);
 
 public sealed record BulkDeleteResult(int DeletedCount);
+
+public sealed record BulkNationalLinkResult(int Scanned, int Updated, int Skipped);
 
 public sealed record BarcodeCheckResult(
     bool IsAvailable,

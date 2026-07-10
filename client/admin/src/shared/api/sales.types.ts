@@ -47,6 +47,12 @@ export type PosProductLookup = Omit<
   'batchHints'
 > & {
   batchHints?: PosBatchHint[];
+  dispensingClass?: string;
+};
+
+export type TenantRxSettings = {
+  enforcementMode: 'off' | 'strict' | 'warn';
+  posBlockedAudit: boolean;
 };
 
 export type PosProductSearchItem = Req<
@@ -96,6 +102,8 @@ export type SalesOrderListItem = Req<
   | 'totalAmount'
   | 'itemCount'
 > & {
+  customerId?: string;
+  customerName?: string;
   amountPaid?: number;
   outstanding?: number;
 };
@@ -290,11 +298,13 @@ export interface CartLine {
   unitName: string;
   quantity: number;
   unitPrice: number;
+  dispensingClass?: string;
   stockAvailable?: number;
   batchHints?: PosBatchHint[];
   /** Số lô nhân viên xác nhận (label_optional / label_required) */
   batchLabel?: string;
   stockSourceLabel?: string;
+  prescriptionLineId?: string;
   discountType?: SalesDiscountType;
   discountValue?: number;
   /** Cảnh báo tồn kho hiển thị ngay tại ô SL */

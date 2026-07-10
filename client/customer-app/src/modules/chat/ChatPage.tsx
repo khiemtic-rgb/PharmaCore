@@ -70,6 +70,8 @@ export function ChatPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const blurTimerRef = useRef<number | null>(null);
+  const sendingRef = useRef(false);
   useVisualViewportInset();
   const { data: overview, isLoading, error, refetch } = useChatOverviewQuery();
   const [messages, setMessages] = useState<CustomerChatMessage[]>([]);
@@ -93,6 +95,13 @@ export function ChatPage() {
     document.body.classList.toggle('customer-app--chat-typing', inputFocused);
     return () => document.body.classList.remove('customer-app--chat-typing');
   }, [inputFocused]);
+
+  useEffect(
+    () => () => {
+      if (blurTimerRef.current != null) window.clearTimeout(blurTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (overview) {
@@ -166,17 +175,29 @@ export function ChatPage() {
 
   const onSend = async () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
     try {
       const created = await sendChatMessage(text);
       setMessages((prev) => [...prev, created]);
       setDraft('');
       scrollToBottom();
+      // Keep keyboard open for consecutive replies on mobile.
+      textareaRef.current?.focus({ preventScroll: true });
+      setInputFocused(true);
     } catch (err) {
       message.error(getApiErrorMessage(err, t('chat.sendFailed')));
     } finally {
+      sendingRef.current = false;
       setSending(false);
+    }
+  };
+
+  const clearBlurTimer = () => {
+    if (blurTimerRef.current != null) {
+      window.clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
     }
   };
 
@@ -258,10 +279,17 @@ export function ChatPage() {
             rows={1}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
+            onFocus={() => {
+              clearBlurTimer();
+              setInputFocused(true);
+            }}
+            onBlur={() => {
+              // Delay: iOS fires blur before the send button click; keep layout stable.
+              clearBlurTimer();
+              blurTimerRef.current = window.setTimeout(() => setInputFocused(false), 200);
+            }}
             placeholder={chatConsentGranted ? t('chat.placeholder') : t('chat.placeholderDisabled')}
-            disabled={!chatConsentGranted || sending}
+            disabled={!chatConsentGranted}
             enterKeyHint="send"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -275,7 +303,14 @@ export function ChatPage() {
             className="customer-chat-send-btn"
             aria-label={t('chat.send')}
             disabled={!chatConsentGranted || !draft.trim() || sending}
-            onClick={() => void onSend()}
+            onPointerDown={(e) => {
+              // Prevent textarea blur from swallowing the first tap on iOS/Android.
+              e.preventDefault();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              void onSend();
+            }}
           >
             {sending ? <Spin size="small" /> : <SendOutlined />}
           </button>

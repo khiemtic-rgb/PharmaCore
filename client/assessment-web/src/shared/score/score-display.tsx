@@ -1,5 +1,6 @@
 import { Tooltip, Typography } from 'antd';
 import type { CategoryScore } from '@/shared/api/assessment.api';
+import { normalizeVietnamese } from '@/shared/score/vn-normalize';
 
 const { Text } = Typography;
 
@@ -94,16 +95,7 @@ export function CategoryScoreTable({ items }: { items: CategoryScore[] }) {
   );
 }
 
-/** Chú thích từ viết tắt / tiếng Anh trong nội dung insight. */
+/** Chú thích từ viết tắt / tiếng Anh + chuẩn hóa thiếu dấu trong nội dung insight. */
 export function annotateInsightText(text: string): string {
-  return text
-    .replace(/\bKH\b/g, 'khách hàng (KH)')
-    .replace(/\bCRM\b/g, 'CRM (quản lý quan hệ khách hàng)')
-    .replace(/\bloyalty\b/gi, 'chương trình khách hàng thân thiết (loyalty)')
-    .replace(/\bERP\b/g, 'ERP (phần mềm quản lý doanh nghiệp)')
-    .replace(/\bHealth Wallet\b/gi, 'Ví sức khỏe (Health Wallet)')
-    .replace(/\bDashboard\b/g, 'Dashboard (bảng điều khiển)')
-    .replace(/\bSOP\b/g, 'SOP (quy trình vận hành chuẩn)')
-    .replace(/\bAI\b/g, 'AI (trí tuệ nhân tạo)')
-    .replace(/\bExcel\b/g, 'Excel (bảng tính)');
+  return normalizeVietnamese(text);
 }

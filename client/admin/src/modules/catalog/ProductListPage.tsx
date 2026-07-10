@@ -22,9 +22,10 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, EditOutlined, DeleteOutlined, CloudSyncOutlined, ImportOutlined } from '@ant-design/icons';
+import { FilterOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, EditOutlined, DeleteOutlined, CloudSyncOutlined, ImportOutlined, DatabaseOutlined } from '@ant-design/icons';
 import {
   bulkDeleteProducts,
+  bulkSuggestNationalRegistration,
   deleteProduct,
   fetchBrandLookups,
   fetchCategoryLookups,
@@ -77,6 +78,7 @@ export function ProductListPage() {
   const [editing, setEditing] = useState<ProductDetail | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkLinkingSdk, setBulkLinkingSdk] = useState(false);
   const [suggestionProducts, setSuggestionProducts] = useState<ProductListItem[]>([]);
   const [nationalDrugLive, setNationalDrugLive] = useState<boolean | null>(null);
 
@@ -258,6 +260,23 @@ export function ProductListPage() {
     }
   };
 
+  const handleBulkLinkSdk = async () => {
+    setBulkLinkingSdk(true);
+    try {
+      const result = await bulkSuggestNationalRegistration(50);
+      msg.success(t('messages.bulkLinkSdkSuccess', result));
+      await load();
+    } catch (error) {
+      msg.error(apiErrorMessage(error, t('messages.bulkLinkSdkFailed')));
+    } finally {
+      setBulkLinkingSdk(false);
+    }
+  };
+
+  const openStock = (productId: string) => {
+    navigate(`/inventory/stock?productId=${encodeURIComponent(productId)}&tab=fefo`);
+  };
+
   const columns: ColumnsType<ProductListItem> = useMemo(
     () => [
       {
@@ -314,10 +333,18 @@ export function ProductListPage() {
       {
         title: t('columns.actions'),
         key: 'actions',
-        width: 140,
+        width: 180,
         fixed: 'right',
         render: (_, row) => (
           <Space size={0}>
+            <Button
+              type="link"
+              size="small"
+              icon={<DatabaseOutlined />}
+              onClick={() => openStock(row.id)}
+            >
+              {t('viewStock')}
+            </Button>
             <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(row.id)}>
               {ts('edit')}
             </Button>
@@ -378,9 +405,18 @@ export function ProductListPage() {
             {t('importExcel')}
           </Button>
           {showNationalDrugLookup && (
-            <Button icon={<CloudSyncOutlined />} onClick={() => navigate('/catalog/national-drugs')}>
-              {t('nationalLookup')}
-            </Button>
+            <>
+              <Button icon={<CloudSyncOutlined />} onClick={() => navigate('/catalog/national-drugs')}>
+                {t('nationalLookup')}
+              </Button>
+              <Button
+                icon={<CloudSyncOutlined />}
+                loading={bulkLinkingSdk}
+                onClick={() => void handleBulkLinkSdk()}
+              >
+                {t('bulkLinkSdk')}
+              </Button>
+            </>
           )}
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             {t('addProduct')}

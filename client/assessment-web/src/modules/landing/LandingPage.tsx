@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRef, useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Typography, message } from 'antd';
-import { createSubmission } from '@/shared/api/assessment.api';
+import { createSubmission, rememberPartnerRef } from '@/shared/api/assessment.api';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -15,7 +15,7 @@ const BENEFITS = [
 ] as const;
 
 const PROGRESS_CHIPS = [
-  { icon: '📝', label: '30 câu hỏi' },
+  { icon: '📝', label: '31 câu hỏi' },
   { icon: '⏱', label: '~7 phút' },
   { icon: '📄', label: 'Kết quả ngay' },
   { icon: '🔒', label: 'Không đăng ký' },
@@ -86,8 +86,13 @@ function SamplePreviewCard({ onStart }: { onStart: () => void }) {
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    rememberPartnerRef(searchParams.get('ref') ?? searchParams.get('partner'));
+  }, [searchParams]);
 
   async function handleStart() {
     setLoading(true);

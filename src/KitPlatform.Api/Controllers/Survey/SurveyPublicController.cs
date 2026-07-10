@@ -1,14 +1,16 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using KitPlatform.Packs.Survey;
 
 namespace KitPlatform.Api.Controllers.Survey;
 
-/// <summary>Public assessment/survey endpoints (legacy route <c>/api/public/assessment</c> preserved).</summary>
+/// <summary>Public KAP / assessment endpoints (legacy route <c>/api/public/assessment</c> preserved).</summary>
 [ApiController]
 [Route("api/public/assessment")]
 [AllowAnonymous]
+[EnableRateLimiting("kap-public")]
 public sealed class SurveyPublicController : ControllerBase
 {
     private const string SessionHeaderName = "X-Assessment-Session";
@@ -160,17 +162,25 @@ public sealed class SurveyPublicController : ControllerBase
 
     [HttpGet("submissions/{id:guid}/report.pdf")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetReportPdf(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetReportPdf(
+        Guid id,
+        [FromQuery] string? kind,
+        CancellationToken cancellationToken)
     {
         try
         {
             var token = ResolveSessionToken();
-            var (content, fileName, contentType) = await _submissions.GetReportPdfAsync(id, token, cancellationToken);
+            var pdfKind = KapReportPdfKindParser.Parse(kind);
+            var (content, fileName, contentType) = await _submissions.GetReportPdfAsync(id, token, pdfKind, cancellationToken);
             return File(content, contentType, fileName);
         }
         catch (AssessmentException ex)
         {
             return AssessmentError(ex);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { code = "pdf_generation_failed", message = "Không tạo được PDF. Vui lòng thử lại sau." });
         }
     }
 

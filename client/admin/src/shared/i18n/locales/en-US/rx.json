@@ -1,0 +1,9 @@
+{
+  "rxLayout": {
+    "tabs": {
+      "prescriptions": "Prescriptions",
+      "prescribers": "Prescribers",
+      "prescriberLinks": "Prescriber network"
+    }
+  }
+}

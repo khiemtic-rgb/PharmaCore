@@ -6,7 +6,7 @@ public sealed record PharmacyDispensingNoteDto(
     Guid? CustomerId,
     string NoteType,
     string? NoteText,
-    DateTimeOffset CreatedAt);
+    DateTime CreatedAt);
 
 public sealed record CreatePharmacyDispensingNoteRequest(
     Guid SalesOrderId,

@@ -29,4 +29,16 @@ public interface ITenantSettingsService
     Task<TenantCustomerAppSettingsDto> UpdateCustomerAppSettingsAsync(
         UpdateTenantCustomerAppSettingsRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<GppChecklistSettingsDto> GetGppChecklistAsync(CancellationToken cancellationToken = default);
+
+    Task<GppChecklistSettingsDto> UpdateGppChecklistAsync(
+        UpdateGppChecklistRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<TenantRxSettingsDto> GetRxSettingsAsync(CancellationToken cancellationToken = default);
+
+    Task<TenantRxSettingsDto> UpdateRxSettingsAsync(
+        UpdateTenantRxSettingsRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -19,7 +19,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, CreditCardOutlined, ClockCircleOutlined, PlusOutlined, PrinterOutlined, RollbackOutlined, SaveOutlined, SendOutlined, ShoppingCartOutlined, UnorderedListOutlined, UserAddOutlined } from '@ant-design/icons';
 import { fetchWarehouses, fetchActiveCountingSession } from '@/shared/api/inventory.api';
 import type { Warehouse, AdjustmentListItem } from '@/shared/api/inventory.types';
-import { createSale, completeDraftSale, fetchBatchModeSettings, fetchPosCustomerLoyalty, fetchPosCustomerVouchers, fetchPosStockBulk, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue } from '@/shared/api/sales.api';
+import { createSale, completeDraftSale, fetchBatchModeSettings, fetchPosCustomerLoyalty, fetchPosCustomerVouchers, fetchPosStockBulk, fetchRxSettings, fetchSalesOrder, lookupPosProduct, openSalesShift, previewPosAllocation, reportRxPosBlock, searchCustomers, searchPosProducts, updateDraftSale, type TenantBatchModeValue, type TenantRxSettings } from '@/shared/api/sales.api';
 import {
   isShiftAlreadyOpenError,
   loadOpenShiftForWarehouse,
@@ -45,7 +45,6 @@ import { buildCreateSalePayload, buildDraftCompletePayload, buildDraftUpdatePayl
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
 import { PosSummaryDivider, PosSummaryOrderDiscountRow, PosSummaryPanel, PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
-import { usePosHotkeys } from '@/shared/hooks/usePosHotkeys';
 import { formatPosCheckoutSuccessMessage } from '@/modules/sales/pos-checkout-message';
 import { loadReceiptStoreSettings } from '@/modules/sales/receipt-settings';
 import {
@@ -55,6 +54,7 @@ import {
   type OrderDiscountState,
 } from '@/modules/sales/pos-pricing';
 import { useSalesDiscountPolicy } from '@/modules/sales/useSalesDiscountPolicy';
+import { RX_POS_BLOCK_MESSAGE, shouldBlockRxAtPos } from '@/modules/sales/rx-dispensing';
 import {
   clearPosDraftEdit,
   loadDraftCartLines,
@@ -89,6 +89,8 @@ import type { CustomerDetail } from '@/shared/api/customer-admin.types';
 import { CustomerDraftOrderStatusBar } from '@/modules/sales/CustomerDraftOrderStatusBar';
 import { formatDisplayMoney, moneyInputNumberPropsAllowZeroSuffix, moneyInputNumberStyle } from '@/shared/utils/money';
 import { useTranslation } from 'react-i18next';
+import { LoadPrescriptionModal } from '@/modules/sales/LoadPrescriptionModal';
+import { fetchPrescriptionPosLoad, type RxPrescriptionPosLoad } from '@/shared/api/rx.api';
 
 export function PosPage() {
   const { t } = useTranslation('sales');
@@ -105,6 +107,9 @@ export function PosPage() {
   const [customerDraftOrders, setCustomerDraftOrders] = useState<CustomerDraftOrderListItem[]>([]);
   const [loadedCustomerDraftOrderId, setLoadedCustomerDraftOrderId] = useState<string>();
   const [loadedCustomerReservationId, setLoadedCustomerReservationId] = useState<string>();
+  const [loadedPrescriptionId, setLoadedPrescriptionId] = useState<string>();
+  const [loadedPrescriptionCode, setLoadedPrescriptionCode] = useState<string>();
+  const [loadPrescriptionOpen, setLoadPrescriptionOpen] = useState(false);
   const [activeCustomerDraft, setActiveCustomerDraft] = useState<CustomerDraftOrder | null>(null);
   const [customerLoyalty, setCustomerLoyalty] = useState<PosCustomerLoyalty | null>(null);
   const [customerVouchers, setCustomerVouchers] = useState<PosCustomerVoucher[]>([]);
@@ -125,6 +130,7 @@ export function PosPage() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [checkoutValidating, setCheckoutValidating] = useState(false);
   const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('suggest');
+  const [rxSettings, setRxSettings] = useState<TenantRxSettings>({ enforcementMode: 'off', posBlockedAudit: true });
   const [customerAppDraftMode, setCustomerAppDraftMode] = useState(false);
   const [quickCustomerOpen, setQuickCustomerOpen] = useState(false);
   const pendingAutoCheckoutRef = useRef(false);
@@ -217,6 +223,8 @@ export function PosPage() {
       setOrderDiscount(orderDiscountFromCustomerDraft(payload));
       setLoadedCustomerDraftOrderId(payload.draftOrderId);
       setLoadedCustomerReservationId(undefined);
+      setLoadedPrescriptionId(undefined);
+      setLoadedPrescriptionCode(undefined);
       setCustomerAppDraftMode(false);
       setEditingDraftId(null);
       setEditingDraftNumber(null);
@@ -247,6 +255,8 @@ export function PosPage() {
       setOrderDiscount({});
       setLoadedCustomerReservationId(payload.reservationId);
       setLoadedCustomerDraftOrderId(undefined);
+      setLoadedPrescriptionId(undefined);
+      setLoadedPrescriptionCode(undefined);
       setActiveCustomerDraft(null);
       setCustomerAppDraftMode(false);
       setEditingDraftId(null);
@@ -266,11 +276,50 @@ export function PosPage() {
     }
   };
 
+  const loadPrescriptionIntoPos = useCallback(
+    async (payload: RxPrescriptionPosLoad) => {
+      setLoadedCustomerDraftOrderId(undefined);
+      setLoadedCustomerReservationId(undefined);
+      setActiveCustomerDraft(null);
+      setCustomerAppDraftMode(false);
+      setEditingDraftId(null);
+      setEditingDraftNumber(null);
+      clearPosDraftEdit();
+      setLoadedPrescriptionId(payload.id);
+      setLoadedPrescriptionCode(payload.prescriptionCode);
+      if (payload.customerId) {
+        setCustomerId(payload.customerId);
+      }
+      setCart(
+        payload.lines
+          .filter((line) => line.productUnitId && line.qtyRemaining > 0)
+          .map((line) => ({
+            key: `${line.productUnitId}-${line.prescriptionLineId}`,
+            productId: line.productId,
+            productCode: line.productCode,
+            productName: line.productName,
+            productUnitId: line.productUnitId as string,
+            unitName: line.unitName ?? '',
+            quantity: Number(line.qtyRemaining),
+            unitPrice: line.unitPrice,
+            dispensingClass: line.lineDispensingClass,
+            stockAvailable: line.stockAvailable,
+            prescriptionLineId: line.prescriptionLineId,
+          })),
+      );
+      setOrderDiscount({});
+      message.success(`Đã nạp đơn ${payload.prescriptionCode} vào POS`);
+    },
+    [message],
+  );
+
   const resetCart = useCallback(() => {
     setCart([]);
     setOrderDiscount({});
     setLoadedCustomerDraftOrderId(undefined);
     setLoadedCustomerReservationId(undefined);
+    setLoadedPrescriptionId(undefined);
+    setLoadedPrescriptionCode(undefined);
     setActiveCustomerDraft(null);
   }, []);
 
@@ -287,6 +336,13 @@ export function PosPage() {
     setSearchParams({}, { replace: true });
     resetCart();
   }, [resetCart, setSearchParams]);
+
+  useEffect(() => {
+    if (cart.length === 0) {
+      setLoadedPrescriptionId(undefined);
+      setLoadedPrescriptionCode(undefined);
+    }
+  }, [cart.length]);
 
   const loadOpenShift = useCallback(async (whId: string) => {
     const shift = await loadOpenShiftForWarehouse(whId);
@@ -364,6 +420,9 @@ export function PosPage() {
     void fetchBatchModeSettings()
       .then(setBatchMode)
       .catch(() => setBatchMode('suggest'));
+    void fetchRxSettings()
+      .then(setRxSettings)
+      .catch(() => setRxSettings({ enforcementMode: 'off', posBlockedAudit: true }));
   }, []);
 
   useEffect(() => {
@@ -420,6 +479,8 @@ export function PosPage() {
         setOrderDiscount(orderDiscountFromDetail(order));
         setEditingDraftId(order.id);
         setEditingDraftNumber(order.orderNumber);
+        setLoadedPrescriptionId(undefined);
+        setLoadedPrescriptionCode(undefined);
         persistPosDraftEdit(order.id);
         if (searchParams.get('draftId') !== order.id) {
           setSearchParams({ draftId: order.id }, { replace: true });
@@ -477,6 +538,25 @@ export function PosPage() {
       setSearchParams({}, { replace: true });
     });
   }, [searchParams, setSearchParams]);
+
+  const prescriptionDeepLinkHandled = useRef<string | null>(null);
+  useEffect(() => {
+    const prescriptionId = searchParams.get('prescriptionId');
+    if (!prescriptionId) {
+      prescriptionDeepLinkHandled.current = null;
+      return;
+    }
+    if (!warehouseId) return;
+    if (prescriptionDeepLinkHandled.current === prescriptionId) return;
+    prescriptionDeepLinkHandled.current = prescriptionId;
+    void fetchPrescriptionPosLoad(prescriptionId, warehouseId)
+      .then((payload) => loadPrescriptionIntoPos(payload))
+      .catch((error) => message.error(apiErrorMessage(error, 'Không nạp được đơn BS vào POS')))
+      .finally(() => {
+        prescriptionDeepLinkHandled.current = null;
+        setSearchParams({}, { replace: true });
+      });
+  }, [searchParams, setSearchParams, warehouseId, loadPrescriptionIntoPos, message]);
 
   const validateDiscounts = useCallback(() => {
     if (!canDiscount) {
@@ -582,12 +662,28 @@ export function PosPage() {
     }
   }, [cart, message, warehouseId]);
 
+  const validateRxCart = useCallback(() => {
+    const blocked = cart.find((line) => shouldBlockRxAtPos(line.dispensingClass, rxSettings.enforcementMode));
+    if (blocked) {
+      message.error(RX_POS_BLOCK_MESSAGE);
+      return false;
+    }
+    return true;
+  }, [cart, message, rxSettings.enforcementMode]);
+
   const addByBarcode = useCallback(
     async (code?: string) => {
       const value = (code ?? barcode).trim();
       if (!warehouseId || !value) return;
       try {
         const item = await lookupPosProduct(value, warehouseId);
+        if (shouldBlockRxAtPos(item.dispensingClass, rxSettings.enforcementMode)) {
+          message.error(RX_POS_BLOCK_MESSAGE);
+          if (rxSettings.posBlockedAudit) {
+            void reportRxPosBlock(item.productId, warehouseId).catch(() => undefined);
+          }
+          return;
+        }
         if (item.stockAvailable <= 0) {
           message.warning(t('pos.messages.outOfStock'));
           return;
@@ -635,6 +731,7 @@ export function PosPage() {
               unitName: item.unitName,
               quantity: 1,
               unitPrice: item.unitPrice,
+              dispensingClass: item.dispensingClass,
               stockAvailable: item.stockAvailable,
               batchHints: item.batchHints,
               batchLabel: initialBatchLabelForMode(batchMode, item.batchHints),
@@ -656,7 +753,7 @@ export function PosPage() {
         message.error(apiErrorMessage(error, t('pos.messages.productNotFound')));
       }
     },
-    [barcode, batchMode, cart, message, warehouseId],
+    [barcode, batchMode, cart, message, rxSettings, warehouseId],
   );
 
   const resetCartAndExitDraft = () => {
@@ -727,7 +824,18 @@ export function PosPage() {
         navigate(`/sales/orders?orderId=${order.id}`);
       } else {
         const order = await createSale(
-          buildCreateSalePayload(warehouseId, customerId, cart, orderDiscount, true),
+          buildCreateSalePayload(
+            warehouseId,
+            customerId,
+            cart,
+            orderDiscount,
+            true,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            loadedPrescriptionId,
+          ),
         );
         hideLoading();
         clearPosDraftEdit();
@@ -827,6 +935,7 @@ export function PosPage() {
             loyaltyDiscountAmount,
             customerVoucherId,
             orderReminder,
+            loadedPrescriptionId,
           ),
         });
       } else {
@@ -841,6 +950,7 @@ export function PosPage() {
             loyaltyDiscountAmount,
             customerVoucherId,
             orderReminder,
+            loadedPrescriptionId,
           ),
         );
       }
@@ -886,6 +996,7 @@ export function PosPage() {
     }
     if (!validateDiscounts()) return;
     if (!validateBatchLabels()) return;
+    if (!validateRxCart()) return;
     setCheckoutValidating(true);
     try {
       if (!(await validateStock())) return;
@@ -912,6 +1023,7 @@ export function PosPage() {
     validateDiscounts,
     validateBatchLabels,
     validateFefoAllocation,
+    validateRxCart,
     validateStock,
   ]);
 
@@ -923,25 +1035,6 @@ export function PosPage() {
   }, [autoCheckoutTick, cart.length, warehouseId, draftLoading, openCheckout]);
 
   const cartLocked = checkoutOpen || saving;
-
-  usePosHotkeys(
-    useMemo(
-      () => ({
-        onFocusSearch: () => {
-          document.querySelector<HTMLInputElement>('.pos-page__barcode-field input')?.focus();
-        },
-        onCheckout: () => void openCheckout(),
-        onSaveDraft: () => void saveDraft(),
-        onPrint: lastCompletedOrder
-          ? () => {
-              void printSalesInvoice(lastCompletedOrder);
-            }
-          : undefined,
-      }),
-      [openCheckout, lastCompletedOrder],
-    ),
-    canWrite && !cartLocked,
-  );
 
   const columns: ColumnsType<CartLine> = useMemo(() => [
     {
@@ -1231,6 +1324,14 @@ export function PosPage() {
           })}
         />
       )}
+      {loadedPrescriptionId && loadedPrescriptionCode ? (
+        <Alert
+          type="success"
+          showIcon
+          message={`Đang bán theo đơn ${loadedPrescriptionCode}`}
+          description="Giỏ hàng được nạp từ đơn bác sĩ; hệ thống sẽ liên kết khi chốt đơn."
+        />
+      ) : null}
       {customerDraftOrders.length > 0 ? (
         <Alert
           type="warning"
@@ -1350,6 +1451,13 @@ export function PosPage() {
         </div>
         <div className="pos-page__toolbar-aside">
           <div className="pos-page__toolbar-actions">
+            <Button
+              block
+              onClick={() => setLoadPrescriptionOpen(true)}
+              disabled={!canWrite || !warehouseId}
+            >
+              Bán theo đơn BS
+            </Button>
             <Button
               block
               size="large"
@@ -1504,6 +1612,16 @@ export function PosPage() {
           }
         />
       )}
+
+      <LoadPrescriptionModal
+        open={loadPrescriptionOpen}
+        warehouseId={warehouseId}
+        onCancel={() => setLoadPrescriptionOpen(false)}
+        onLoaded={(payload) => {
+          setLoadPrescriptionOpen(false);
+          void loadPrescriptionIntoPos(payload);
+        }}
+      />
 
       <OpenShiftModal
         open={openShiftModal}

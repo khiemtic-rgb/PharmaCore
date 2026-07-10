@@ -14,7 +14,7 @@ internal static class AssessmentReportHtmlGenerator
             <html lang="vi">
             <head>
               <meta charset="utf-8"/>
-              <title>Bao cao danh gia nang luc nha thuoc</title>
+              <title>Báo cáo đánh giá năng lực nhà thuốc</title>
               <style>
                 body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
                 h1 { color: #0f766e; }

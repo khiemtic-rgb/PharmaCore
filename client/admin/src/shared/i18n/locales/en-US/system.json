@@ -55,7 +55,11 @@
       "contact": "Contact",
       "score": "Score",
       "progress": "Progress",
-      "actions": "View"
+      "actions": "Actions"
+    },
+    "actions": {
+      "detail": "Detail",
+      "viewReport": "View report"
     },
     "status": {
       "draft": "In progress",
@@ -81,7 +85,8 @@
     },
     "messages": {
       "loadFailed": "Failed to load surveys",
-      "detailFailed": "Failed to load survey detail"
+      "detailFailed": "Failed to load survey detail",
+      "reportFailed": "Failed to load report PDF"
     }
   },
   "branches": {

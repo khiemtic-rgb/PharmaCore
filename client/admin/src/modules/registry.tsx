@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import {
   AccountBookOutlined,
+  FormOutlined,
   BarChartOutlined,
   DashboardOutlined,
+  FileProtectOutlined,
   MedicineBoxOutlined,
   ShoppingOutlined,
   TeamOutlined,
@@ -19,9 +21,11 @@ export type ModuleKey =
   | 'inventory'
   | 'procurement'
   | 'sales'
+  | 'rx'
   | 'receivables'
   | 'customer'
   | 'reports'
+  | 'kap'
   | 'system';
 
 /**
@@ -30,6 +34,7 @@ export type ModuleKey =
 export const HEADER_MODULE_KEYS: ModuleKey[] = [
   'dashboard',
   'sales',
+  'rx',
   'procurement',
   'inventory',
   'receivables',
@@ -60,6 +65,14 @@ export const moduleRegistry: ModuleMenuItem[] = [
     platformModule: ADMIN_MODULE_PLATFORM_CODES.sales,
   },
   {
+    key: 'rx',
+    label: 'rx',
+    path: '/rx/prescriptions',
+    icon: <FileProtectOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.rx,
+  },
+  {
     key: 'procurement',
     label: 'procurement',
     path: '/procurement/suppliers',
@@ -70,7 +83,7 @@ export const moduleRegistry: ModuleMenuItem[] = [
   {
     key: 'inventory',
     label: 'inventory',
-    path: '/inventory/opening-balance',
+    path: '/inventory/stock',
     icon: <InboxOutlined />,
     enabled: true,
     platformModule: ADMIN_MODULE_PLATFORM_CODES.inventory,
@@ -107,6 +120,7 @@ export const moduleRegistry: ModuleMenuItem[] = [
     enabled: true,
     platformModule: ADMIN_MODULE_PLATFORM_CODES.reports,
   },
+  { key: 'kap', label: 'kap', path: '/kap/leads', icon: <FormOutlined />, enabled: true },
   { key: 'system', label: 'system', path: '/system/branches', icon: <SettingOutlined />, enabled: true },
 ];
 

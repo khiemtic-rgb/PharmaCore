@@ -58,12 +58,14 @@
   "modules": {
     "dashboard": "Tổng quan",
     "sales": "Bán hàng",
+    "rx": "Đơn thuốc",
     "procurement": "Mua hàng",
     "inventory": "Kho hàng",
     "receivables": "Công nợ",
     "customer": "Khách hàng",
     "catalog": "Sản phẩm",
     "reports": "Báo cáo",
+    "kap": "Khảo sát chất lượng",
     "system": "Cấu hình",
     "comingSoon": "{{name}} (sắp có)"
   },

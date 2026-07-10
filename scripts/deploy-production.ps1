@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   Build artifacts cho triển khai Production (API + admin SPA + customer SPA).
 
@@ -36,13 +36,16 @@ $apiOut = Join-Path $out "api"
 $adminOut = Join-Path $out "admin"
 $customerOut = Join-Path $out "customer-app"
 $staffOut = Join-Path $out "staff-app"
+$prescriberOut = Join-Path $out "prescriber-portal"
+$partnerOut = Join-Path $out "partner-portal"
+$assessmentOut = Join-Path $out "assessment-web"
 
 if (Test-Path $out) {
     Remove-Item -Recurse -Force $out
 }
-New-Item -ItemType Directory -Force -Path $apiOut, $adminOut, $customerOut, $staffOut | Out-Null
+New-Item -ItemType Directory -Force -Path $apiOut, $adminOut, $customerOut, $staffOut, $prescriberOut, $partnerOut, $assessmentOut | Out-Null
 
-Write-Host "`n[1/5] dotnet publish API (Release)..." -ForegroundColor Yellow
+Write-Host "`n[1/8] dotnet publish API (Release)..." -ForegroundColor Yellow
 dotnet publish "src\KitPlatform.Api\KitPlatform.Api.csproj" `
     -c Release `
     -o $apiOut `
@@ -63,16 +66,25 @@ function Invoke-NpmBuild([string]$ClientDir, [string]$DestDir) {
     Pop-Location
 }
 
-Write-Host "`n[2/5] npm build admin..." -ForegroundColor Yellow
+Write-Host "`n[2/7] npm build admin..." -ForegroundColor Yellow
 Invoke-NpmBuild "client\admin" $adminOut
 
-Write-Host "`n[3/5] npm build customer-app..." -ForegroundColor Yellow
+Write-Host "`n[3/7] npm build customer-app..." -ForegroundColor Yellow
 Invoke-NpmBuild "client\customer-app" $customerOut
 
-Write-Host "`n[4/5] npm build staff-app (POS mobile)..." -ForegroundColor Yellow
+Write-Host "`n[4/7] npm build staff-app (POS mobile)..." -ForegroundColor Yellow
 Invoke-NpmBuild "client\staff-app" $staffOut
 
-Write-Host "`n[5/5] Ghi deploy notes..." -ForegroundColor Yellow
+Write-Host "`n[5/8] npm build prescriber-portal..." -ForegroundColor Yellow
+Invoke-NpmBuild "client\prescriber-portal" $prescriberOut
+
+Write-Host "`n[6/8] npm build partner-portal..." -ForegroundColor Yellow
+Invoke-NpmBuild "client\partner-portal" $partnerOut
+
+Write-Host "`n[7/8] npm build assessment-web (KAP public)..." -ForegroundColor Yellow
+Invoke-NpmBuild "client\assessment-web" $assessmentOut
+
+Write-Host "`n[8/8] Ghi deploy notes..." -ForegroundColor Yellow
 $notes = @"
 KitPlatform production artifacts
 Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
@@ -82,6 +94,9 @@ Thư mục:
   admin/         - Static SPA quản trị
   customer-app/  - Static SPA khách hàng
   staff-app/     - Static SPA quầy bán (POS mobile)
+  prescriber-portal/ - Portal bác sĩ kê đơn (Rx-2)
+  partner-portal/ - KAP Partner / CTV portal
+  assessment-web/ - KAP public survey (survey.domain)
 
 Biến môi trường API (bắt buộc):
   ConnectionStrings__Default

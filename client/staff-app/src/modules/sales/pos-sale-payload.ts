@@ -19,6 +19,7 @@ export function buildSaleLineItems(cart: CartLine[]) {
       ...(line.discountType
         ? { discountType: line.discountType, discountValue: line.discountValue ?? 0 }
         : {}),
+      ...(line.prescriptionLineId ? { prescriptionLineId: line.prescriptionLineId } : {}),
     };
   });
 }
@@ -32,6 +33,7 @@ export function buildCreateSalePayload(
   payments?: PosCheckoutPaymentLine[],
   loyaltyDiscountAmount?: number,
   customerVoucherId?: string,
+  prescriptionId?: string,
 ) {
   return {
     warehouseId,
@@ -42,6 +44,7 @@ export function buildCreateSalePayload(
     payments: payments?.map((p) => ({ paymentMethod: p.paymentMethod, amount: p.amount })),
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
     ...(customerVoucherId ? { customerVoucherId } : {}),
+    ...(prescriptionId ? { prescriptionId } : {}),
     items: buildSaleLineItems(cart),
   };
 }
@@ -52,6 +55,7 @@ export function buildDraftCompletePayload(
   orderDiscount: OrderDiscountState,
   loyaltyDiscountAmount?: number,
   customerVoucherId?: string,
+  prescriptionId?: string,
 ) {
   return {
     customerId: customerId ?? null,
@@ -59,6 +63,7 @@ export function buildDraftCompletePayload(
     orderDiscountValue: orderDiscount.discountType ? (orderDiscount.discountValue ?? 0) : null,
     ...(loyaltyDiscountAmount != null && loyaltyDiscountAmount > 0 ? { loyaltyDiscountAmount } : {}),
     ...(customerVoucherId ? { customerVoucherId } : {}),
+    ...(prescriptionId ? { prescriptionId } : {}),
     items: buildSaleLineItems(cart),
   };
 }

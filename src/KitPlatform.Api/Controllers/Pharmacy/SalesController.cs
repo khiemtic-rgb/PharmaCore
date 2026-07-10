@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using KitPlatform.Api.Authorization;
 using KitPlatform.Packs.Pharmacy.Sales;
@@ -300,10 +300,13 @@ public sealed class SalesController : ControllerBase
         [FromBody] OpenSalesShiftRequest request,
         CancellationToken cancellationToken)
     {
+        if (request.WarehouseId == Guid.Empty)
+            return BadRequest(new { message = "warehouseId là bắt buộc." });
+
         try
         {
             var shift = await _sales.OpenShiftAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetShift), new { id = shift.Id }, shift);
+            return Ok(shift);
         }
         catch (InvalidOperationException ex)
         {

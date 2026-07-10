@@ -5,6 +5,11 @@ export const DEFAULT_TENANT_CODE = import.meta.env.VITE_DEFAULT_TENANT_CODE?.tri
 export const TENANT_CODE_STORAGE_KEY = 'novixa_tenant_code';
 export const PLATFORM_KEY_STORAGE_KEY = 'novixa_platform_key';
 
+/** Deploy 1 nhà thuốc: ẩn ô mã, dùng mã cố định lúc build. */
+export function isTenantCodeLocked(): boolean {
+  return DEFAULT_TENANT_CODE.length > 0;
+}
+
 export function loadStoredTenantCode(): string {
   if (typeof window === 'undefined') return DEFAULT_TENANT_CODE;
   return window.localStorage.getItem(TENANT_CODE_STORAGE_KEY)?.trim() || DEFAULT_TENANT_CODE;

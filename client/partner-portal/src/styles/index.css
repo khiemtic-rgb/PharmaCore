@@ -1,0 +1,14 @@
+:root {
+  color: #134e4a;
+  background: #f0fdfa;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using KitPlatform.Packs.Survey;
 using KitPlatform.Application.Configuration;
 
@@ -7,16 +7,21 @@ namespace KitPlatform.Packs.Survey.Infrastructure;
 internal sealed class AssessmentAdminService : IAssessmentAdminService
 {
     private readonly AssessmentRepository _repo;
+    private readonly IAssessmentSubmissionService _submissions;
     private readonly PlatformSettings _platform;
 
-    public AssessmentAdminService(AssessmentRepository repo, IOptions<PlatformSettings> platform)
+    public AssessmentAdminService(
+        AssessmentRepository repo,
+        IAssessmentSubmissionService submissions,
+        IOptions<PlatformSettings> platform)
     {
         _repo = repo;
+        _submissions = submissions;
         _platform = platform.Value;
     }
 
     public AssessmentAdminAccessDto GetAccess() =>
-        new(_platform.EnableAssessmentLeadsAdmin);
+        new(_platform.IsKapAdminEnabled);
 
     public async Task<AssessmentSubmissionListResultDto> ListSubmissionsAsync(
         AssessmentSubmissionListQuery query,
@@ -29,6 +34,8 @@ internal sealed class AssessmentAdminService : IAssessmentAdminService
             query.PageSize,
             query.Status,
             query.HasLead,
+            query.PartnerId,
+            query.LeadPipelineStatus,
             cancellationToken);
 
         return new AssessmentSubmissionListResultDto(
@@ -81,6 +88,56 @@ internal sealed class AssessmentAdminService : IAssessmentAdminService
             counts.TotalRequired);
     }
 
+    public async Task<AssessmentFullReportDto> GetReportAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureEnabled();
+        return await _submissions.GetReportForAdminAsync(submissionId, cancellationToken);
+    }
+
+    public async Task<(byte[] Content, string FileName, string ContentType)> GetReportPdfAsync(
+        Guid submissionId,
+        KapReportPdfKind kind = KapReportPdfKind.Consulting,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureEnabled();
+        return await _submissions.GetReportPdfForAdminAsync(submissionId, kind, cancellationToken);
+    }
+
+    public async Task<bool> UpdateLeadPipelineAsync(
+        Guid submissionId,
+        UpdateLeadPipelineRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureEnabled();
+        var allowedPipeline = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "new", "contacted", "demo_scheduled", "demo_done", "won", "lost", "nurturing",
+        };
+        var allowedCommission = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "none", "pending", "approved", "paid", "void",
+        };
+
+        if (!allowedPipeline.Contains(request.LeadPipelineStatus))
+            throw new InvalidOperationException("Trạng thái pipeline không hợp lệ.");
+
+        string? commission = null;
+        if (!string.IsNullOrWhiteSpace(request.CommissionStatus))
+        {
+            if (!allowedCommission.Contains(request.CommissionStatus))
+                throw new InvalidOperationException("Trạng thái hoa hồng không hợp lệ.");
+            commission = request.CommissionStatus.Trim().ToLowerInvariant();
+        }
+
+        return await _repo.UpdateLeadPipelineAsync(
+            submissionId,
+            request.LeadPipelineStatus.Trim().ToLowerInvariant(),
+            commission,
+            cancellationToken);
+    }
+
     private static AssessmentSubmissionListItemDto MapListItem(AssessmentSubmissionListRow row) =>
         new(
             row.Id,
@@ -96,11 +153,16 @@ internal sealed class AssessmentAdminService : IAssessmentAdminService
             row.RespondentName,
             row.RespondentPhone,
             row.RespondentEmail,
-            row.RespondentOrgName);
+            row.RespondentOrgName,
+            row.PartnerId,
+            row.PartnerCode,
+            row.PartnerName,
+            row.LeadPipelineStatus,
+            row.CommissionStatus);
 
     private void EnsureEnabled()
     {
-        if (!_platform.EnableAssessmentLeadsAdmin)
+        if (!_platform.IsKapAdminEnabled)
             throw new UnauthorizedAccessException("Tính năng không khả dụng trên triển khai này.");
     }
 }

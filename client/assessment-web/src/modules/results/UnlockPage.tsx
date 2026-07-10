@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Checkbox, Form, Input, Typography, message } from 'antd';
+import { Button, Checkbox, Form, Input, Select, Typography, message } from 'antd';
+import type { AxiosError } from 'axios';
 import { captureLead } from '@/shared/api/assessment.api';
 
 const { Title, Paragraph } = Typography;
@@ -10,9 +11,18 @@ type FormValues = {
   respondentPhone: string;
   respondentEmail: string;
   respondentOrgName: string;
+  orgScale: string;
   respondentNote?: string;
   consentMarketing: boolean;
 };
+
+const ORG_SCALE_OPTIONS = [
+  { value: 'micro', label: 'Cá nhân / quầy nhỏ (1–2 nhân viên)' },
+  { value: 'small', label: 'Nhà thuốc nhỏ (3–5 nhân viên)' },
+  { value: 'medium', label: 'Nhà thuốc vừa (6–15 nhân viên)' },
+  { value: 'large', label: 'Lớn (16+ nhân viên, 1 cơ sở)' },
+  { value: 'chain', label: 'Chuỗi (2+ chi nhánh)' },
+];
 
 export function UnlockPage() {
   const { id = '' } = useParams();
@@ -22,18 +32,23 @@ export function UnlockPage() {
   async function onFinish(values: FormValues) {
     setLoading(true);
     try {
-      await captureLead(id, values);
+      await captureLead(id, {
+        ...values,
+        orgScale: values.orgScale || 'small',
+      });
       message.success('Cảm ơn! Báo cáo đã sẵn sàng.');
       navigate(`/report/${id}`);
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      message.error(msg ?? 'Gửi thông tin thất bại.');
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      const msg = axiosErr.response?.data?.message;
+      message.error(msg ?? 'Gửi thông tin thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
+  }
+
+  function onFinishFailed() {
+    message.warning('Vui lòng điền đầy đủ các trường bắt buộc (đánh dấu *).');
   }
 
   return (
@@ -41,7 +56,13 @@ export function UnlockPage() {
       <Title level={3}>Nhận báo cáo chi tiết</Title>
       <Paragraph type="secondary">Thông tin giúp Novixa gửi báo cáo và tư vấn phù hợp.</Paragraph>
 
-      <Form layout="vertical" onFinish={onFinish} requiredMark="optional">
+      <Form
+        layout="vertical"
+        onFinish={onFinish}
+        onFinishFailed={onFinishFailed}
+        scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
+        requiredMark
+      >
         <Form.Item
           label="Họ tên"
           name="respondentName"
@@ -69,6 +90,14 @@ export function UnlockPage() {
           rules={[{ required: true, min: 2, message: 'Nhập tên cơ sở' }]}
         >
           <Input placeholder="Nhà thuốc ABC" />
+        </Form.Item>
+        <Form.Item
+          label="Quy mô cơ sở"
+          name="orgScale"
+          initialValue="small"
+          rules={[{ required: true, message: 'Chọn quy mô nhà thuốc' }]}
+        >
+          <Select placeholder="Chọn quy mô nhà thuốc" options={ORG_SCALE_OPTIONS} />
         </Form.Item>
         <Form.Item label="Ghi chú (tuỳ chọn)" name="respondentNote">
           <Input.TextArea rows={3} placeholder="Muốn tư vấn phần mềm quản lý..." />

@@ -33,7 +33,7 @@
       "transfers": "Điều chuyển",
       "adjustments": "Kiểm kê",
       "warehouses": "Danh mục kho",
-      "qd540Export": "Xuất QĐ 540"
+      "qd540Export": "Liên thông dược (QĐ 540)"
     }
   },
   "qd540Export": {
@@ -497,8 +497,10 @@
   },
   "gppChecklist": {
     "title": "Checklist vận hành GPP",
-    "description": "Theo dõi thói quen hàng ngày/tuần/tháng sau go-live. Lưu cục bộ trên trình duyệt — không thay thế hồ sơ GPP chính thức.",
+    "description": "Theo dõi thói quen hàng ngày/tuần/tháng sau go-live. Lưu trên máy chủ — đồng bộ giữa các thiết bị đăng nhập cùng nhà thuốc.",
     "disclaimer": "Công cụ nội bộ hypercare tuần 2–4. Tick khi hoàn thành; reset đầu kỳ mới.",
+    "loadingTip": "Đang tải checklist...",
+    "saving": "Đang lưu",
     "progress": "{{done}}/{{total}} mục",
     "reset": "Reset checklist",
     "resetDone": "Đã reset checklist",
@@ -520,6 +522,10 @@
       "fullCount": "Kiểm kê toàn phần hoặc theo danh mục trọng yếu",
       "accessReview": "Rà soát tài khoản / quyền admin & staff",
       "backupCheck": "Xác nhận backup DB và log API"
+    },
+    "messages": {
+      "loadFailed": "Không tải được checklist GPP",
+      "saveFailed": "Không lưu được checklist GPP"
     }
   }
 }

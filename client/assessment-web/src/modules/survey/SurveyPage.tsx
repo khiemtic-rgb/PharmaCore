@@ -11,6 +11,7 @@ import {
   type AssessmentTemplate,
 } from '@/shared/api/assessment.api';
 import { annotateInsightText } from '@/shared/score/score-display';
+import { visibleQuestions } from '@/shared/survey/survey-logic';
 
 const { Title, Text } = Typography;
 
@@ -82,20 +83,38 @@ export function SurveyPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const categories = useMemo(() => (template ? groupQuestionsByCategory(template) : []), [template]);
-  const currentCat = categories[catIndex];
-  const currentQuestion: AssessmentQuestion | undefined = currentCat?.questions[qIndex];
 
   const allQuestions = useMemo(() => categories.flatMap((c) => c.questions), [categories]);
-  const answeredCount = allQuestions.filter((q) => answers[q.id]).length;
-  const progressPct = allQuestions.length ? Math.round((answeredCount / allQuestions.length) * 100) : 0;
+  const visibleAllQuestions = useMemo(
+    () => visibleQuestions(allQuestions, answers),
+    [allQuestions, answers],
+  );
+
+  const visibleCategories = useMemo(
+    () =>
+      categories
+        .map((cat) => ({
+          ...cat,
+          questions: visibleQuestions(cat.questions, answers),
+        }))
+        .filter((cat) => cat.questions.length > 0),
+    [categories, answers],
+  );
+
+  const currentCat = visibleCategories[catIndex];
+  const currentQuestion: AssessmentQuestion | undefined = currentCat?.questions[qIndex];
+  const answeredCount = visibleAllQuestions.filter((q) => answers[q.id]).length;
+  const progressPct = visibleAllQuestions.length
+    ? Math.round((answeredCount / visibleAllQuestions.length) * 100)
+    : 0;
 
   const categoryAnswered = useMemo(
     () =>
-      categories.map((cat) => ({
+      visibleCategories.map((cat) => ({
         total: cat.questions.length,
         done: cat.questions.filter((q) => answers[q.id]).length,
       })),
-    [categories, answers],
+    [visibleCategories, answers],
   );
 
   useEffect(() => {
@@ -108,6 +127,7 @@ export function SurveyPage() {
         const initial: Record<string, string> = {};
         for (const [qid, resp] of Object.entries(sub.responses)) {
           if (resp.optionId) initial[qid] = resp.optionId;
+          else if (resp.textValue) initial[qid] = resp.textValue;
         }
         setAnswers(initial);
         if (sub.status !== 'draft') {
@@ -126,10 +146,11 @@ export function SurveyPage() {
   }, [id, navigate]);
 
   const persistAnswer = useCallback(
-    async (questionId: string, optionId: string) => {
-      setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+    async (questionId: string, patch: { optionId?: string; textValue?: string }) => {
+      const stored = patch.optionId ?? patch.textValue ?? '';
+      setAnswers((prev) => ({ ...prev, [questionId]: stored }));
       try {
-        await saveResponses(id, [{ questionId, optionId }]);
+        await saveResponses(id, [{ questionId, ...patch }]);
       } catch {
         message.warning('Lưu câu trả lời thất bại — thử lại.');
       }
@@ -138,7 +159,8 @@ export function SurveyPage() {
   );
 
   const isLastQuestion =
-    catIndex === categories.length - 1 && qIndex === (currentCat?.questions.length ?? 1) - 1;
+    catIndex === visibleCategories.length - 1 &&
+    qIndex === (currentCat?.questions.length ?? 1) - 1;
 
   async function goNext() {
     if (!currentCat || !currentQuestion) return;
@@ -152,7 +174,7 @@ export function SurveyPage() {
       return;
     }
 
-    if (catIndex < categories.length - 1) {
+    if (catIndex < visibleCategories.length - 1) {
       setCatIndex(catIndex + 1);
       setQIndex(0);
       return;
@@ -180,7 +202,7 @@ export function SurveyPage() {
     }
     if (catIndex > 0) {
       setCatIndex(catIndex - 1);
-      const prevCat = categories[catIndex - 1];
+      const prevCat = visibleCategories[catIndex - 1];
       setQIndex(prevCat ? prevCat.questions.length - 1 : 0);
     }
   }
@@ -194,7 +216,7 @@ export function SurveyPage() {
   }
 
   const globalIndex =
-    categories.slice(0, catIndex).reduce((n, c) => n + c.questions.length, 0) + qIndex + 1;
+    visibleCategories.slice(0, catIndex).reduce((n, c) => n + c.questions.length, 0) + qIndex + 1;
 
   return (
     <div className="page-shell survey-page">
@@ -204,7 +226,7 @@ export function SurveyPage() {
           Lưu &amp; thoát
         </button>
         <Text type="secondary" className="survey-top-meta">
-          Câu {globalIndex}/{allQuestions.length}
+          Câu {globalIndex}/{visibleAllQuestions.length}
         </Text>
       </div>
 
@@ -221,7 +243,7 @@ export function SurveyPage() {
       </div>
 
       <nav className="survey-steps" aria-label="Nhóm câu hỏi">
-        {categories.map((cat, idx) => {
+        {visibleCategories.map((cat, idx) => {
           const stat = categoryAnswered[idx];
           const isActive = idx === catIndex;
           const isDone = stat && stat.done === stat.total;
@@ -256,25 +278,56 @@ export function SurveyPage() {
           {annotateInsightText(currentQuestion.title)}
         </Title>
 
-        <div className="survey-options" role="radiogroup" aria-label="Lựa chọn trả lời">
-          {currentQuestion.options.map((opt) => {
-            const selected = answers[currentQuestion.id] === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                className={['survey-option', selected ? 'survey-option--selected' : '']
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => persistAnswer(currentQuestion.id, opt.id)}
-              >
-                <span className="survey-option-radio" aria-hidden />
-                <span className="survey-option-label">{opt.label}</span>
-              </button>
-            );
-          })}
+        <div className="survey-options" role="group" aria-label="Lựa chọn trả lời">
+          {currentQuestion.questionType === 'text' || currentQuestion.questionType === 'scale' ? (
+            <textarea
+              className="survey-text-input"
+              rows={4}
+              value={answers[currentQuestion.id] ?? ''}
+              onChange={(e) => void persistAnswer(currentQuestion.id, { textValue: e.target.value })}
+              placeholder={currentQuestion.helpText ?? 'Nhập câu trả lời...'}
+            />
+          ) : currentQuestion.questionType === 'multi_choice' ? (
+            currentQuestion.options.map((opt) => {
+              const selected = (answers[currentQuestion.id] ?? '').split(',').filter(Boolean).includes(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={['survey-option', selected ? 'survey-option--selected' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => {
+                    const prev = (answers[currentQuestion.id] ?? '').split(',').filter(Boolean);
+                    const next = selected ? prev.filter((id) => id !== opt.id) : [...prev, opt.id];
+                    void persistAnswer(currentQuestion.id, { optionId: next[0] });
+                    setAnswers((a) => ({ ...a, [currentQuestion.id]: next.join(',') }));
+                  }}
+                >
+                  <span className="survey-option-label">{opt.label}</span>
+                </button>
+              );
+            })
+          ) : (
+            currentQuestion.options.map((opt) => {
+              const selected = answers[currentQuestion.id] === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  className={['survey-option', selected ? 'survey-option--selected' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => persistAnswer(currentQuestion.id, { optionId: opt.id })}
+                >
+                  <span className="survey-option-radio" aria-hidden />
+                  <span className="survey-option-label">{opt.label}</span>
+                </button>
+              );
+            })
+          )}
         </div>
       </article>
 

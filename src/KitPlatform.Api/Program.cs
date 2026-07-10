@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text;
 using Dapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -7,6 +7,8 @@ using Microsoft.OpenApi.Models;
 using KitPlatform.Api.Authorization;
 using KitPlatform.Application.Configuration;
 using KitPlatform.Application.CustomerApp;
+using KitPlatform.Packs.Pharmacy.Rx;
+using KitPlatform.Packs.Survey;
 using KitPlatform.Infrastructure;
 using KitPlatform.Infrastructure.Data;
 using KitPlatform.Packs.Pharmacy.Infrastructure;
@@ -27,6 +29,16 @@ var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<
 
 var customerAppAuth = builder.Configuration.GetSection(CustomerAppAuthSettings.SectionName).Get<CustomerAppAuthSettings>()
     ?? new CustomerAppAuthSettings();
+
+var prescriberPortalAuth = builder.Configuration
+    .GetSection(PrescriberPortalAuthSettings.SectionName)
+    .Get<PrescriberPortalAuthSettings>()
+    ?? new PrescriberPortalAuthSettings();
+
+var partnerPortalAuth = builder.Configuration
+    .GetSection(PartnerPortalAuthSettings.SectionName)
+    .Get<PartnerPortalAuthSettings>()
+    ?? new PartnerPortalAuthSettings();
 
 if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || jwtSettings.Secret.Length < 32)
 {
@@ -49,7 +61,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings.Issuer,
-            ValidAudiences = new[] { jwtSettings.Audience, customerAppAuth.Audience },
+            ValidAudiences = new[]
+            {
+                jwtSettings.Audience,
+                customerAppAuth.Audience,
+                prescriberPortalAuth.Audience,
+                partnerPortalAuth.Audience,
+            },
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
             ClockSkew = TimeSpan.FromMinutes(1),
         };
@@ -72,7 +90,10 @@ builder.Services.AddAuthorization(options =>
     options.AddProcurementAuthorization();
     options.AddSystemAuthorization();
     options.AddSalesAuthorization();
+    options.AddRxAuthorization();
     options.AddCustomerAppAuthorization();
+    options.AddPrescriberPortalAuthorization();
+    options.AddPartnerPortalAuthorization();
     options.AddDashboardAuthorization();
     options.AddReportsAuthorization();
     options.AddIdentityAuthorization();
@@ -81,6 +102,27 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddPharmacyPack(builder.Configuration);
 builder.Services.AddClinicPack();
 builder.Services.AddSurveyPack(builder.Configuration);
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { code = "rate_limited", message = "Quá nhiều yêu cầu — thử lại sau." },
+            token);
+    };
+    options.AddPolicy("kap-public", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue("Assessment:PublicRequestsPerMinutePerIp", 30),
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
 
 var corsSettings = builder.Configuration.GetSection(CorsSettings.SectionName).Get<CorsSettings>()
     ?? new CorsSettings();
@@ -154,6 +196,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AdminWeb");
+app.UseRateLimiter();
 
 var uploadsRoot = Path.Combine(app.Environment.ContentRootPath, "uploads");
 Directory.CreateDirectory(uploadsRoot);
@@ -359,6 +402,8 @@ app.Use(async (context, next) =>
     var path = context.Request.Path;
     if (path.StartsWithSegments("/api")
         && !path.StartsWithSegments("/api/customer-app")
+        && !path.StartsWithSegments("/api/prescriber-portal")
+        && !path.StartsWithSegments("/api/partner-portal")
         && !path.StartsWithSegments("/api/public")
         && !path.StartsWithSegments("/api/auth")
         && !path.StartsWithSegments("/api/platform")
@@ -386,6 +431,9 @@ app.Use(async (context, next) =>
         && !path.StartsWithSegments("/api/public")
         && !path.StartsWithSegments("/api/platform")
         && !path.StartsWithSegments("/api/health")
+        && !path.StartsWithSegments("/api/prescriber-portal")
+        && !path.StartsWithSegments("/api/partner-portal")
+        && !path.StartsWithSegments("/api/customer-app")
         && context.User.Identity?.IsAuthenticated == true)
     {
         var tenantId = context.User.FindFirst("tenant_id")?.Value;

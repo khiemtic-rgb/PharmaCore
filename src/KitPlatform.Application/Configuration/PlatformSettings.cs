@@ -1,4 +1,4 @@
-﻿namespace KitPlatform.Application.Configuration;
+namespace KitPlatform.Application.Configuration;
 
 public sealed class PlatformSettings
 {
@@ -17,6 +17,14 @@ public sealed class PlatformSettings
 
     public string ApiUrl { get; set; } = "https://api.novixa.vn";
 
-    /// <summary>Bật màn admin xem lead khảo sát public (chỉ deployment vận hành Novixa).</summary>
+    /// <summary>Bật màn admin xem lead khảo sát public (legacy flag).</summary>
     public bool EnableAssessmentLeadsAdmin { get; set; }
+
+    /// <summary>Bật module KAP (KIT Assessment Platform) trên admin.</summary>
+    public bool EnableKapAdmin { get; set; }
+
+    /// <summary>URL public KAP / assessment web.</summary>
+    public string KapPublicUrl { get; set; } = "https://survey.novixa.vn";
+
+    public bool IsKapAdminEnabled => EnableKapAdmin || EnableAssessmentLeadsAdmin;
 }

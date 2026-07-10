@@ -26,6 +26,7 @@ public sealed record PosProductLookupDto(
     decimal ConversionFactor,
     decimal UnitPrice,
     decimal StockAvailable,
+    string DispensingClass,
     IReadOnlyList<PosBatchHintDto>? BatchHints = null,
     string StockSourceLabel = StockSourceLabels.SystemBook);
 
@@ -86,7 +87,8 @@ public sealed record CreateSaleLineRequest(
     decimal Quantity,
     short? DiscountType = null,
     decimal? DiscountValue = null,
-    string? BatchNumber = null);
+    string? BatchNumber = null,
+    Guid? PrescriptionLineId = null);
 
 public sealed record CompleteDraftSaleRequest(
     IReadOnlyList<CreateSalePaymentRequest>? Payments = null,
@@ -100,7 +102,10 @@ public sealed record CompleteDraftSaleRequest(
     Guid? CustomerVoucherId = null,
     string? OrderReminderLabel = null,
     int? OrderReminderDaysSupply = null,
-    Guid? DiscountOverrideWorkflowTaskId = null);
+    Guid? DiscountOverrideWorkflowTaskId = null,
+    Guid? PrescriptionId = null);
+
+public sealed record ReportRxPosBlockRequest(Guid ProductId, Guid WarehouseId);
 
 public sealed record CreateSalePaymentRequest(
     short PaymentMethod,
@@ -121,7 +126,8 @@ public sealed record CreateSaleRequest(
     Guid? CustomerVoucherId = null,
     string? OrderReminderLabel = null,
     int? OrderReminderDaysSupply = null,
-    Guid? DiscountOverrideWorkflowTaskId = null);
+    Guid? DiscountOverrideWorkflowTaskId = null,
+    Guid? PrescriptionId = null);
 
 public sealed record UpdateDraftSaleRequest(
     Guid? CustomerId,

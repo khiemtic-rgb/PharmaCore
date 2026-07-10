@@ -33,9 +33,28 @@
       "suppliers": "Nhà cung cấp",
       "orders": "Đơn đặt hàng",
       "receipts": "Phiếu nhập",
-      "vatSettings": "Thuế GTGT",
+      "vatSettings": "Cài đặt thuế (kế toán)",
       "payables": "Công nợ NCC",
       "payments": "Thanh toán NCC"
+    }
+  },
+  "onboarding": {
+    "title": "Bắt đầu nhập hàng",
+    "description": "Quy trình chuẩn: tạo nhà cung cấp → đặt hàng (PO) → nhận hàng (GRN) để cập nhật tồn kho.",
+    "dismiss": "Ẩn hướng dẫn",
+    "steps": {
+      "suppliers": {
+        "title": "1. Nhà cung cấp",
+        "description": "Thêm NCC và mã cơ sở bán buôn (nếu có)"
+      },
+      "orders": {
+        "title": "2. Đơn đặt hàng",
+        "description": "Tạo PO, duyệt và gửi NCC"
+      },
+      "receipts": {
+        "title": "3. Phiếu nhập",
+        "description": "Nhận hàng, nhập lô/HSD và hoàn tất GRN"
+      }
     }
   },
   "shared": {

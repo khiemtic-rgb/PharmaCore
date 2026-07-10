@@ -27,6 +27,8 @@ body {
   --customer-app-header-height: 76px;
   --customer-app-bottom-nav-height: calc(64px + env(safe-area-inset-bottom, 0));
   --keyboard-inset: 0px;
+  --vv-offset-left: 0px;
+  --vv-width: 100%;
   --chat-composer-height: 68px;
 }
 
@@ -300,11 +302,17 @@ body {
 
 .customer-chat-composer-dock {
   position: fixed;
-  left: 0;
-  right: 0;
+  /* Pin to visual viewport so iOS keyboard focus cannot pan the bar off-screen. */
+  left: var(--vv-offset-left, 0px);
+  right: auto;
+  width: var(--vv-width, 100%);
+  max-width: 100%;
   bottom: var(--customer-app-bottom-nav-height);
   z-index: 110;
   padding: 8px 12px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  overflow-x: hidden;
   background: #f0fdfa;
   border-top: 1px solid #e2e8f0;
   box-shadow: 0 -4px 16px rgba(15, 118, 110, 0.08);
@@ -316,14 +324,17 @@ body {
   align-items: flex-end;
   gap: 8px;
   width: 100%;
-  max-width: 480px;
+  max-width: min(480px, 100%);
+  min-width: 0;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .customer-chat-native-input {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
-  width: 0;
+  width: auto;
+  max-width: 100%;
   min-height: 44px;
   max-height: 120px;
   margin: 0;
@@ -333,10 +344,14 @@ body {
   background: #fff;
   color: #134e4a;
   font: inherit;
+  font-size: 16px; /* Prevent iOS focus zoom */
   line-height: 1.4;
   resize: none;
   display: block;
   outline: none;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .customer-chat-native-input:focus {
@@ -365,6 +380,9 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .customer-chat-send-btn:disabled {
@@ -372,12 +390,20 @@ body {
   cursor: not-allowed;
 }
 
+body.customer-app--chat-typing,
+body.customer-app--chat-route {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
 body.customer-app--chat-typing .customer-app-bottom-nav {
   display: none;
 }
 
+/* When typing: hide bottom nav and sit above keyboard once (no double lift). */
 body.customer-app--chat-typing .customer-chat-composer-dock {
-  bottom: max(env(safe-area-inset-bottom, 0px), var(--keyboard-inset, 0px));
+  bottom: env(safe-area-inset-bottom, 0px);
+  transform: translateY(calc(-1 * var(--keyboard-inset, 0px)));
 }
 
 body.customer-app--chat-typing.customer-app--chat-route .customer-app-content--chat {

@@ -4,7 +4,7 @@
 # Usage:
 #   .\scripts\deploy-production.ps1 -ApiBaseUrl "https://api.novixa.vn"
 #   .\scripts\deploy-update-vps.ps1                 # mac dinh SkipMigrations (schema da co)
-#   .\scripts\deploy-update-vps.ps1 -RunMigrations  # chay them migration neu can
+#   .\scripts\deploy-update-vps.ps1 -RunMigrations  # apply pending migrations only (incremental)
 param(
     [string]$SshTarget = "root@103.200.23.229",
     [string]$CredentialsFile = "E:\Maychu_VPS\tk.txt",
@@ -29,7 +29,10 @@ $required = @(
     "publish\admin\index.html",
     "publish\customer-app\index.html",
     "publish\staff-app\index.html",
+    "publish\prescriber-portal\index.html",
     "deploy\ubuntu\run-migrations-prod.sh",
+    "deploy\ubuntu\run-incremental-migrations-prod.sh",
+    "deploy\ubuntu\migration-files.prod.txt",
     "deploy\ubuntu\smoke-test.sh",
     "deploy\ubuntu\kit-platform-api.service",
     "deploy\ubuntu\nginx-kit-platform.conf"
@@ -41,11 +44,12 @@ foreach ($f in $required) {
 $remote = "/tmp/kit-platform-update"
 Write-Host "=== KitPlatform UPDATE (no wipe, cutover pharmacore->kit-platform) -> $SshTarget ===" -ForegroundColor Cyan
 
-& $plink -batch -pw $pass $SshTarget "rm -rf $remote; mkdir -p $remote/api $remote/admin $remote/customer-app $remote/staff-app $remote/migrations $remote/deploy"
+& $plink -batch -pw $pass $SshTarget "rm -rf $remote; mkdir -p $remote/api $remote/admin $remote/customer-app $remote/staff-app $remote/prescriber-portal $remote/migrations $remote/deploy"
 & $pscp -batch -pw $pass -r "$Root\publish\api" "${SshTarget}:${remote}/"
 & $pscp -batch -pw $pass -r "$Root\publish\admin" "${SshTarget}:${remote}/"
 & $pscp -batch -pw $pass -r "$Root\publish\customer-app" "${SshTarget}:${remote}/"
 & $pscp -batch -pw $pass -r "$Root\publish\staff-app" "${SshTarget}:${remote}/"
+& $pscp -batch -pw $pass -r "$Root\publish\prescriber-portal" "${SshTarget}:${remote}/"
 & $pscp -batch -pw $pass -r "$Root\migrations" "${SshTarget}:${remote}/"
 & $pscp -batch -pw $pass -r "$Root\deploy\ubuntu" "${SshTarget}:${remote}/deploy/"
 
@@ -90,6 +94,7 @@ rsync -a "$REMOTE/api/" "$NEW_WEB/api/"
 rsync -a --delete "$REMOTE/admin/" "$NEW_WEB/admin/"
 rsync -a --delete "$REMOTE/customer-app/" "$NEW_WEB/customer-app/"
 rsync -a --delete "$REMOTE/staff-app/" "$NEW_WEB/staff-app/"
+rsync -a --delete "$REMOTE/prescriber-portal/" "$NEW_WEB/prescriber-portal/"
 rsync -a "$REMOTE/deploy/ubuntu/" "$NEW_OPT/"
 rsync -a "$REMOTE/migrations/" "$NEW_OPT/migrations/"
 for f in "$NEW_OPT"/*.sh; do
@@ -97,7 +102,7 @@ for f in "$NEW_OPT"/*.sh; do
   sed -i '1s/^\xEF\xBB\xBF//' "$f" 2>/dev/null || true
 done
 chmod +x "$NEW_OPT"/*.sh 2>/dev/null || true
-chown -R www-data:www-data "$NEW_WEB/admin" "$NEW_WEB/customer-app" "$NEW_WEB/staff-app" "$NEW_WEB/api/uploads"
+chown -R www-data:www-data "$NEW_WEB/admin" "$NEW_WEB/customer-app" "$NEW_WEB/staff-app" "$NEW_WEB/prescriber-portal" "$NEW_WEB/api/uploads"
 
 # Keep legacy web tree in sync during dual-run (nginx may still point to pharmacore until cutover)
 if [[ -d "$OLD_WEB" ]]; then
@@ -106,10 +111,11 @@ if [[ -d "$OLD_WEB" ]]; then
   rsync -a --delete "$NEW_WEB/admin/" "$OLD_WEB/admin/"
   rsync -a --delete "$NEW_WEB/customer-app/" "$OLD_WEB/customer-app/"
   rsync -a --delete "$NEW_WEB/staff-app/" "$OLD_WEB/staff-app/" || true
+  rsync -a --delete "$NEW_WEB/prescriber-portal/" "$OLD_WEB/prescriber-portal/" || true
 fi
 
 if [[ "$RUN_MIG" == "1" ]]; then
-  echo "==> Migrations (optional)"
+  echo "==> Incremental migrations (pending only)"
   # shellcheck disable=SC1090
   source "$NEW_CFG/secrets.generated"
   # Prefer kitplatform role; fall back to pharmacore role if needed
@@ -124,7 +130,7 @@ if [[ "$RUN_MIG" == "1" ]]; then
     DB_USER_TRY=$(grep -oP 'Username=\K[^;]+' "$NEW_CFG/api.env" | head -n1 || true)
   fi
   CONN="postgresql://${DB_USER_TRY}:${DB_PASS}@127.0.0.1:5432/${DB_NAME_TRY}"
-  bash "$NEW_OPT/run-migrations-prod.sh" "$CONN" || echo "WARN: migration failed (schema may already exist) - continue"
+  bash "$NEW_OPT/run-incremental-migrations-prod.sh" "$CONN"
 else
   echo "==> Skip migrations (schema already live)"
 fi

@@ -121,9 +121,24 @@ $files = @(
     "088_purchase_order_workflow.sql",
     "089_kap_decision_intelligence_schema.sql",
     "090_kap_pharmacy_intelligence_seed.sql",
+    "091_kap_engine_mode_fix.sql",
     "092_qd540_integration_schema.sql",
+    "093_kap_vietnamese_seed.sql",
+    "094_kap_vietnamese_rules.sql",
+    "095_rx_dispensing_class.sql",
+    "096_rx_prescriptions.sql",
+    "097_rx_strict_pilot_nt_xuanhoa.sql",
+    "098_schema_migrations.sql",
     "seed-prod\001_base_permissions.sql"
 )
+
+# Prefer manifest when present (keeps prod list in one place)
+$manifestPath = Join-Path $Root "deploy\ubuntu\migration-files.prod.txt"
+if (Test-Path $manifestPath) {
+    $files = Get-Content $manifestPath | ForEach-Object { $_.Trim() } | Where-Object {
+        $_ -and -not $_.StartsWith('#')
+    }
+}
 
 Write-Host "=== KitPlatform PRODUCTION Migrations (no demo seed) ===" -ForegroundColor Cyan
 Write-Host "Database: $ConnectionString"

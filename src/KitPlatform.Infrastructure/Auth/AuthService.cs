@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 using KitPlatform.Application.Auth;
 using KitPlatform.Application.Configuration;
 
@@ -7,25 +8,30 @@ namespace KitPlatform.Infrastructure.Auth;
 internal sealed class AuthService : IAuthService
 {
     private const short ActiveStatus = 1;
-    private const string DefaultTenantCode = "DEMO_PHARMACY";
+    private const string DevDefaultTenantCode = "DEMO_PHARMACY";
 
     private readonly AuthRepository _repository;
     private readonly JwtTokenService _jwt;
     private readonly IHostEnvironment _environment;
+    private readonly string? _configuredDefaultTenantCode;
 
-    public AuthService(AuthRepository repository, JwtTokenService jwt, IHostEnvironment environment)
+    public AuthService(
+        AuthRepository repository,
+        JwtTokenService jwt,
+        IHostEnvironment environment,
+        IConfiguration configuration)
     {
         _repository = repository;
         _jwt = jwt;
         _environment = environment;
+        _configuredDefaultTenantCode = configuration["Auth:DefaultTenantCode"]?.Trim();
+        if (string.IsNullOrWhiteSpace(_configuredDefaultTenantCode))
+            _configuredDefaultTenantCode = configuration["Assessment:EventTenantCode"]?.Trim();
     }
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress, CancellationToken cancellationToken = default)
     {
-        var tenantCode = string.IsNullOrWhiteSpace(request.TenantCode)
-            ? (_environment.IsDevelopment() ? DefaultTenantCode : null)
-            : request.TenantCode.Trim();
-
+        var tenantCode = ResolveTenantCode(request.TenantCode);
         if (string.IsNullOrWhiteSpace(tenantCode))
             return null;
 
@@ -89,4 +95,15 @@ internal sealed class AuthService : IAuthService
 
     private static AuthUserDto MapUser(UserRecord user) =>
         new(user.Id, user.TenantId, user.TenantCode, user.Username, user.Email, user.Roles, user.Permissions);
+
+    private string? ResolveTenantCode(string? requestTenantCode)
+    {
+        if (!string.IsNullOrWhiteSpace(requestTenantCode))
+            return requestTenantCode.Trim();
+
+        if (!string.IsNullOrWhiteSpace(_configuredDefaultTenantCode))
+            return _configuredDefaultTenantCode;
+
+        return _environment.IsDevelopment() ? DevDefaultTenantCode : null;
+    }
 }

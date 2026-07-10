@@ -25,12 +25,27 @@ cd client/customer-app && npm install && npm run dev
 - Tenant: `DEMO_PHARMACY`
 - OTP (Development): `000000`
 
-## Màn hình
+## Màn hình (P11a)
 
-- **Trang chủ** — tóm tắt điểm & nhắc thuốc
-- **Điểm thưởng** — số dư, lịch sử, voucher
-- **Nhắc thuốc** — CRUD lịch uống thuốc
-- **Tài khoản** — profile, đồng ý CDP, bật push PWA & đăng xuất
+| Route | Mô tả |
+|-------|--------|
+| `/` | Trang chủ — dashboard, shortcuts |
+| `/orders` | Draft orders, đã mua, đặt trước |
+| `/reminders` | Nhắc uống thuốc, adherence, mua lại |
+| `/chat` | Chat dược sĩ |
+| `/loyalty` | Điểm, tier, voucher |
+| `/profile` | Tài khoản, CDP, push, ngôn ngữ |
+| `/health` | Hồ sơ sức khỏe, chỉ số, tái khám |
+| `/family` | Gia đình |
+| `/medications` | Thuốc đang dùng |
+| `/pharmacy` | Hub nhà thuốc |
+| `/ai` | AI health copilot (rule-based) |
+| `/reservations` | Đặt trước sản phẩm |
+| `/addresses` | Địa chỉ giao hàng |
+| `/receivables` | Công nợ |
+| `/notifications` | Thông báo in-app |
+
+**Lộ trình:** đang **P11b** (production). Backlog P12+ → [roadmap](../../docs/novixa/07-customer/customer-app-roadmap-p12-p18.md).
 
 ## Cấu trúc
 

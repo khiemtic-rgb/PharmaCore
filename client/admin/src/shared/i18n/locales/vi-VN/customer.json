@@ -104,6 +104,11 @@
       "reservations": "Đặt trước",
       "chat": "Chat"
     },
+    "receivables": {
+      "title": "Công nợ khách hàng",
+      "viewBalance": "Xem công nợ",
+      "createPayment": "Tạo phiếu thu"
+    },
     "messages": {
       "loadFailed": "Không tải được hồ sơ khách hàng"
     }

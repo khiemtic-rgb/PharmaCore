@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Spin } from 'antd';
 import { AuthGuard, GuestGuard } from '@/shared/auth/AuthGuard';
+import { AuthSessionValidator } from '@/shared/auth/AuthSessionValidator';
 
 const CustomerAppLayout = lazy(() =>
   import('@/shared/components/CustomerAppLayout').then((m) => ({ default: m.CustomerAppLayout })),
@@ -78,9 +79,11 @@ export function AppRouter() {
           <Route element={<AuthGuard />}>
             <Route
               element={
-                <SuspenseRoute>
-                  <CustomerAppLayout />
-                </SuspenseRoute>
+                <AuthSessionValidator>
+                  <SuspenseRoute>
+                    <CustomerAppLayout />
+                  </SuspenseRoute>
+                </AuthSessionValidator>
               }
             >
               <Route

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using KitPlatform.Application.CustomerApp;
@@ -15,6 +16,7 @@ internal sealed class CustomerAppAuthService : ICustomerAppAuthService
     private readonly ICustomerEngagementEventService _engagementEvents;
     private readonly IHostEnvironment _env;
     private readonly ILogger<CustomerAppAuthService> _logger;
+    private readonly string? _configuredDefaultTenantCode;
 
     public CustomerAppAuthService(
         CustomerAppAuthRepository repo,
@@ -23,6 +25,7 @@ internal sealed class CustomerAppAuthService : ICustomerAppAuthService
         ICustomerOtpSender otpSender,
         ICustomerEngagementEventService engagementEvents,
         IHostEnvironment env,
+        IConfiguration configuration,
         ILogger<CustomerAppAuthService> logger)
     {
         _repo = repo;
@@ -32,6 +35,9 @@ internal sealed class CustomerAppAuthService : ICustomerAppAuthService
         _engagementEvents = engagementEvents;
         _env = env;
         _logger = logger;
+        _configuredDefaultTenantCode = configuration["Auth:DefaultTenantCode"]?.Trim();
+        if (string.IsNullOrWhiteSpace(_configuredDefaultTenantCode))
+            _configuredDefaultTenantCode = configuration["Assessment:EventTenantCode"]?.Trim();
     }
 
     public async Task<CustomerOtpSentResponse> RequestOtpAsync(
@@ -243,6 +249,9 @@ internal sealed class CustomerAppAuthService : ICustomerAppAuthService
     {
         if (!string.IsNullOrWhiteSpace(tenantCode))
             return tenantCode.Trim();
+
+        if (!string.IsNullOrWhiteSpace(_configuredDefaultTenantCode))
+            return _configuredDefaultTenantCode;
 
         return _env.IsDevelopment() ? "DEMO_PHARMACY" : null;
     }

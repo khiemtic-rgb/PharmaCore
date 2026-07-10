@@ -14,6 +14,7 @@ import {
 import {
   ArrowLeftOutlined,
   CommentOutlined,
+  DollarOutlined,
   EditOutlined,
   FormOutlined,
   MedicineBoxOutlined,
@@ -34,6 +35,7 @@ import { CustomerPilotOtpPanel } from '@/modules/customer/CustomerPilotOtpPanel'
 import { useCustomerEnums } from '@/shared/i18n/use-customer-enums';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { formatDisplayMoney } from '@/shared/utils/money';
+import { buildCustomerPaymentCreateUrl } from '@/modules/sales/customer-payment-nav';
 
 type DetailTab = 'profile' | 'consents' | 'loyalty' | 'orders';
 
@@ -112,13 +114,28 @@ export function CustomerDetailPage() {
 
             <CustomerPilotOtpPanel customerId={detail.id} />
 
+            {detail.allowCredit ? (
+              <Card size="small" title={t('receivables.title')}>
+                <Space wrap>
+                  <Link to={`/receivables/customers?customerId=${encodeURIComponent(detail.id)}`}>
+                    <Button icon={<DollarOutlined />}>{t('receivables.viewBalance')}</Button>
+                  </Link>
+                  <Link to={buildCustomerPaymentCreateUrl({ customerId: detail.id })}>
+                    <Button type="primary" icon={<DollarOutlined />}>
+                      {t('receivables.createPayment')}
+                    </Button>
+                  </Link>
+                </Space>
+              </Card>
+            ) : null}
+
             <Card size="small" title={t('appActivity.title')}>
               <Space wrap>
-                <Link to="/sales/customer-drafts">
+                <Link to="/sales/app-orders/drafts">
                   <Button icon={<FormOutlined />}>{t('appActivity.draftOrders')}</Button>
                 </Link>
                 {showReservations && (
-                  <Link to="/sales/customer-reservations">
+                  <Link to="/sales/app-orders/reservations">
                     <Button icon={<MedicineBoxOutlined />}>{t('appActivity.reservations')}</Button>
                   </Link>
                 )}

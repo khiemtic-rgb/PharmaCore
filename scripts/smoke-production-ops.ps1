@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$Api = 'https://api.novixa.vn',
     [string]$Admin = 'https://admin.novixa.vn',
     [string]$Pos = 'https://pos.novixa.vn',
@@ -107,7 +107,15 @@ if ($TenantCode -and $AdminUser -and $AdminPass) {
         $auth = Invoke-RestMethod "$Api/api/auth/login" -Method POST -ContentType 'application/json' `
             -Body (@{ username = $AdminUser; password = $AdminPass; tenantCode = $TenantCode } | ConvertTo-Json)
         $h = @{ Authorization = "Bearer $($auth.accessToken)" }
-        Invoke-RestMethod "$Api/api/sales/shifts/open" -Headers $h -TimeoutSec 20 | Out-Null
+        $wh = @(Invoke-RestMethod "$Api/api/inventory/warehouses" -Headers $h -TimeoutSec 20)
+        if ($wh.Count -lt 1) { throw 'no warehouse' }
+        $wid = $wh[0].id
+        try {
+            Invoke-RestMethod "$Api/api/sales/shifts/current?warehouseId=$wid" -Headers $h -TimeoutSec 20 | Out-Null
+        }
+        catch {
+            if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
+        }
     }
 
     Test-Step 'Receipt settings API' {

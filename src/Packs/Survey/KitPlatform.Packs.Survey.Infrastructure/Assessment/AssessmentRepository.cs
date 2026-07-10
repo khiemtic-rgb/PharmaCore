@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Dapper;
@@ -61,6 +61,7 @@ internal sealed class AssessmentRepository
                 q.scorable AS Scorable,
                 q.required AS Required,
                 q.sort_order AS QuestionSort,
+                q.metadata::text AS QuestionMetadataJson,
                 o.id AS OptionId,
                 o.code AS OptionCode,
                 o.label AS OptionLabel,
@@ -120,16 +121,17 @@ internal sealed class AssessmentRepository
         string? ipAddress,
         string? userAgent,
         string? locale,
+        Guid? partnerId,
         CancellationToken cancellationToken)
     {
         const string sql = """
             INSERT INTO assessment_submission (
                 template_id, template_version, tenant_id, status, session_token, source,
-                ip_address, user_agent, metadata
+                ip_address, user_agent, metadata, partner_id
             )
             VALUES (
                 @TemplateId, @TemplateVersion, NULL, 'draft', @SessionToken, @Source,
-                @IpAddress::inet, @UserAgent, @Metadata::jsonb
+                @IpAddress::inet, @UserAgent, @Metadata::jsonb, @PartnerId
             )
             RETURNING id
             """;
@@ -150,6 +152,7 @@ internal sealed class AssessmentRepository
             IpAddress = ipAddress,
             UserAgent = userAgent,
             Metadata = metadata,
+            PartnerId = partnerId,
         }, tx);
 
         await SurveySubmissionWriter.InsertDraftAsync(
@@ -258,11 +261,13 @@ internal sealed class AssessmentRepository
                 d.weight AS DimensionWeight,
                 q.id AS QuestionId,
                 q.code AS QuestionCode,
+                q.title AS QuestionTitle,
                 q.scorable AS Scorable,
                 q.weight AS QuestionWeight,
                 q.required AS Required,
                 o.id AS OptionId,
                 o.code AS OptionCode,
+                o.label AS OptionLabel,
                 o.score AS OptionScore,
                 o.metadata::text AS OptionMetadataJson,
                 r.option_id AS ResponseOptionId,
@@ -673,11 +678,237 @@ internal sealed class AssessmentRepository
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
+    public async Task<IReadOnlyList<KapTemplateListRow>> ListTemplatesAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, code AS Code, name AS Name, version AS Version,
+                   status AS Status, description AS Description, updated_at AS UpdatedAt
+            FROM assessment_template
+            ORDER BY code, version DESC
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<KapTemplateListRow>(sql)).ToList();
+    }
+
+    public async Task<KapTemplateHeaderRow?> GetTemplateHeaderByIdAsync(
+        Guid templateId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, code AS Code, name AS Name, version AS Version,
+                   status AS Status, description AS Description,
+                   verticals AS Verticals
+            FROM assessment_template
+            WHERE id = @Id
+            LIMIT 1
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<KapTemplateHeaderRow>(sql, new { Id = templateId });
+    }
+
+    public async Task<bool> UpdateTemplateHeaderAsync(
+        Guid templateId,
+        string name,
+        string? description,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE assessment_template
+            SET name = @Name, description = @Description, status = @Status, updated_at = NOW()
+            WHERE id = @Id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteAsync(sql, new { Id = templateId, Name = name, Description = description, Status = status }) > 0;
+    }
+
+    public async Task<IReadOnlyList<KapRuleListRow>> ListRulesForTemplateAsync(
+        Guid templateId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, template_id AS TemplateId, code AS Code, name AS Name,
+                   expression AS Expression, action_type AS ActionType,
+                   action_payload::text AS ActionPayloadJson, priority AS Priority, is_active AS IsActive
+            FROM assessment_rule
+            WHERE template_id = @TemplateId
+            ORDER BY priority DESC, code
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return (await conn.QueryAsync<KapRuleListRow>(sql, new { TemplateId = templateId })).ToList();
+    }
+
+    public async Task<Guid> InsertRuleAsync(
+        Guid templateId,
+        string code,
+        string name,
+        string expression,
+        string actionType,
+        string actionPayloadJson,
+        int priority,
+        bool isActive,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO assessment_rule (
+                template_id, code, name, expression, action_type, action_payload, priority, is_active
+            )
+            VALUES (
+                @TemplateId, @Code, @Name, @Expression, @ActionType, @ActionPayloadJson::jsonb, @Priority, @IsActive
+            )
+            RETURNING id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleAsync<Guid>(sql, new
+        {
+            TemplateId = templateId,
+            Code = code,
+            Name = name,
+            Expression = expression,
+            ActionType = actionType,
+            ActionPayloadJson = actionPayloadJson,
+            Priority = priority,
+            IsActive = isActive,
+        });
+    }
+
+    public async Task<KapRuleListRow?> GetRuleByIdAsync(Guid ruleId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, template_id AS TemplateId, code AS Code, name AS Name,
+                   expression AS Expression, action_type AS ActionType,
+                   action_payload::text AS ActionPayloadJson, priority AS Priority, is_active AS IsActive
+            FROM assessment_rule
+            WHERE id = @Id
+            LIMIT 1
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<KapRuleListRow>(sql, new { Id = ruleId });
+    }
+
+    public async Task<bool> UpdateRuleAsync(
+        Guid ruleId,
+        string name,
+        string expression,
+        string actionType,
+        string actionPayloadJson,
+        int priority,
+        bool isActive,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE assessment_rule
+            SET name = @Name, expression = @Expression, action_type = @ActionType,
+                action_payload = @ActionPayloadJson::jsonb, priority = @Priority, is_active = @IsActive
+            WHERE id = @Id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteAsync(sql, new
+        {
+            Id = ruleId,
+            Name = name,
+            Expression = expression,
+            ActionType = actionType,
+            ActionPayloadJson = actionPayloadJson,
+            Priority = priority,
+            IsActive = isActive,
+        }) > 0;
+    }
+
+    public async Task<bool> DeleteRuleAsync(Guid ruleId, CancellationToken cancellationToken)
+    {
+        const string sql = "DELETE FROM assessment_rule WHERE id = @Id";
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteAsync(sql, new { Id = ruleId }) > 0;
+    }
+
+    public async Task<int> CountLeadCapturesByPhoneTodayAsync(
+        string phone,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT COUNT(*)::int
+            FROM assessment_submission
+            WHERE respondent_phone = @Phone
+              AND lead_captured_at >= date_trunc('day', NOW() AT TIME ZONE 'UTC')
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleAsync<int>(sql, new { Phone = phone });
+    }
+
+    public async Task<AssessmentSubmissionRow?> GetSubmissionByIdAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken) =>
+        await GetSubmissionAsync(submissionId, cancellationToken);
+
+    public async Task<Guid?> GetCrmWorkspaceIdAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id
+            FROM kit_workspace.workspace_workspace
+            WHERE tenant_id = @TenantId
+              AND package_code = 'clinic_crm'
+              AND deleted_at IS NULL
+            LIMIT 1
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new { TenantId = tenantId });
+    }
+
+    public async Task<Guid?> InsertCrmLeadFromAssessmentAsync(
+        Guid tenantId,
+        Guid? workspaceId,
+        string leadCode,
+        string fullName,
+        string? phone,
+        string? email,
+        string notes,
+        string metadataJson,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO pack_crm.crm_lead (
+                tenant_id, workspace_id, lead_code, full_name, phone, email, source, notes, metadata
+            )
+            VALUES (
+                @TenantId, @WorkspaceId, @LeadCode, @FullName, @Phone, @Email, 'kap_assessment', @Notes, @Metadata::jsonb
+            )
+            ON CONFLICT (tenant_id, lead_code) DO NOTHING
+            RETURNING id
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleOrDefaultAsync<Guid?>(sql, new
+        {
+            TenantId = tenantId,
+            WorkspaceId = workspaceId,
+            LeadCode = leadCode,
+            FullName = fullName,
+            Phone = phone,
+            Email = email,
+            Notes = notes,
+            Metadata = metadataJson,
+        });
+    }
+
     public async Task<(IReadOnlyList<AssessmentSubmissionListRow> Items, int Total)> ListSubmissionsAsync(
         int page,
         int pageSize,
         string? status,
         bool? hasLead,
+        Guid? partnerId,
+        string? leadPipelineStatus,
         CancellationToken cancellationToken)
     {
         var offset = Math.Max(0, (Math.Max(1, page) - 1) * Math.Max(1, pageSize));
@@ -690,6 +921,10 @@ internal sealed class AssessmentRepository
             where.Add("s.respondent_phone IS NOT NULL");
         else if (hasLead == false)
             where.Add("s.respondent_phone IS NULL");
+        if (partnerId.HasValue)
+            where.Add("s.partner_id = @PartnerId");
+        if (!string.IsNullOrWhiteSpace(leadPipelineStatus))
+            where.Add("s.lead_pipeline_status = @LeadPipelineStatus");
 
         var whereSql = string.Join(" AND ", where);
 
@@ -714,23 +949,54 @@ internal sealed class AssessmentRepository
                 s.respondent_phone AS RespondentPhone,
                 s.respondent_email AS RespondentEmail,
                 s.respondent_org_name AS RespondentOrgName,
+                s.partner_id AS PartnerId,
+                p.code AS PartnerCode,
+                p.name AS PartnerName,
+                s.lead_pipeline_status AS LeadPipelineStatus,
+                s.commission_status AS CommissionStatus,
                 (SELECT COUNT(*)::int FROM assessment_response r WHERE r.submission_id = s.id) AS ResponseCount
             FROM assessment_submission s
             JOIN assessment_template t ON t.id = s.template_id
+            LEFT JOIN assessment_partner p ON p.id = s.partner_id
             WHERE {whereSql}
             ORDER BY COALESCE(s.lead_captured_at, s.completed_at, s.started_at) DESC
             LIMIT @Limit OFFSET @Offset
             """;
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
-        var total = await conn.ExecuteScalarAsync<int>(countSql, new { Status = status, Limit = limit, Offset = offset });
-        var items = (await conn.QueryAsync<AssessmentSubmissionListRow>(listSql, new
+        var args = new
         {
             Status = status,
+            PartnerId = partnerId,
+            LeadPipelineStatus = leadPipelineStatus,
             Limit = limit,
             Offset = offset,
-        })).ToList();
+        };
+        var total = await conn.ExecuteScalarAsync<int>(countSql, args);
+        var items = (await conn.QueryAsync<AssessmentSubmissionListRow>(listSql, args)).ToList();
         return (items, total);
+    }
+
+    public async Task<bool> UpdateLeadPipelineAsync(
+        Guid submissionId,
+        string leadPipelineStatus,
+        string? commissionStatus,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE assessment_submission SET
+                lead_pipeline_status = @LeadPipelineStatus,
+                commission_status = COALESCE(@CommissionStatus, commission_status)
+            WHERE id = @Id
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var n = await conn.ExecuteAsync(sql, new
+        {
+            Id = submissionId,
+            LeadPipelineStatus = leadPipelineStatus,
+            CommissionStatus = commissionStatus,
+        });
+        return n > 0;
     }
 }
 
@@ -764,6 +1030,7 @@ internal sealed class AssessmentTemplateTreeRow
     public bool Scorable { get; set; }
     public bool Required { get; set; }
     public int QuestionSort { get; set; }
+    public string? QuestionMetadataJson { get; set; }
     public Guid? OptionId { get; set; }
     public string? OptionCode { get; set; }
     public string? OptionLabel { get; set; }
@@ -820,11 +1087,13 @@ internal sealed class AssessmentScoringRow
     public decimal DimensionWeight { get; set; }
     public Guid QuestionId { get; set; }
     public string QuestionCode { get; set; } = "";
+    public string QuestionTitle { get; set; } = "";
     public bool Scorable { get; set; }
     public decimal QuestionWeight { get; set; }
     public bool Required { get; set; }
     public Guid? OptionId { get; set; }
     public string? OptionCode { get; set; }
+    public string? OptionLabel { get; set; }
     public short? OptionScore { get; set; }
     public string? OptionMetadataJson { get; set; }
     public Guid? ResponseOptionId { get; set; }
@@ -908,4 +1177,44 @@ internal sealed class AssessmentSubmissionListRow
     public string? RespondentEmail { get; set; }
     public string? RespondentOrgName { get; set; }
     public int ResponseCount { get; set; }
+    public Guid? PartnerId { get; set; }
+    public string? PartnerCode { get; set; }
+    public string? PartnerName { get; set; }
+    public string LeadPipelineStatus { get; set; } = "new";
+    public string CommissionStatus { get; set; } = "none";
+}
+
+internal sealed class KapTemplateListRow
+{
+    public Guid Id { get; set; }
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Version { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string? Description { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+internal sealed class KapTemplateHeaderRow
+{
+    public Guid Id { get; set; }
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Version { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string? Description { get; set; }
+    public string[] Verticals { get; set; } = [];
+}
+
+internal sealed class KapRuleListRow
+{
+    public Guid Id { get; set; }
+    public Guid TemplateId { get; set; }
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Expression { get; set; } = "";
+    public string ActionType { get; set; } = "";
+    public string ActionPayloadJson { get; set; } = "{}";
+    public int Priority { get; set; }
+    public bool IsActive { get; set; }
 }

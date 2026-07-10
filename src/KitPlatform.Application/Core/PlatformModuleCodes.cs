@@ -23,6 +23,10 @@ public static class PlatformModuleCodes
     public const string ClinicAppointments = "clinic_appointments";
     public const string ClinicEmrLite = "clinic_emr_lite";
     public const string CrmLeads = "crm_leads";
+    public const string ERrx = "e_rx";
+    public const string PrescriberNetwork = "prescriber_network";
+    public const string PrescriberPortal = "prescriber_portal";
+    public const string Telehealth = "telehealth";
 
     public static IReadOnlyList<string> All { get; } =
     [
@@ -43,5 +47,9 @@ public static class PlatformModuleCodes
         Spa,
         Assessment,
         PharmacySurvey,
+        ERrx,
+        PrescriberNetwork,
+        PrescriberPortal,
+        Telehealth,
     ];
 }

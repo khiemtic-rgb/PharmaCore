@@ -13,7 +13,7 @@ type Props = {
   loading?: boolean;
   shift: SalesShiftDetail | null;
   onCancel: () => void;
-  onConfirm: (closingCash: number, closeNotes?: string) => void;
+  onConfirm: (closingCash: number, closeNotes?: string) => void | Promise<void>;
 };
 
 export function CloseShiftModal({ open, loading, shift, onCancel, onConfirm }: Props) {
@@ -35,7 +35,7 @@ export function CloseShiftModal({ open, loading, shift, onCancel, onConfirm }: P
       }}
       onOk={async () => {
         const values = await form.validateFields();
-        onConfirm(values.closingCash, values.closeNotes);
+        await onConfirm(values.closingCash, values.closeNotes);
       }}
     >
       {shift && (

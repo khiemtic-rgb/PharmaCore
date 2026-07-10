@@ -1,0 +1,9 @@
+{
+  "rxLayout": {
+    "tabs": {
+      "prescriptions": "Đơn thuốc",
+      "prescribers": "Bác sĩ kê đơn",
+      "prescriberLinks": "Mạng bác sĩ"
+    }
+  }
+}

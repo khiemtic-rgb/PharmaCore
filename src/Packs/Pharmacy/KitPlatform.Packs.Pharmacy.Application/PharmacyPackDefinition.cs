@@ -20,6 +20,9 @@ public static class PharmacyPackDefinition
         "health_wallet",
         "reservations",
         "reports",
+        "e_rx",
+        "prescriber_network",
+        "prescriber_portal",
     ];
 
     public static IReadOnlyList<string> PackModuleCodes { get; } =
@@ -27,5 +30,8 @@ public static class PharmacyPackDefinition
         "medication",
         "health_wallet",
         "reservations",
+        "e_rx",
+        "prescriber_network",
+        "prescriber_portal",
     ];
 }

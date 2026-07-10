@@ -31,6 +31,7 @@ import {
 } from '@/shared/components/module-subnav.context';
 
 import { useAuthStore } from '@/shared/auth/auth.store';
+import { useKapAdminAccess } from '@/shared/hooks/useKapAdminAccess';
 
 import { logoutApi } from '@/shared/api/auth.api';
 
@@ -77,6 +78,7 @@ function AppLayoutShell() {
   const subnav = useModuleSubnavState();
   const isModuleEnabled = useTenantPlatformStore((s) => s.isModuleEnabled);
   const platformLoaded = useTenantPlatformStore((s) => s.loaded);
+  const { enabled: kapEnabled, checked: kapAccessChecked } = useKapAdminAccess();
 
 
 
@@ -93,7 +95,8 @@ function AppLayoutShell() {
       moduleRegistry.map((module) => {
         const platformOk =
           !module.platformModule || !platformLoaded || isModuleEnabled(module.platformModule);
-        const navEnabled = module.enabled && platformOk;
+        const kapOk = module.key !== 'kap' || (kapAccessChecked && kapEnabled);
+        const navEnabled = module.enabled && platformOk && kapOk;
 
         return {
           key: module.key,
@@ -105,7 +108,7 @@ function AppLayoutShell() {
         };
       }),
 
-    [t, isModuleEnabled, platformLoaded],
+    [t, isModuleEnabled, platformLoaded, kapAccessChecked, kapEnabled],
 
   );
 

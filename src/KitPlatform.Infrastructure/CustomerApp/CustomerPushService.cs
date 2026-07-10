@@ -14,6 +14,7 @@ internal sealed class CustomerPushService : ICustomerPushService
     private readonly CustomerReminderRepository _reminders;
     private readonly CustomerAppConsentRepository _consents;
     private readonly ICustomerEngagementEventService _engagementEvents;
+    private readonly ICustomerNotificationTextService _notifyText;
     private readonly CustomerAppPushOptions _options;
     private readonly ILogger<CustomerPushService> _logger;
 
@@ -23,6 +24,7 @@ internal sealed class CustomerPushService : ICustomerPushService
         CustomerReminderRepository reminders,
         CustomerAppConsentRepository consents,
         ICustomerEngagementEventService engagementEvents,
+        ICustomerNotificationTextService notifyText,
         IOptions<CustomerAppPushOptions> options,
         ILogger<CustomerPushService> logger)
     {
@@ -31,6 +33,7 @@ internal sealed class CustomerPushService : ICustomerPushService
         _reminders = reminders;
         _consents = consents;
         _engagementEvents = engagementEvents;
+        _notifyText = notifyText;
         _options = options.Value;
         _logger = logger;
     }
@@ -144,12 +147,26 @@ internal sealed class CustomerPushService : ICustomerPushService
                     continue;
                 }
 
+                var locale = await _notifyText.ResolveLocaleAsync(row.TenantId, row.CustomerId, cancellationToken);
                 var title = row.FamilyMemberId.HasValue && row.NotifyCaregiver && !string.IsNullOrWhiteSpace(row.FamilyMemberName)
-                    ? $"{row.FamilyMemberName} đến giờ uống thuốc"
-                    : "Nhắc uống thuốc";
-                var body = string.IsNullOrWhiteSpace(row.DosageNote)
-                    ? row.ProductName
-                    : $"{row.ProductName} — {row.DosageNote}";
+                    ? await _notifyText.FormatAsync(
+                        row.TenantId,
+                        locale,
+                        CustomerNotificationTextKeys.MedicationReminderFamilyTitle,
+                        new Dictionary<string, string> { ["name"] = row.FamilyMemberName! },
+                        cancellationToken)
+                    : await _notifyText.FormatAsync(
+                        row.TenantId,
+                        locale,
+                        CustomerNotificationTextKeys.MedicationReminderTitle,
+                        cancellationToken: cancellationToken);
+                var bodyArgs = new Dictionary<string, string> { ["productName"] = row.ProductName };
+                if (!string.IsNullOrWhiteSpace(row.DosageNote))
+                    bodyArgs["dosageNote"] = row.DosageNote;
+                var bodyKey = string.IsNullOrWhiteSpace(row.DosageNote)
+                    ? CustomerNotificationTextKeys.MedicationReminderBody
+                    : CustomerNotificationTextKeys.MedicationReminderBodyWithNote;
+                var body = await _notifyText.FormatAsync(row.TenantId, locale, bodyKey, bodyArgs, cancellationToken);
                 var notification = JsonSerializer.Serialize(new
                 {
                     title,
@@ -247,19 +264,34 @@ internal sealed class CustomerPushService : ICustomerPushService
         bool advance,
         CancellationToken cancellationToken)
     {
+        var locale = await _notifyText.ResolveLocaleAsync(row.TenantId, row.CustomerId, cancellationToken);
         var when = new DateTimeOffset(DateTime.SpecifyKind(row.RemindAt, DateTimeKind.Utc))
             .ToOffset(TimeSpan.FromHours(7))
             .ToString("dd/MM/yyyy HH:mm");
-        var title = advance
+        var titleKey = advance
             ? (string.IsNullOrWhiteSpace(row.FamilyMemberName)
-                ? $"Nhắc trước: {row.Title}"
-                : $"Nhắc trước cho {row.FamilyMemberName}: {row.Title}")
+                ? CustomerNotificationTextKeys.CareAdvanceTitle
+                : CustomerNotificationTextKeys.CareAdvanceFamilyTitle)
             : (string.IsNullOrWhiteSpace(row.FamilyMemberName)
-                ? row.Title
-                : $"{row.FamilyMemberName} — {row.Title}");
-        var body = advance
-            ? $"Lịch vào {when}.{FormatCareNote(row.Note)}"
-            : $"Đến giờ {when}.{FormatCareNote(row.Note)}";
+                ? CustomerNotificationTextKeys.CareDueTitle
+                : CustomerNotificationTextKeys.CareDueFamilyTitle);
+        var titleArgs = new Dictionary<string, string> { ["title"] = row.Title };
+        if (!string.IsNullOrWhiteSpace(row.FamilyMemberName))
+            titleArgs["name"] = row.FamilyMemberName;
+        var title = await _notifyText.FormatAsync(row.TenantId, locale, titleKey, titleArgs, cancellationToken);
+        var bodyKey = advance
+            ? CustomerNotificationTextKeys.CareAdvanceBody
+            : CustomerNotificationTextKeys.CareDueBody;
+        var body = await _notifyText.FormatAsync(
+            row.TenantId,
+            locale,
+            bodyKey,
+            new Dictionary<string, string>
+            {
+                ["when"] = when,
+                ["note"] = FormatCareNote(row.Note),
+            },
+            cancellationToken);
 
         return await NotifyCustomerAsync(
             row.TenantId,
@@ -280,9 +312,28 @@ internal sealed class CustomerPushService : ICustomerPushService
         var rows = await _engagement.ListRepurchaseDueAsync(30, cancellationToken);
         foreach (var row in rows)
         {
-            var dateLabel = row.SuggestedForDate?.ToString("dd/MM/yyyy") ?? "hôm nay";
-            var title = "Đơn thuốc sắp hết";
-            var body = $"{row.OrderLabel} — dự kiến cần mua lại khoảng {dateLabel}.";
+            var locale = await _notifyText.ResolveLocaleAsync(row.TenantId, row.CustomerId, cancellationToken);
+            var dateLabel = row.SuggestedForDate?.ToString("dd/MM/yyyy")
+                ?? await _notifyText.FormatAsync(
+                    row.TenantId,
+                    locale,
+                    CustomerNotificationTextKeys.DateToday,
+                    cancellationToken: cancellationToken);
+            var title = await _notifyText.FormatAsync(
+                row.TenantId,
+                locale,
+                CustomerNotificationTextKeys.RepurchaseTitle,
+                cancellationToken: cancellationToken);
+            var body = await _notifyText.FormatAsync(
+                row.TenantId,
+                locale,
+                CustomerNotificationTextKeys.RepurchaseBody,
+                new Dictionary<string, string>
+                {
+                    ["orderLabel"] = row.OrderLabel,
+                    ["dateLabel"] = dateLabel,
+                },
+                cancellationToken);
             if (await NotifyCustomerAsync(
                     row.TenantId,
                     row.CustomerId,
@@ -315,8 +366,18 @@ internal sealed class CustomerPushService : ICustomerPushService
             if (summary.MissedStreakDays < 3)
                 continue;
 
-            var title = "Bạn bỏ liều vài ngày gần đây";
-            var body = $"Đã {summary.MissedStreakDays} ngày không ghi nhận uống thuốc. Mở Nhắc thuốc để cập nhật.";
+            var locale = await _notifyText.ResolveLocaleAsync(row.TenantId, row.CustomerId, cancellationToken);
+            var title = await _notifyText.FormatAsync(
+                row.TenantId,
+                locale,
+                CustomerNotificationTextKeys.AdherenceMissedTitle,
+                cancellationToken: cancellationToken);
+            var body = await _notifyText.FormatAsync(
+                row.TenantId,
+                locale,
+                CustomerNotificationTextKeys.AdherenceMissedBody,
+                new Dictionary<string, string> { ["days"] = summary.MissedStreakDays.ToString() },
+                cancellationToken);
             if (await NotifyCustomerAsync(
                     row.TenantId,
                     row.CustomerId,
@@ -456,7 +517,19 @@ internal sealed class CustomerPushService : ICustomerPushService
         if (subscriptions.Count == 0)
             return;
 
-        var title = string.IsNullOrWhiteSpace(staffName) ? "Dược sĩ trả lời" : $"{staffName} trả lời";
+        var locale = await _notifyText.ResolveLocaleAsync(tenantId, customerId, cancellationToken);
+        var title = string.IsNullOrWhiteSpace(staffName)
+            ? await _notifyText.FormatAsync(
+                tenantId,
+                locale,
+                CustomerNotificationTextKeys.ChatStaffReplyTitle,
+                cancellationToken: cancellationToken)
+            : await _notifyText.FormatAsync(
+                tenantId,
+                locale,
+                CustomerNotificationTextKeys.ChatStaffReplyNamedTitle,
+                new Dictionary<string, string> { ["name"] = staffName },
+                cancellationToken);
         var preview = messageBody.Length > 180 ? messageBody[..177] + "..." : messageBody;
         var payload = JsonSerializer.Serialize(new
         {
@@ -637,8 +710,25 @@ internal sealed class CustomerPushService : ICustomerPushService
         if (subscriptions.Count == 0)
             return;
 
-        var title = "Đơn thuốc tạm mới";
-        var body = $"{draftNumber} — tổng tạm tính {totalAmount:N0}đ. Xem và xác nhận (tuỳ chọn) trên app.";
+        var locale = await _notifyText.ResolveLocaleAsync(tenantId, customerId, cancellationToken);
+        var totalLabel = locale.Equals("en-US", StringComparison.OrdinalIgnoreCase)
+            ? totalAmount.ToString("N0")
+            : $"{totalAmount:N0}đ";
+        var title = await _notifyText.FormatAsync(
+            tenantId,
+            locale,
+            CustomerNotificationTextKeys.DraftOrderTitle,
+            cancellationToken: cancellationToken);
+        var body = await _notifyText.FormatAsync(
+            tenantId,
+            locale,
+            CustomerNotificationTextKeys.DraftOrderBody,
+            new Dictionary<string, string>
+            {
+                ["draftNumber"] = draftNumber,
+                ["total"] = totalLabel,
+            },
+            cancellationToken);
         var payload = JsonSerializer.Serialize(new
         {
             title,

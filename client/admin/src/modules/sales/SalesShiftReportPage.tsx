@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
+  App,
   Button,
   Card,
   DatePicker,
@@ -11,7 +12,6 @@ import {
   Table,
   Tag,
   Typography,
-  message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined, StopOutlined } from '@ant-design/icons';
@@ -21,7 +21,6 @@ import type { Warehouse } from '@/shared/api/inventory.types';
 import {
   closeSalesShift,
   fetchBatchModeSettings,
-  fetchOpenShift,
   fetchSalesShiftSummary,
   fetchSalesShifts,
   openSalesShift,
@@ -31,7 +30,7 @@ import type { SalesShiftDetail, SalesShiftListItem, SalesShiftSummary } from '@/
 import { SALES_SHIFT_STATUSES } from '@/shared/api/sales.types';
 import {
   isShiftAlreadyOpenError,
-  loadOpenShiftForWarehouse,
+  resolveOpenShiftForWarehouse,
   shiftAlreadyOpenMessage,
 } from '@/modules/sales/sales-shift-helpers';
 import { apiErrorMessage } from '@/shared/api/api-error';
@@ -48,6 +47,7 @@ const { RangePicker } = DatePicker;
 export function SalesShiftReportPage() {
   const { t } = useTranslation('sales', { keyPrefix: 'shiftReport' });
   const { t: tPos } = useTranslation('sales', { keyPrefix: 'pos.messages' });
+  const { message } = App.useApp();
   const canWrite = useHasPermission('sales.write');
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [warehouseId, setWarehouseId] = useState<string>();
@@ -84,7 +84,7 @@ export function SalesShiftReportPage() {
     if (!warehouseId) return;
     setLoading(true);
     try {
-      setOpenShift(await loadOpenShiftForWarehouse(warehouseId));
+      setOpenShift(await resolveOpenShiftForWarehouse(warehouseId));
     } catch (error) {
       setOpenShift(null);
       message.error(apiErrorMessage(error, t('messages.loadCurrentFailed')));
@@ -132,7 +132,7 @@ export function SalesShiftReportPage() {
       await loadShiftState();
     } catch (error) {
       if (isShiftAlreadyOpenError(error)) {
-        const existing = await fetchOpenShift(warehouseId);
+        const existing = await resolveOpenShiftForWarehouse(warehouseId);
         if (existing) {
           setOpenShift(existing);
           setOpenModal(false);
@@ -201,6 +201,16 @@ export function SalesShiftReportPage() {
 
   const warehouseName = warehouses.find((w) => w.id === warehouseId)?.warehouseName;
 
+  const openShiftFromHistory = useMemo(
+    () =>
+      warehouseId
+        ? shifts.find(
+            (row) => row.warehouseId === warehouseId && row.status === SALES_SHIFT_STATUSES.Open,
+          )
+        : undefined,
+    [shifts, warehouseId],
+  );
+
   return (
     <>
       <Card title={t('currentShift.title')} loading={loading}>
@@ -226,6 +236,23 @@ export function SalesShiftReportPage() {
             </Button>
           )}
         </Space>
+
+        {!openShift && openShiftFromHistory && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message={t('currentShift.staleOpenHint', {
+              shiftNumber: openShiftFromHistory.shiftNumber,
+              defaultValue: `Đã có ca ${openShiftFromHistory.shiftNumber} đang mở. Bấm Tải lại hoặc Mở ca để đồng bộ.`,
+            })}
+            action={
+              <Button size="small" onClick={() => void loadShiftState()}>
+                {t('currentShift.reload')}
+              </Button>
+            }
+          />
+        )}
 
         {openShift ? (
           <Space direction="vertical" size={16} style={{ width: '100%' }}>

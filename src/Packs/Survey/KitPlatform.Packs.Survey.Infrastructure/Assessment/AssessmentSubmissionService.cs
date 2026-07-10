@@ -1,7 +1,8 @@
-﻿using System.Text;
+using System.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using KitPlatform.Packs.Survey;
 using KitPlatform.Application.Platform.Events;
@@ -14,17 +15,29 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
     private static readonly Regex VnPhoneRegex = new(@"^0[0-9]{9}$", RegexOptions.Compiled);
 
     private readonly AssessmentRepository _repo;
+    private readonly AssessmentPartnerRepository _partners;
+    private readonly AssessmentIntelligenceRepository _intel;
+    private readonly AssessmentAnalysisPipeline _pipeline;
     private readonly IDbConnectionFactory _db;
     private readonly AssessmentSettings _settings;
+    private readonly ILogger<AssessmentSubmissionService> _logger;
 
     public AssessmentSubmissionService(
         AssessmentRepository repo,
+        AssessmentPartnerRepository partners,
+        AssessmentIntelligenceRepository intel,
+        AssessmentAnalysisPipeline pipeline,
         IDbConnectionFactory db,
-        IOptions<AssessmentSettings> settings)
+        IOptions<AssessmentSettings> settings,
+        ILogger<AssessmentSubmissionService> logger)
     {
         _repo = repo;
+        _partners = partners;
+        _intel = intel;
+        _pipeline = pipeline;
         _db = db;
         _settings = settings.Value;
+        _logger = logger;
     }
 
     public async Task<CreateAssessmentSubmissionResult> CreateAsync(
@@ -42,8 +55,26 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
                 "Không tìm thấy template khảo sát.",
                 statusCode: 404);
 
+        Guid? partnerId = null;
+        if (!string.IsNullOrWhiteSpace(request.PartnerCode))
+        {
+            var partner = await _partners.GetByCodeAsync(request.PartnerCode, cancellationToken);
+            if (partner is null || !string.Equals(partner.Status, "active", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new AssessmentException(
+                    AssessmentErrorCodes.ValidationError,
+                    "Mã đối tác không hợp lệ hoặc đã bị khóa.",
+                    statusCode: 400);
+            }
+
+            partnerId = partner.Id;
+        }
+
         var source = string.IsNullOrWhiteSpace(request.Source) ? "public_web" : request.Source.Trim();
-        if (source is not ("public_web" or "admin" or "embed" or "sales"))
+        if (partnerId.HasValue && source is "public_web")
+            source = "partner";
+
+        if (source is not ("public_web" or "admin" or "embed" or "sales" or "partner"))
         {
             throw new AssessmentException(
                 AssessmentErrorCodes.ValidationError,
@@ -60,6 +91,7 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
             ipAddress,
             userAgent,
             request.Locale,
+            partnerId,
             cancellationToken);
 
         var expiresAt = DateTimeOffset.UtcNow.AddDays(_settings.SessionMaxAgeDays);
@@ -191,17 +223,16 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
         var scoringRows = await _repo.GetScoringDataAsync(submissionId, cancellationToken);
         var scoring = AssessmentScoringEngine.Compute(scoringRows);
         var rules = await _repo.GetActiveRulesAsync(submission.TemplateId, cancellationToken);
-        var responseCodes = scoringRows
-            .Where(r => !string.IsNullOrWhiteSpace(r.OptionCode))
-            .GroupBy(r => r.QuestionCode)
-            .ToDictionary(g => g.Key, g => g.First().OptionCode!);
+        var responseCodes = BuildResponseOptionCodes(scoringRows);
+        var questionScores = BuildQuestionScores(scoringRows);
 
         var matches = AssessmentRuleEngine.Evaluate(
             rules,
             scoring.OverallScore,
             scoring.CategoryScoreByCode,
             scoring.DimensionScoreByCode,
-            responseCodes);
+            responseCodes,
+            questionScores);
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
@@ -265,22 +296,29 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
 
         ValidateLeadRequest(request);
 
+        var phone = NormalizePhone(request.RespondentPhone);
+        var leadAttempts = await _repo.CountLeadCapturesByPhoneTodayAsync(phone, cancellationToken);
+        if (leadAttempts >= _settings.CaptureLeadPerPhonePerDay)
+        {
+            throw new AssessmentException(
+                AssessmentErrorCodes.RateLimited,
+                "Đã vượt giới hạn gửi thông tin liên hệ trong ngày.",
+                statusCode: 429);
+        }
+
         var scoringRows = await _repo.GetScoringDataAsync(submissionId, cancellationToken);
         var scoring = AssessmentScoringEngine.Compute(scoringRows);
         var rules = await _repo.GetActiveRulesAsync(submission.TemplateId, cancellationToken);
-        var responseCodes = scoringRows
-            .Where(r => !string.IsNullOrWhiteSpace(r.OptionCode))
-            .GroupBy(r => r.QuestionCode)
-            .ToDictionary(g => g.Key, g => g.First().OptionCode!);
+        var responseCodes = BuildResponseOptionCodes(scoringRows);
+        var questionScores = BuildQuestionScores(scoringRows);
 
         var matches = AssessmentRuleEngine.Evaluate(
             rules,
             scoring.OverallScore,
             scoring.CategoryScoreByCode,
             scoring.DimensionScoreByCode,
-            responseCodes);
-
-        var phone = NormalizePhone(request.RespondentPhone);
+            responseCodes,
+            questionScores);
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
@@ -312,8 +350,32 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
 
         await tx.CommitAsync(cancellationToken);
 
+        KapReportArtifactDto? artifact = null;
+        try
+        {
+            artifact = await _pipeline.RunAsync(submissionId, "lead_captured", NormalizeOrgScale(request.OrgScale), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "KAP pipeline failed after lead capture for submission {SubmissionId}", submissionId);
+        }
+
+        if (_settings.SyncLeadsToCrm && !string.IsNullOrWhiteSpace(_settings.EventTenantCode))
+        {
+            var tenantId = await _repo.GetTenantIdByCodeAsync(_settings.EventTenantCode, cancellationToken);
+            if (tenantId.HasValue)
+            {
+                await Events.AssessmentCrmBridge.SyncSubmissionLeadAsync(
+                    _repo,
+                    tenantId.Value,
+                    submissionId,
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
+                    cancellationToken);
+            }
+        }
+
         return new CaptureAssessmentLeadResult(
-            "lead_captured",
+            artifact is not null ? "report_ready" : "lead_captured",
             sessionToken,
             "Cảm ơn. Báo cáo đã sẵn sàng.");
     }
@@ -332,40 +394,154 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
     public async Task<(byte[] Content, string FileName, string ContentType)> GetReportPdfAsync(
         Guid submissionId,
         string sessionToken,
+        KapReportPdfKind kind = KapReportPdfKind.Consulting,
         CancellationToken cancellationToken = default)
     {
         var submission = await RequireSubmissionAsync(submissionId, sessionToken, cancellationToken);
         EnsureReportUnlocked(submission);
 
-        var report = await BuildFullReportAsync(submission, cancellationToken);
-        var orgName = submission.Id.ToString();
-
-        var existing = await _repo.GetLatestReportAsync(submissionId, cancellationToken);
-        if (existing is not null && File.Exists(existing.StorageKey))
+        var fileName = BuildPdfFileName(submissionId, kind);
+        if (TryReadCachedPdf(submissionId, kind, out var cachedBytes))
         {
-            var bytes = await File.ReadAllBytesAsync(existing.StorageKey, cancellationToken);
-            return (bytes, existing.FileName, "text/html; charset=utf-8");
+            _logger.LogInformation("KAP PDF cache hit for submission {SubmissionId}", submissionId);
+            return (cachedBytes, fileName, "application/pdf");
         }
 
-        var content = AssessmentReportHtmlGenerator.Generate(report, orgName);
+        _logger.LogInformation("KAP PDF cache miss — generating for submission {SubmissionId}", submissionId);
+        var report = await BuildFullReportAsync(submission, cancellationToken);
+        var orgName = submission.RespondentOrgName?.Trim()
+            ?? submission.RespondentName?.Trim()
+            ?? submission.Id.ToString();
+
+        return await GenerateAndStorePdfAsync(submissionId, report, orgName, kind, cancellationToken);
+    }
+
+    public async Task<AssessmentFullReportDto> GetReportForAdminAsync(
+        Guid submissionId,
+        CancellationToken cancellationToken = default)
+    {
+        var submission = await _repo.GetSubmissionAsync(submissionId, cancellationToken)
+            ?? throw new AssessmentException(AssessmentErrorCodes.NotFound, "Không tìm thấy submission.", 404);
+
+        EnsureReportUnlocked(submission);
+        return await BuildFullReportAsync(submission, cancellationToken);
+    }
+
+    public async Task<(byte[] Content, string FileName, string ContentType)> GetReportPdfForAdminAsync(
+        Guid submissionId,
+        KapReportPdfKind kind = KapReportPdfKind.Consulting,
+        CancellationToken cancellationToken = default)
+    {
+        var submission = await _repo.GetSubmissionAsync(submissionId, cancellationToken)
+            ?? throw new AssessmentException(AssessmentErrorCodes.NotFound, "Không tìm thấy submission.", 404);
+
+        EnsureReportUnlocked(submission);
+
+        var fileName = BuildPdfFileName(submissionId, kind);
+        if (TryReadCachedPdf(submissionId, kind, out var cachedBytes))
+            return (cachedBytes, fileName, "application/pdf");
+
+        var report = await BuildFullReportAsync(submission, cancellationToken);
+        var orgName = submission.RespondentOrgName?.Trim()
+            ?? submission.RespondentName?.Trim()
+            ?? submission.Id.ToString();
+
+        return await GenerateAndStorePdfAsync(submissionId, report, orgName, kind, cancellationToken);
+    }
+
+    private async Task<(byte[] Content, string FileName, string ContentType)> GenerateAndStorePdfAsync(
+        Guid submissionId,
+        AssessmentFullReportDto report,
+        string orgName,
+        KapReportPdfKind kind,
+        CancellationToken cancellationToken)
+    {
+        byte[] pdfBytes;
+        try
+        {
+            pdfBytes = AssessmentReportPdfGenerator.Generate(report, orgName, kind);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "KAP PDF generation failed for submission {SubmissionId}", submissionId);
+            throw new AssessmentException(
+                AssessmentErrorCodes.InternalError,
+                "Không tạo được PDF. Vui lòng thử lại sau.",
+                statusCode: 500);
+        }
+
         var reportsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "assessment-reports");
         Directory.CreateDirectory(reportsDir);
-        var fileName = $"assessment-{submissionId:N}.html";
+        var fileName = BuildPdfFileName(submissionId, kind);
         var filePath = Path.Combine(reportsDir, fileName);
-        await File.WriteAllBytesAsync(filePath, content, cancellationToken);
+        await File.WriteAllBytesAsync(filePath, pdfBytes, cancellationToken);
 
         await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
-        await _repo.UpsertReportAsync(conn, tx, submissionId, filePath, fileName, content.LongLength, "html");
+        await _repo.UpsertReportAsync(conn, tx, submissionId, filePath, fileName, pdfBytes.LongLength, "pdf");
         await tx.CommitAsync(cancellationToken);
 
-        return (content, fileName, "text/html; charset=utf-8");
+        return (pdfBytes, fileName, "application/pdf");
     }
+
+    private static bool TryReadCachedPdf(Guid submissionId, KapReportPdfKind kind, out byte[] content)
+    {
+        content = [];
+        var fileName = BuildPdfFileName(submissionId, kind);
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "assessment-reports", fileName);
+        if (!File.Exists(filePath))
+            return false;
+
+        try
+        {
+            content = File.ReadAllBytes(filePath);
+            return content.Length >= 512
+                && content[0] == (byte)'%'
+                && content[1] == (byte)'P'
+                && content[2] == (byte)'D'
+                && content[3] == (byte)'F';
+        }
+        catch
+        {
+            content = [];
+            return false;
+        }
+    }
+
+    private static string BuildPdfFileName(Guid submissionId, KapReportPdfKind kind) =>
+        kind switch
+        {
+            KapReportPdfKind.Executive => $"kap-executive-{submissionId:N}.pdf",
+            KapReportPdfKind.Appendix => $"kap-appendix-{submissionId:N}.pdf",
+            _ => $"kap-consulting-{submissionId:N}.pdf",
+        };
 
     private async Task<AssessmentFullReportDto> BuildFullReportAsync(
         AssessmentSubmissionRow submission,
         CancellationToken cancellationToken)
     {
+        await EnsureArtifactAsync(submission.Id, cancellationToken);
+
+        var artifactRow = await _intel.GetCurrentArtifactAsync(submission.Id, cancellationToken);
+        if (artifactRow is not null)
+        {
+            var artifact = AssessmentAnalysisPipeline.DeserializeArtifact(artifactRow.ArtifactJson);
+            if (artifact is not null)
+            {
+                var mapped = MapFullReportFromArtifact(submission, artifact);
+                if (mapped.Intelligence is null)
+                    return mapped;
+
+                var orgName = submission.RespondentOrgName?.Trim()
+                    ?? submission.RespondentName?.Trim()
+                    ?? "Doanh nghiệp";
+                var orgScale = artifact.Meta.OrgScale
+                    ?? await _intel.GetSubmissionOrgScaleAsync(submission.Id, cancellationToken);
+                var enriched = KapReportIntelligenceEnricher.Enrich(mapped, mapped.Intelligence, orgName, orgScale);
+                return mapped with { Intelligence = enriched, OrgScale = orgScale };
+            }
+        }
+
         var categoryScores = await _repo.GetCategoryScoresAsync(submission.Id, cancellationToken);
         var dimensionScores = await _repo.GetDimensionScoresAsync(submission.Id, cancellationToken);
         var insights = await _repo.GetInsightsAsync(submission.Id, cancellationToken);
@@ -390,6 +566,60 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
                 true,
                 $"/api/public/assessment/submissions/{submission.Id}/report.pdf"));
     }
+
+    private static AssessmentFullReportDto MapFullReportFromArtifact(
+        AssessmentSubmissionRow submission,
+        KapReportArtifactDto artifact) =>
+        new(
+            submission.Id,
+            submission.TemplateCode,
+            submission.CompletedAt,
+            artifact.Scores.OverallScore,
+            artifact.Scores.OverallPct,
+            artifact.Scores.Categories,
+            artifact.Scores.Dimensions,
+            artifact.Insights,
+            artifact.Recommendations,
+            artifact.Scores.Qualitative,
+            new AssessmentReportPdfDto(
+                true,
+                $"/api/public/assessment/submissions/{submission.Id}/report.pdf"),
+            AssessmentAnalysisPipeline.ToIntelligenceDto(artifact),
+            artifact.Meta.OrgScale);
+
+    private async Task EnsureArtifactAsync(Guid submissionId, CancellationToken cancellationToken)
+    {
+        var existing = await _intel.GetCurrentArtifactAsync(submissionId, cancellationToken);
+        if (existing is not null)
+        {
+            var artifact = AssessmentAnalysisPipeline.DeserializeArtifact(existing.ArtifactJson);
+            if (artifact is not null && !KapReportIntelligenceEnricher.NeedsArtifactRebuild(artifact, _settings))
+                return;
+        }
+
+        var orgScale = await _intel.GetSubmissionOrgScaleAsync(submissionId, cancellationToken);
+        try
+        {
+            await _pipeline.RunAsync(submissionId, "manual_refresh", orgScale, cancellationToken);
+            _logger.LogInformation("KAP artifact rebuilt for submission {SubmissionId}", submissionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "KAP artifact rebuild failed for submission {SubmissionId}", submissionId);
+        }
+    }
+
+    private static Dictionary<string, string> BuildResponseOptionCodes(IReadOnlyList<AssessmentScoringRow> rows) =>
+        rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.OptionCode))
+            .GroupBy(r => r.QuestionCode)
+            .ToDictionary(g => g.Key, g => g.First().OptionCode!);
+
+    private static Dictionary<string, decimal> BuildQuestionScores(IReadOnlyList<AssessmentScoringRow> rows) =>
+        rows
+            .Where(r => r.Scorable && r.OptionScore.HasValue)
+            .GroupBy(r => r.QuestionCode)
+            .ToDictionary(g => g.Key, g => (decimal)g.First().OptionScore!.Value);
 
     private async Task<AssessmentSubmissionRow> RequireSubmissionAsync(
         Guid submissionId,
@@ -484,7 +714,24 @@ internal sealed class AssessmentSubmissionService : IAssessmentSubmissionService
                 "respondentEmail không hợp lệ.",
                 statusCode: 400);
         }
+
+        if (!string.IsNullOrWhiteSpace(request.OrgScale) && !IsValidOrgScale(request.OrgScale))
+        {
+            throw new AssessmentException(
+                AssessmentErrorCodes.ValidationError,
+                "orgScale không hợp lệ (micro, small, medium, large, chain).",
+                statusCode: 400);
+        }
     }
+
+    private static bool IsValidOrgScale(string scale)
+    {
+        var normalized = scale.Trim().ToLowerInvariant();
+        return normalized is "micro" or "small" or "medium" or "large" or "chain";
+    }
+
+    private static string NormalizeOrgScale(string? scale) =>
+        string.IsNullOrWhiteSpace(scale) ? "small" : scale.Trim().ToLowerInvariant();
 
     private static string NormalizePhone(string phone)
     {

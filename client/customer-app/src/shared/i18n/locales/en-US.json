@@ -85,7 +85,7 @@
     "pushCardTitle": "Push notifications (PWA)",
     "pushUnsupportedBrowser": "This browser does not support Web Push.",
     "pushLoadFailed": "Could not load push status",
-    "pushLoadFailedDesc": "Check the API is running (port 5290) then tap Retry.",
+    "pushLoadFailedDesc": "Check your connection or sign out and sign in again.",
     "pushApiDisabled": "Push not enabled on API — set CustomerAppPush keys and restart API.",
     "pushDeviceStatus": "Device status:",
     "pushSubscribed": "Push enabled",

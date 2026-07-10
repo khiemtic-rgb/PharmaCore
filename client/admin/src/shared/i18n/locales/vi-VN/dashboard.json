@@ -6,11 +6,16 @@
   },
   "quickActions": {
     "title": "Thao tác nhanh",
-    "pos": "Bán hàng (POS)",
+    "pos": "Quầy bán (POS)",
+    "posStaffHint": "Nhân viên bán hàng: mở pos.novixa.vn",
     "procurement": "Mua hàng",
     "receivables": "Công nợ KH",
     "lowStock": "Tồn thấp",
     "appDrafts": "Đơn app"
+  },
+  "workspaceHint": {
+    "title": "Hai màn hình Novixa",
+    "description": "Trang này (admin.novixa.vn) dùng để quản lý — danh mục, kho, công nợ, báo cáo. Nhân viên bán hàng tại quầy mở pos.novixa.vn (mã nhà thuốc và tài khoản giống khi đăng nhập)."
   },
   "hero": {
     "weekRevenue": "Doanh thu 7 ngày",
@@ -76,11 +81,11 @@
     },
     "lowStockProducts": {
       "title": "SP tồn thấp",
-      "hint": "Theo SP / danh mục / ngưỡng chung"
+      "hint": "Số mã SP × kho dưới ngưỡng (không phải số lô)"
     },
     "lowStockBatches": {
-      "title": "Lô tồn thấp (≤10)",
-      "hint": "Lô còn hàng nhưng SL thấp"
+      "title": "Lô tồn thấp",
+      "hint": "Từng lô còn hàng nhưng số lượng thấp"
     },
     "pendingPoReceipt": {
       "title": "PO chờ nhận hàng"

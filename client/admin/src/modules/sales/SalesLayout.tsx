@@ -7,7 +7,6 @@ import {
   CommentOutlined,
   FileTextOutlined,
   FormOutlined,
-  MedicineBoxOutlined,
   RollbackOutlined,
   ShoppingCartOutlined,
 } from '@ant-design/icons';
@@ -25,15 +24,9 @@ const allMainTabDefs: Omit<ProductNavTab, 'label'>[] = [
   { key: 'pos', path: '/sales/pos', icon: <ShoppingCartOutlined /> },
   { key: 'orders', path: '/sales/orders', icon: <FileTextOutlined /> },
   {
-    key: 'customer-drafts',
-    path: '/sales/customer-drafts',
+    key: 'app-orders',
+    path: '/sales/app-orders',
     icon: <FormOutlined />,
-  },
-  {
-    key: 'customer-reservations',
-    path: '/sales/customer-reservations',
-    icon: <MedicineBoxOutlined />,
-    feature: 'sales.customerReservations',
   },
   { key: 'returns', path: '/sales/returns', icon: <RollbackOutlined /> },
   {
@@ -48,8 +41,7 @@ const allMainTabDefs: Omit<ProductNavTab, 'label'>[] = [
 const tabLabelKeys: Record<string, string> = {
   pos: 'pos',
   orders: 'orders',
-  'customer-drafts': 'customerDrafts',
-  'customer-reservations': 'customerReservations',
+  'app-orders': 'appOrders',
   returns: 'returns',
   chat: 'chat',
   shift: 'shift',
@@ -97,6 +89,10 @@ export function SalesLayout() {
         navigate(draftId ? `${tab.path}?draftId=${draftId}` : tab.path);
         return;
       }
+      if (tab.key === 'app-orders') {
+        navigate('/sales/app-orders/drafts');
+        return;
+      }
       navigate(tab.path);
     },
     [navigate],
@@ -105,7 +101,7 @@ export function SalesLayout() {
   const badges = useMemo(
     () => ({
       chat: chatUnread,
-      'customer-drafts': pendingDrafts,
+      'app-orders': pendingDrafts,
     }),
     [chatUnread, pendingDrafts],
   );

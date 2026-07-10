@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -8,12 +8,13 @@ import {
   Collapse,
   Progress,
   Space,
+  Spin,
   Typography,
   message,
 } from 'antd';
 import { CheckCircleOutlined, ReloadOutlined } from '@ant-design/icons';
-
-const STORAGE_KEY = 'novixa:gpp-checklist-v1';
+import { fetchGppChecklist, updateGppChecklist } from '@/shared/api/gpp-checklist.api';
+import { apiErrorMessage } from '@/shared/api/api-error';
 
 type ChecklistItem = {
   id: string;
@@ -59,18 +60,12 @@ const SECTIONS: ChecklistSection[] = [
   },
 ];
 
-function loadChecked(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
-  } catch {
-    return {};
-  }
-}
-
 export function GppOperationalChecklistPage() {
   const { t } = useTranslation('inventory', { keyPrefix: 'gppChecklist' });
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => loadChecked());
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const allItems = useMemo(
     () => SECTIONS.flatMap((s) => s.items.map((i) => ({ ...i, sectionId: s.id }))),
@@ -80,19 +75,65 @@ export function GppOperationalChecklistPage() {
   const doneCount = allItems.filter((i) => checked[i.id]).length;
   const percent = allItems.length ? Math.round((doneCount / allItems.length) * 100) : 0;
 
-  const persist = useCallback((next: Record<string, boolean>) => {
-    setChecked(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }, []);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchGppChecklist();
+      setChecked(data.checked);
+    } catch (error) {
+      message.error(apiErrorMessage(error, t('messages.loadFailed')));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const persist = useCallback(
+    (next: Record<string, boolean>) => {
+      setChecked(next);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(async () => {
+        setSaving(true);
+        try {
+          const data = await updateGppChecklist(next);
+          setChecked(data.checked);
+        } catch (error) {
+          message.error(apiErrorMessage(error, t('messages.saveFailed')));
+        } finally {
+          setSaving(false);
+        }
+      }, 400);
+    },
+    [t],
+  );
 
   const toggle = (id: string, value: boolean) => {
     persist({ ...checked, [id]: value });
   };
 
-  const reset = () => {
-    persist({});
-    message.info(t('resetDone'));
+  const reset = async () => {
+    setSaving(true);
+    try {
+      const data = await updateGppChecklist({});
+      setChecked(data.checked);
+      message.info(t('resetDone'));
+    } catch (error) {
+      message.error(apiErrorMessage(error, t('messages.saveFailed')));
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 48, textAlign: 'center' }}>
+        <Spin tip={t('loadingTip')} />
+      </div>
+    );
+  }
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -112,8 +153,9 @@ export function GppOperationalChecklistPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography.Text>
               {t('progress', { done: doneCount, total: allItems.length })}
+              {saving ? ` · ${t('saving')}` : ''}
             </Typography.Text>
-            <Button icon={<ReloadOutlined />} onClick={reset}>
+            <Button icon={<ReloadOutlined />} onClick={() => void reset()} loading={saving}>
               {t('reset')}
             </Button>
           </div>

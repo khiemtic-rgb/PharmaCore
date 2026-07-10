@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Quick smoke test after deploy
 set -euo pipefail
 

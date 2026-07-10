@@ -76,9 +76,11 @@ export interface CartLine {
   unitName: string;
   quantity: number;
   unitPrice: number;
+  dispensingClass?: string;
   stockAvailable?: number;
   batchHints?: PosBatchHint[];
   batchLabel?: string;
+  prescriptionLineId?: string;
   discountType?: SalesDiscountType;
   discountValue?: number;
 }
@@ -91,8 +93,14 @@ export interface PosProductLookup {
   unitName: string;
   unitPrice: number;
   stockAvailable: number;
+  dispensingClass?: string;
   batchHints?: PosBatchHint[];
 }
+
+export type TenantRxSettings = {
+  enforcementMode: 'off' | 'strict' | 'warn';
+  posBlockedAudit: boolean;
+};
 
 export interface PosProductSearchItem {
   productCode: string;
@@ -221,8 +229,10 @@ export interface CreateSalePayload {
     productUnitId: string;
     quantity: number;
     batchNumber?: string;
+    prescriptionLineId?: string;
     discountType?: number;
     discountValue?: number;
   }[];
   payments?: { paymentMethod: number; amount: number }[];
+  prescriptionId?: string;
 }

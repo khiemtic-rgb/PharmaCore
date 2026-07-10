@@ -1,0 +1,99 @@
+{
+  "common": {
+    "retry": "Thử lại",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "search": "Tìm kiếm",
+    "loading": "Đang tải…",
+    "empty": "Chưa có dữ liệu",
+    "logout": "Đăng xuất"
+  },
+  "auth": {
+    "booting": "Đang khôi phục phiên…",
+    "title": "Portal bác sĩ Novixa",
+    "subtitle": "Kê đơn điện tử & liên kết nhà thuốc",
+    "phone": "Số điện thoại",
+    "otp": "Mã OTP",
+    "sendOtp": "Gửi mã OTP",
+    "verifyOtp": "Xác nhận đăng nhập",
+    "invalidPhone": "Vui lòng nhập số điện thoại hợp lệ",
+    "otpSent": "Đã gửi mã OTP",
+    "otpSendFailed": "Không gửi được OTP",
+    "otpInvalid": "Mã OTP không đúng hoặc đã hết hạn",
+    "welcome": "Xin chào, {{name}}",
+    "resendIn": "Gửi lại sau {{time}}"
+  },
+  "nav": {
+    "home": "Tổng quan",
+    "pharmacies": "Nhà thuốc",
+    "directory": "Tìm NT",
+    "invites": "Lời mời",
+    "prescriptions": "Đơn thuốc"
+  },
+  "home": {
+    "title": "Tổng quan",
+    "signedThisMonth": "Đơn tháng này",
+    "signedTotal": "Tổng đơn đã kê",
+    "linkedPharmacies": "Nhà thuốc liên kết",
+    "pendingInvites": "Lời mời chờ xử lý",
+    "byPharmacy": "Theo nhà thuốc",
+    "phaseNote": "Phase B — dashboard & liên kết POS deep link đã bật."
+  },
+  "pharmacies": {
+    "title": "Nhà thuốc của tôi",
+    "active": "Đang hoạt động",
+    "empty": "Chưa liên kết nhà thuốc nào"
+  },
+  "directory": {
+    "title": "Tìm nhà thuốc",
+    "placeholder": "Mã NT hoặc tên nhà thuốc",
+    "requestLink": "Xin liên kết",
+    "requestSuccess": "Đã gửi yêu cầu liên kết",
+    "requestFailed": "Không gửi được yêu cầu"
+  },
+  "invites": {
+    "title": "Lời mời liên kết",
+    "accept": "Chấp nhận",
+    "reject": "Từ chối",
+    "empty": "Không có lời mời nào",
+    "acceptSuccess": "Đã chấp nhận liên kết",
+    "rejectSuccess": "Đã từ chối lời mời"
+  },
+  "prescriptions": {
+    "title": "Đơn thuốc",
+    "new": "Kê đơn mới",
+    "newTitle": "Kê đơn điện tử",
+    "empty": "Chưa có đơn nào",
+    "comingSoon": "Kê đơn signed — triển khai trong sprint Rx-2 tiếp theo.",
+    "pharmacy": "Nhà thuốc",
+    "selectPharmacy": "Chọn nhà thuốc liên kết",
+    "searchCustomer": "Tìm bệnh nhân (SĐT/tên)",
+    "customerPlaceholder": "Nhập ít nhất 2 ký tự",
+    "customerLivePlaceholder": "Gõ SĐT/tên bệnh nhân (thử 0908888001)",
+    "customerTypeMore": "Gõ thêm ít nhất 2 ký tự để tìm",
+    "customerEmpty": "Không thấy BN — thử 0908888001 / RXDEMO",
+    "selectPharmacyFirst": "Chọn nhà thuốc trước",
+    "customer": "Bệnh nhân",
+    "selectCustomer": "Chọn bệnh nhân",
+    "searchProduct": "Tìm thuốc",
+    "productPlaceholder": "Gõ Amox / Para / RXDEMO…",
+    "product": "Thuốc",
+    "selectProduct": "Gõ để tìm thuốc (thử Amox / RXDEMO)",
+    "productEmpty": "Không thấy thuốc — thử RXDEMO-AMOX hoặc RXDEMO-PARA",
+    "catalogHint": "Catalog theo nhà thuốc đã chọn (Rx + OTC). Mở ô thuốc sẽ hiện danh sách; gõ để lọc.",
+    "qty": "SL",
+    "unit": "Đơn vị",
+    "selectUnit": "Chọn ĐVT",
+    "unitRequired": "Chọn đơn vị tính (viên/hộp…)",
+    "dosage": "Liều dùng",
+    "lines": "Dòng thuốc",
+    "addLine": "Thêm dòng",
+    "notes": "Ghi chú",
+    "submitSigned": "Ký & gửi đơn",
+    "createSuccess": "Đã kê đơn {{code}}",
+    "createFailed": "Không kê được đơn",
+    "copyPosLink": "Link quầy",
+    "linkCopied": "Đã copy link mở đơn trên admin",
+    "linkCopyFailed": "Không lấy được link"
+  }
+}

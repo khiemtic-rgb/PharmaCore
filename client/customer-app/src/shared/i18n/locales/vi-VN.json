@@ -85,7 +85,7 @@
     "pushCardTitle": "Thông báo push (PWA)",
     "pushUnsupportedBrowser": "Trình duyệt hiện tại chưa hỗ trợ Web Push.",
     "pushLoadFailed": "Không tải được trạng thái push",
-    "pushLoadFailedDesc": "Kiểm tra API đang chạy (port 5290) rồi bấm Thử lại.",
+    "pushLoadFailedDesc": "Kiểm tra mạng hoặc đăng xuất rồi đăng nhập lại.",
     "pushApiDisabled": "API chưa bật push — cấu hình CustomerAppPush:PublicKey/PrivateKey rồi restart API.",
     "pushDeviceStatus": "Trạng thái thiết bị:",
     "pushSubscribed": "Đã bật push",

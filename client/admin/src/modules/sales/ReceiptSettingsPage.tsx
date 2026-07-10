@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Alert, Button, Card, Form, Input, Select, Space, Typography } from 'antd';
+import { App, Alert, Button, Card, Form, Input, Select, Space, Switch, Typography } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';import {
   fetchBatchModeSettings,
   updateBatchModeSettings,
+  fetchRxSettings,
+  updateRxSettings,
   updateReceiptSettings,
   type TenantBatchModeValue,
+  type TenantRxSettings,
 } from '@/shared/api/sales.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
@@ -32,6 +35,8 @@ export function ReceiptSettingsPage() {
   const [savingReceipt, setSavingReceipt] = useState(false);
   const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('suggest');
   const [savingBatchMode, setSavingBatchMode] = useState(false);
+  const [rxSettings, setRxSettings] = useState<TenantRxSettings>({ enforcementMode: 'off', posBlockedAudit: true });
+  const [savingRxSettings, setSavingRxSettings] = useState(false);
   const [testPrinting, setTestPrinting] = useState(false);
 
   useEffect(() => {
@@ -44,12 +49,14 @@ export function ReceiptSettingsPage() {
     void (async () => {
       setLoading(true);
       try {
-        const [receipt, mode] = await Promise.all([
+        const [receipt, mode, rx] = await Promise.all([
           loadReceiptStoreSettings(true),
           fetchBatchModeSettings(),
+          fetchRxSettings(),
         ]);
         receiptForm.setFieldsValue(receipt);
         setBatchMode(mode);
+        setRxSettings(rx);
       } catch (error) {
         message.error(apiErrorMessage(error, t('messages.loadFailed')));
       } finally {
@@ -101,6 +108,19 @@ export function ReceiptSettingsPage() {
       message.error(apiErrorMessage(error, t('printGuide.testFailed')));
     } finally {
       setTestPrinting(false);
+    }
+  };
+
+  const onSaveRxSettings = async () => {
+    setSavingRxSettings(true);
+    try {
+      const saved = await updateRxSettings(rxSettings);
+      setRxSettings(saved);
+      message.success('Đã lưu cài đặt thuốc kê đơn (Rx).');
+    } catch (error) {
+      message.error(apiErrorMessage(error, 'Không lưu được cài đặt Rx.'));
+    } finally {
+      setSavingRxSettings(false);
     }
   };
 
@@ -160,6 +180,42 @@ export function ReceiptSettingsPage() {
           {canWrite ? (
             <Button type="primary" loading={savingBatchMode} onClick={() => void onSaveBatchMode()}>
               {t('batchCard.save')}
+            </Button>
+          ) : null}
+        </Space>
+      </Card>
+
+      <Card title="Thuốc kê đơn (Rx) — POS" loading={loading}>
+        <Space direction="vertical" size={12} style={{ maxWidth: 520, width: '100%' }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+            Strict: chặn bán SKU kê đơn trên POS khi chưa có đơn bác sĩ (Rx-1). Mặc định Tắt — bật sau khi rà phân loại SKU.
+          </Typography.Text>
+          <Select
+            style={{ width: '100%' }}
+            disabled={!canWrite}
+            value={rxSettings.enforcementMode}
+            options={[
+              { value: 'off', label: 'Tắt — bán Rx như hiện tại' },
+              { value: 'strict', label: 'Strict — chặn Rx không đơn BS' },
+              { value: 'warn', label: 'Cảnh báo (dự phòng)' },
+            ]}
+            onChange={(enforcementMode: TenantRxSettings['enforcementMode']) =>
+              setRxSettings((prev: TenantRxSettings) => ({ ...prev, enforcementMode }))
+            }
+          />
+          <Space>
+            <Switch
+              checked={rxSettings.posBlockedAudit}
+              disabled={!canWrite}
+              onChange={(posBlockedAudit: boolean) =>
+                setRxSettings((prev: TenantRxSettings) => ({ ...prev, posBlockedAudit }))
+              }
+            />
+            <Typography.Text>Ghi log khi POS chặn thuốc kê đơn</Typography.Text>
+          </Space>
+          {canWrite ? (
+            <Button type="primary" loading={savingRxSettings} onClick={() => void onSaveRxSettings()}>
+              Lưu cài đặt Rx
             </Button>
           ) : null}
         </Space>

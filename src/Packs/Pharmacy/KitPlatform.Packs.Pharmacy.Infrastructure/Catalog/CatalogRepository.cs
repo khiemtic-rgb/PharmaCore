@@ -63,6 +63,7 @@ internal sealed class CatalogRepository
                 p.product_name AS ProductName,
                 p.generic_name AS GenericName,
                 p.drug_type AS DrugType,
+                COALESCE(p.dispensing_class, 'otc') AS DispensingClass,
                 c.category_name AS CategoryName,
                 br.brand_name AS BrandName,
                 (SELECT b.barcode FROM product_barcodes b
@@ -240,12 +241,12 @@ internal sealed class CatalogRepository
         const string sql = """
             INSERT INTO products (
                 tenant_id, category_id, brand_id, product_code, product_name, product_name_normalized,
-                generic_name, drug_type, description, national_drug_id, national_registration_number,
+                generic_name, drug_type, dispensing_class, description, national_drug_id, national_registration_number,
                 dosage_form, packaging, importer_name,
                 min_stock_qty, status)
             VALUES (
                 @TenantId, @CategoryId, @BrandId, @ProductCode, @ProductName, @ProductNameNormalized,
-                @GenericName, @DrugType, @Description, @NationalDrugId, @NationalRegistrationNumber,
+                @GenericName, @DrugType, @DispensingClass, @Description, @NationalDrugId, @NationalRegistrationNumber,
                 @DosageForm, @Packaging, @ImporterName,
                 @MinStockQty, @Status)
             RETURNING id
@@ -266,6 +267,7 @@ internal sealed class CatalogRepository
             ProductNameNormalized = ProductNameNormalizer.Normalize(request.ProductName),
             GenericName = request.GenericName?.Trim(),
             request.DrugType,
+            DispensingClass = KitPlatform.Packs.Pharmacy.Rx.DispensingClass.FromDrugType(request.DrugType),
             request.Description,
             NationalDrugId = string.IsNullOrWhiteSpace(request.NationalDrugId) ? null : request.NationalDrugId.Trim(),
             NationalRegistrationNumber = string.IsNullOrWhiteSpace(request.NationalRegistrationNumber)
@@ -643,7 +645,9 @@ internal sealed class CatalogRepository
                 category_id = @CategoryId, brand_id = @BrandId,
                 product_name = @ProductName, product_name_normalized = @ProductNameNormalized,
                 generic_name = @GenericName,
-                drug_type = @DrugType, description = @Description,
+                drug_type = @DrugType,
+                dispensing_class = @DispensingClass,
+                description = @Description,
                 national_drug_id = @NationalDrugId,
                 national_registration_number = @NationalRegistrationNumber,
                 dosage_form = @DosageForm,
@@ -665,6 +669,7 @@ internal sealed class CatalogRepository
             ProductNameNormalized = ProductNameNormalizer.Normalize(request.ProductName),
             GenericName = request.GenericName?.Trim(),
             request.DrugType,
+            DispensingClass = KitPlatform.Packs.Pharmacy.Rx.DispensingClass.FromDrugType(request.DrugType),
             request.Description,
             NationalDrugId = string.IsNullOrWhiteSpace(request.NationalDrugId) ? null : request.NationalDrugId.Trim(),
             NationalRegistrationNumber = string.IsNullOrWhiteSpace(request.NationalRegistrationNumber)
@@ -677,6 +682,48 @@ internal sealed class CatalogRepository
             request.Status,
         });
         return rows > 0;
+    }
+
+    public async Task<DispensingClassSummaryDto> GetDispensingClassSummaryAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                COUNT(*) FILTER (WHERE dispensing_class = 'otc')::int AS OtcCount,
+                COUNT(*) FILTER (WHERE dispensing_class = 'prescription')::int AS PrescriptionCount,
+                COUNT(*) FILTER (WHERE dispensing_class = 'controlled')::int AS ControlledCount,
+                COUNT(*) FILTER (WHERE
+                    (drug_type = 1 AND dispensing_class <> 'otc')
+                    OR (drug_type = 2 AND dispensing_class <> 'prescription')
+                    OR (drug_type = 3 AND dispensing_class <> 'controlled')
+                )::int AS InconsistentCount
+            FROM products
+            WHERE tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.QuerySingleAsync<DispensingClassSummaryDto>(
+            sql, new { TenantId = _tenant.TenantId });
+    }
+
+    public async Task<int> SyncDispensingClassFromDrugTypeAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE products
+            SET dispensing_class = CASE drug_type
+                WHEN 2 THEN 'prescription'
+                WHEN 3 THEN 'controlled'
+                ELSE 'otc'
+            END,
+            updated_at = NOW()
+            WHERE tenant_id = @TenantId
+              AND deleted_at IS NULL
+              AND dispensing_class <> CASE drug_type
+                WHEN 2 THEN 'prescription'
+                WHEN 3 THEN 'controlled'
+                ELSE 'otc'
+            END
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteAsync(sql, new { TenantId = _tenant.TenantId });
     }
 
     public async Task<bool> ProductCodeExistsAsync(string productCode, CancellationToken cancellationToken)
@@ -1363,6 +1410,28 @@ internal sealed class CatalogRepository
             : new BarcodeCheckResult(false, row.ExistingProductId, row.ExistingProductCode, row.ExistingProductName);
     }
 
+    public async Task<IReadOnlyList<ProductNationalLinkCandidate>> ListProductsMissingNationalRegAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id AS Id, product_name AS ProductName, generic_name AS GenericName
+            FROM products
+            WHERE tenant_id = @TenantId
+              AND deleted_at IS NULL
+              AND status = 1
+              AND product_kind = 'pharmacy_drug'
+              AND COALESCE(NULLIF(TRIM(national_registration_number), ''), '') = ''
+            ORDER BY product_name
+            LIMIT @Limit
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.QueryAsync<ProductNationalLinkCandidate>(
+            sql,
+            new { TenantId = _tenant.TenantId, Limit = Math.Clamp(limit, 1, 200) });
+        return rows.ToList();
+    }
+
     private sealed class BarcodeCheckRow
     {
         public Guid ExistingProductId { get; init; }
@@ -1409,5 +1478,12 @@ internal sealed class CatalogRepository
         public string? ImporterName { get; init; }
         public short Status { get; init; }
         public decimal? MinStockQty { get; init; }
+    }
+
+    internal sealed class ProductNationalLinkCandidate
+    {
+        public Guid Id { get; init; }
+        public string ProductName { get; init; } = "";
+        public string? GenericName { get; init; }
     }
 }

@@ -15,8 +15,31 @@ import type {
   SalesShiftDetail,
   SalesShiftSummary,
   TenantBatchModeValue,
+  TenantRxSettings,
   Warehouse,
 } from '@/shared/api/sales.types';
+
+export type PrescriptionPosLoadLine = {
+  prescriptionLineId: string;
+  productId: string;
+  productCode: string;
+  productName: string;
+  productUnitId?: string;
+  unitName?: string;
+  unitPrice: number;
+  qtyRemaining: number;
+  stockAvailable: number;
+  lineDispensingClass: string;
+};
+
+export type PrescriptionPosLoad = {
+  id: string;
+  prescriptionCode: string;
+  customerId?: string;
+  patientName?: string;
+  patientPhone?: string;
+  lines: PrescriptionPosLoadLine[];
+};
 
 function row(data: Record<string, unknown>) {
   return data;
@@ -112,12 +135,36 @@ function normalizeLookup(data: Record<string, unknown>): PosProductLookup {
     unitName: String(data.unitName ?? data.UnitName ?? ''),
     unitPrice: Number(data.unitPrice ?? data.UnitPrice ?? 0),
     stockAvailable: Number(data.stockAvailable ?? data.StockAvailable ?? 0),
+    dispensingClass: String(data.dispensingClass ?? data.DispensingClass ?? 'otc'),
     batchHints: hints?.map((h) => ({
       batchId: String(h.batchId ?? h.BatchId),
       batchNumber: String(h.batchNumber ?? h.BatchNumber ?? ''),
       expiryDate: (h.expiryDate ?? h.ExpiryDate) as string | undefined,
       quantityAvailable: Number(h.quantityAvailable ?? h.QuantityAvailable ?? 0),
       isSuggested: Boolean(h.isSuggested ?? h.IsSuggested),
+    })),
+  };
+}
+
+function normalizePrescriptionPosLoad(data: Record<string, unknown>): PrescriptionPosLoad {
+  const rawLines = (data.lines ?? data.Lines ?? []) as Record<string, unknown>[];
+  return {
+    id: String(data.id ?? data.Id),
+    prescriptionCode: String(data.prescriptionCode ?? data.PrescriptionCode ?? ''),
+    customerId: (data.customerId ?? data.CustomerId) as string | undefined,
+    patientName: (data.patientName ?? data.PatientName) as string | undefined,
+    patientPhone: (data.patientPhone ?? data.PatientPhone) as string | undefined,
+    lines: rawLines.map((line) => ({
+      prescriptionLineId: String(line.prescriptionLineId ?? line.PrescriptionLineId),
+      productId: String(line.productId ?? line.ProductId),
+      productCode: String(line.productCode ?? line.ProductCode ?? ''),
+      productName: String(line.productName ?? line.ProductName ?? ''),
+      productUnitId: (line.productUnitId ?? line.ProductUnitId) as string | undefined,
+      unitName: (line.unitName ?? line.UnitName) as string | undefined,
+      unitPrice: Number(line.unitPrice ?? line.UnitPrice ?? 0),
+      qtyRemaining: Number(line.qtyRemaining ?? line.QtyRemaining ?? 0),
+      stockAvailable: Number(line.stockAvailable ?? line.StockAvailable ?? 0),
+      lineDispensingClass: String(line.lineDispensingClass ?? line.LineDispensingClass ?? 'otc'),
     })),
   };
 }
@@ -158,6 +205,19 @@ export async function fetchBatchModeSettings(): Promise<TenantBatchModeValue> {
   const mode = String(data.batchMode ?? data.BatchMode ?? 'suggest');
   if (mode === 'suggest' || mode === 'label_optional' || mode === 'label_required' || mode === 'off') return mode;
   return 'suggest';
+}
+
+export async function fetchRxSettings(): Promise<TenantRxSettings> {
+  const { data } = await http.get<Record<string, unknown>>('/pharmacy/rx/settings');
+  const mode = String(data.enforcementMode ?? data.EnforcementMode ?? 'off').toLowerCase();
+  return {
+    enforcementMode: mode === 'strict' || mode === 'warn' ? mode : 'off',
+    posBlockedAudit: Boolean(data.posBlockedAudit ?? data.PosBlockedAudit ?? true),
+  };
+}
+
+export async function reportRxPosBlock(productId: string, warehouseId: string): Promise<void> {
+  await http.post('/pharmacy/rx/pos-block', { productId, warehouseId });
 }
 
 function normalizeShiftSummary(data: Record<string, unknown>): SalesShiftSummary {
@@ -250,6 +310,17 @@ export async function fetchOpenShift(warehouseId: string): Promise<SalesShiftDet
     }
     throw error;
   }
+}
+
+export async function fetchPrescriptionPosLoad(
+  prescriptionId: string,
+  warehouseId: string,
+  priceType = 1,
+): Promise<PrescriptionPosLoad> {
+  const { data } = await http.get<Record<string, unknown>>(`/pharmacy/prescriptions/${prescriptionId}/pos-load`, {
+    params: { warehouseId, priceType },
+  });
+  return normalizePrescriptionPosLoad(data);
 }
 
 export async function openSalesShift(payload: {
@@ -409,6 +480,7 @@ export async function completeDraftSale(
     orderDiscountValue?: number | null;
     loyaltyDiscountAmount?: number;
     customerVoucherId?: string;
+    prescriptionId?: string;
     items?: CreateSalePayload['items'];
   },
 ): Promise<SalesOrderDetail> {
@@ -426,6 +498,7 @@ export async function completeDraftSale(
       ? { loyaltyDiscountAmount: options.loyaltyDiscountAmount }
       : {}),
     ...(options.customerVoucherId ? { customerVoucherId: options.customerVoucherId } : {}),
+    ...(options.prescriptionId ? { prescriptionId: options.prescriptionId } : {}),
   });
   const rawItems = (data.items ?? data.Items ?? []) as Record<string, unknown>[];
   return normalizeOrder(row(data), rawItems);

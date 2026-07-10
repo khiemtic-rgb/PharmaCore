@@ -24,6 +24,188 @@ a {
   padding: 1.5rem 1rem 3rem;
 }
 
+.page-shell-report {
+  max-width: 800px;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.report-exec {
+  border-left: 4px solid #0f766e;
+}
+
+.report-diagnosis {
+  border-left: 4px solid #b91c1c;
+  background: linear-gradient(135deg, #fef2f2 0%, #fff 100%);
+}
+
+.report-diagnosis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.ai-narrative-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.report-ai-insights {
+  border-left: 4px solid #6366f1;
+}
+
+.ai-insights-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.ai-insights-list li {
+  margin-bottom: 0.5rem;
+  line-height: 1.45;
+}
+
+.insight-impact {
+  background: #fef2f2;
+  border-left: 3px solid #ef4444;
+}
+
+.impact-cost {
+  font-size: 0.85rem;
+}
+
+.report-novixa-fit {
+  border-left: 4px solid #0f766e;
+}
+
+.module-fit-card {
+  margin: 0.75rem 0;
+  padding: 0.85rem;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  background: #f0fdfa;
+}
+
+.module-fit-name {
+  color: #0f766e;
+  font-size: 1rem;
+}
+
+.report-roi .roi-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.report-roi ul {
+  margin: 0.35rem 0 0 1.1rem;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.report-cta {
+  background: linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+  color: #fff;
+}
+
+.report-cta .ant-typography {
+  color: #ecfdf5 !important;
+}
+
+.report-cta .ant-btn-primary {
+  margin-top: 0.75rem;
+  background: #fff;
+  color: #0f766e;
+  border: none;
+  font-weight: 600;
+}
+
+
+.report-maturity {
+  background: linear-gradient(135deg, #f0fdfa 0%, #fff 100%);
+}
+
+.kap-radar {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  display: block;
+}
+
+.kap-radar-title {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #0f172a;
+}
+
+.kap-radar-label {
+  font-size: 9px;
+  fill: #475569;
+}
+
+.kap-radar-legend {
+  font-size: 9px;
+  fill: #64748b;
+}
+
+.benchmark-table {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.benchmark-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.delta-up {
+  color: #047857;
+  font-weight: 600;
+}
+
+.delta-down {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.insight-block {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.insight-root {
+  background: #fff7ed;
+  border-left: 3px solid #f97316;
+}
+
+.insight-risk {
+  background: #fef2f2;
+  border-left: 3px solid #ef4444;
+}
+
+.swot-block ul,
+.roadmap-block ul {
+  margin: 0.35rem 0 0.75rem 1.1rem;
+  padding: 0;
+}
+
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -722,4 +904,75 @@ a {
   .survey-step-name {
     max-width: 4.5rem;
   }
+}
+
+/* --- Report page: larger readable typography --- */
+.page-shell-report .ant-typography {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.page-shell-report h3.ant-typography {
+  font-size: 1.5rem !important;
+  line-height: 1.35 !important;
+}
+
+.page-shell-report .ant-typography-secondary,
+.page-shell-report p.ant-typography {
+  font-size: 1.02rem;
+}
+
+.page-shell-report .score-card {
+  padding: 1.4rem 1.35rem;
+}
+
+.page-shell-report .score-hero-caption {
+  font-size: 0.95rem;
+}
+
+.page-shell-report .score-hero-footnote {
+  font-size: 0.92rem;
+}
+
+.page-shell-report .score-table-head {
+  font-size: 0.88rem;
+}
+
+.page-shell-report .score-table-row {
+  font-size: 0.98rem;
+}
+
+.page-shell-report .benchmark-row {
+  font-size: 1rem;
+}
+
+.page-shell-report .ai-narrative-badge {
+  font-size: 0.82rem;
+}
+
+.page-shell-report .kap-radar-title {
+  font-size: 14px;
+}
+
+.page-shell-report .kap-radar-label,
+.page-shell-report .kap-radar-legend {
+  font-size: 11px;
+}
+
+.page-shell-report .report-roi ul {
+  font-size: 1rem;
+}
+
+.page-shell-report .impact-cost {
+  font-size: 0.95rem;
+}
+
+.page-shell-report .module-fit-name {
+  font-size: 1.1rem;
+}
+
+.page-shell-report .insight-block,
+.page-shell-report .swot-block,
+.page-shell-report .roadmap-block {
+  font-size: 1.02rem;
 }

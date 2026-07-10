@@ -315,4 +315,103 @@ internal sealed class TenantSettingsService : ITenantSettingsService
             return null;
         }
     }
+
+    public async Task<GppChecklistSettingsDto> GetGppChecklistAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT settings->'gpp_checklist'->'checked' AS CheckedJson
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var json = await conn.QuerySingleOrDefaultAsync<string?>(sql, new { TenantId = _tenant.TenantId });
+        return new GppChecklistSettingsDto(ParseGppChecklist(json));
+    }
+
+    public async Task<GppChecklistSettingsDto> UpdateGppChecklistAsync(
+        UpdateGppChecklistRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var payload = JsonSerializer.Serialize(new { @checked = request.Checked });
+        const string sql = """
+            UPDATE tenants
+            SET settings = jsonb_set(
+                COALESCE(settings, '{}'::jsonb),
+                '{gpp_checklist}',
+                @Payload::jsonb,
+                true
+            ),
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new { TenantId = _tenant.TenantId, Payload = payload });
+        return new GppChecklistSettingsDto(request.Checked);
+    }
+
+    public async Task<TenantRxSettingsDto> GetRxSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                settings->'rx'->>'enforcement_mode' AS EnforcementMode,
+                COALESCE((settings->'rx'->>'pos_blocked_audit')::boolean, true) AS PosBlockedAudit
+            FROM tenants
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var row = await conn.QuerySingleOrDefaultAsync<(string? EnforcementMode, bool PosBlockedAudit)>(
+            sql, new { TenantId = _tenant.TenantId });
+        var mode = KitPlatform.Packs.Pharmacy.Rx.RxEnforcementMode.Parse(row.EnforcementMode);
+        return new TenantRxSettingsDto(mode, row.EnforcementMode is null || row.PosBlockedAudit);
+    }
+
+    public async Task<TenantRxSettingsDto> UpdateRxSettingsAsync(
+        UpdateTenantRxSettingsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var mode = KitPlatform.Packs.Pharmacy.Rx.RxEnforcementMode.Parse(request.EnforcementMode);
+
+        var rxJson = JsonSerializer.Serialize(new
+        {
+            enforcement_mode = mode,
+            pos_blocked_audit = request.PosBlockedAudit,
+        });
+
+        const string sql = """
+            UPDATE tenants
+            SET settings = jsonb_set(
+                COALESCE(settings, '{}'::jsonb),
+                '{rx}',
+                @RxJson::jsonb,
+                true
+            ),
+            updated_at = NOW()
+            WHERE id = @TenantId
+            """;
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await conn.ExecuteAsync(sql, new { TenantId = _tenant.TenantId, RxJson = rxJson });
+        return new TenantRxSettingsDto(mode, request.PosBlockedAudit);
+    }
+
+    private static IReadOnlyDictionary<string, bool> ParseGppChecklist(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json == "null")
+            return new Dictionary<string, bool>();
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("checked", out var checkedEl) || checkedEl.ValueKind != JsonValueKind.Object)
+                return new Dictionary<string, bool>();
+
+            var result = new Dictionary<string, bool>(StringComparer.Ordinal);
+            foreach (var prop in checkedEl.EnumerateObject())
+                result[prop.Name] = prop.Value.ValueKind == JsonValueKind.True;
+            return result;
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, bool>();
+        }
+    }
 }

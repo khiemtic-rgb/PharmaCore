@@ -12,6 +12,8 @@ interface PosSessionState {
   loadedReservationNumber: string | null;
   loadedCustomerDraftOrderId: string | null;
   loadedCustomerDraftNumber: string | null;
+  loadedPrescriptionId: string | null;
+  loadedPrescriptionCode: string | null;
   editingDraftId: string | null;
   editingDraftNumber: string | null;
   setWarehouses: (items: Warehouse[], defaultId?: string) => void;
@@ -20,6 +22,7 @@ interface PosSessionState {
   setOrderDiscount: (discount: OrderDiscountState) => void;
   setLoadedReservation: (id: string | null, number?: string | null) => void;
   setLoadedCustomerDraft: (id: string | null, number?: string | null) => void;
+  setLoadedPrescription: (id: string | null, code?: string | null) => void;
   setEditingDraft: (id: string | null, number?: string | null) => void;
   loadDraftIntoSession: (payload: {
     warehouseId: string;
@@ -49,6 +52,8 @@ export const usePosSession = create<PosSessionState>((set, get) => ({
   loadedReservationNumber: null,
   loadedCustomerDraftOrderId: null,
   loadedCustomerDraftNumber: null,
+  loadedPrescriptionId: null,
+  loadedPrescriptionCode: null,
   editingDraftId: null,
   editingDraftNumber: null,
   setWarehouses: (items, defaultId) =>
@@ -59,7 +64,17 @@ export const usePosSession = create<PosSessionState>((set, get) => ({
   setWarehouseId: (id) => {
     const current = get().warehouseId;
     if (current === id) return;
-    set({ warehouseId: id, cart: [], customer: null });
+    set({
+      warehouseId: id,
+      cart: [],
+      customer: null,
+      loadedReservationId: null,
+      loadedReservationNumber: null,
+      loadedCustomerDraftOrderId: null,
+      loadedCustomerDraftNumber: null,
+      loadedPrescriptionId: null,
+      loadedPrescriptionCode: null,
+    });
   },
   setCustomer: (customer) => set({ customer }),
   setOrderDiscount: (orderDiscount) => set({ orderDiscount }),
@@ -69,6 +84,8 @@ export const usePosSession = create<PosSessionState>((set, get) => ({
       loadedReservationNumber: number ?? null,
       loadedCustomerDraftOrderId: null,
       loadedCustomerDraftNumber: null,
+      loadedPrescriptionId: null,
+      loadedPrescriptionCode: null,
     }),
   setLoadedCustomerDraft: (id, number = null) =>
     set({
@@ -76,6 +93,19 @@ export const usePosSession = create<PosSessionState>((set, get) => ({
       loadedCustomerDraftNumber: number ?? null,
       loadedReservationId: null,
       loadedReservationNumber: null,
+      loadedPrescriptionId: null,
+      loadedPrescriptionCode: null,
+      editingDraftId: null,
+      editingDraftNumber: null,
+    }),
+  setLoadedPrescription: (id, code = null) =>
+    set({
+      loadedPrescriptionId: id,
+      loadedPrescriptionCode: code ?? null,
+      loadedReservationId: null,
+      loadedReservationNumber: null,
+      loadedCustomerDraftOrderId: null,
+      loadedCustomerDraftNumber: null,
       editingDraftId: null,
       editingDraftNumber: null,
     }),
@@ -93,6 +123,8 @@ export const usePosSession = create<PosSessionState>((set, get) => ({
       loadedReservationNumber: null,
       loadedCustomerDraftOrderId: null,
       loadedCustomerDraftNumber: null,
+      loadedPrescriptionId: null,
+      loadedPrescriptionCode: null,
     }),
   clearDraftEdit: () => set({ editingDraftId: null, editingDraftNumber: null }),
   updateLineDiscount: (key, discountType, discountValue) =>
@@ -144,6 +176,8 @@ export const usePosSession = create<PosSessionState>((set, get) => ({
       loadedReservationNumber: null,
       loadedCustomerDraftOrderId: null,
       loadedCustomerDraftNumber: null,
+      loadedPrescriptionId: null,
+      loadedPrescriptionCode: null,
       editingDraftId: null,
       editingDraftNumber: null,
     }),

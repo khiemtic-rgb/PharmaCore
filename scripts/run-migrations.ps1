@@ -115,7 +115,19 @@ $files = @(
     "088_purchase_order_workflow.sql",
     "089_kap_decision_intelligence_schema.sql",
     "090_kap_pharmacy_intelligence_seed.sql",
-    "092_qd540_integration_schema.sql"
+    "091_kap_engine_mode_fix.sql",
+    "092_qd540_integration_schema.sql",
+    "093_kap_vietnamese_seed.sql",
+    "094_kap_vietnamese_rules.sql",
+    "095_rx_dispensing_class.sql",
+    "096_rx_prescriptions.sql",
+    "097_rx_strict_pilot_nt_xuanhoa.sql",
+    "098_schema_migrations.sql",
+    "099_rx_pilot_nt_xuanhoa_sku_class.sql",
+    "100_rx_prescriber_network.sql",
+    "101_prescriber_portal_otp.sql",
+    "102_kap_pharmacy_v1_1_telemed.sql",
+    "103_healthcare_network_foundation.sql"
 )
 
 Write-Host "=== KitPlatform Migrations ===" -ForegroundColor Cyan

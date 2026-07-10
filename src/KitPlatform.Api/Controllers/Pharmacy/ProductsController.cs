@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using KitPlatform.Api.Authorization;
 using KitPlatform.Packs.Pharmacy.Catalog;
+using KitPlatform.Packs.Pharmacy.Infrastructure;
 
 namespace KitPlatform.Api.Controllers.Pharmacy;
 
@@ -11,8 +12,13 @@ namespace KitPlatform.Api.Controllers.Pharmacy;
 public sealed class ProductsController : ControllerBase
 {
     private readonly ICatalogService _catalog;
+    private readonly INationalDrugBulkLinkService _nationalBulkLink;
 
-    public ProductsController(ICatalogService catalog) => _catalog = catalog;
+    public ProductsController(ICatalogService catalog, INationalDrugBulkLinkService nationalBulkLink)
+    {
+        _catalog = catalog;
+        _nationalBulkLink = nationalBulkLink;
+    }
 
     [HttpGet]
     [Authorize(Policy = CatalogPolicies.Read)]
@@ -79,6 +85,13 @@ public sealed class ProductsController : ControllerBase
         var deleted = await _catalog.BulkDeleteProductsAsync(request.Ids, cancellationToken);
         return Ok(new BulkDeleteResult(deleted));
     }
+
+    [HttpPost("bulk-suggest-national-registration")]
+    [Authorize(Policy = CatalogPolicies.Write)]
+    public async Task<ActionResult<BulkNationalLinkResult>> BulkSuggestNationalRegistration(
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default) =>
+        Ok(await _nationalBulkLink.ApplySuggestionsAsync(limit, cancellationToken));
 
     [HttpPost]
     [Authorize(Policy = CatalogPolicies.Write)]
@@ -196,4 +209,16 @@ public sealed class ProductsController : ControllerBase
         var product = await _catalog.SyncProductIngredientsAsync(id, request, cancellationToken);
         return product is null ? NotFound() : Ok(product);
     }
+
+    [HttpGet("dispensing-class/summary")]
+    [Authorize(Policy = CatalogPolicies.Read)]
+    public async Task<ActionResult<DispensingClassSummaryDto>> DispensingClassSummary(
+        CancellationToken cancellationToken) =>
+        Ok(await _catalog.GetDispensingClassSummaryAsync(cancellationToken));
+
+    [HttpPost("dispensing-class/sync-from-drug-type")]
+    [Authorize(Policy = CatalogPolicies.Write)]
+    public async Task<ActionResult<SyncDispensingClassResultDto>> SyncDispensingClass(
+        CancellationToken cancellationToken) =>
+        Ok(await _catalog.SyncDispensingClassFromDrugTypeAsync(cancellationToken));
 }

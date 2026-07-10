@@ -17,6 +17,11 @@ public sealed class FilesController : ControllerBase
         ".jpg", ".jpeg", ".png", ".webp", ".svg",
     };
 
+    private static readonly HashSet<string> PrescriptionAllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".pdf",
+    };
+
     private const long MaxFileBytes = 5 * 1024 * 1024;
 
     private readonly ITenantContext _tenant;
@@ -62,20 +67,64 @@ public sealed class FilesController : ControllerBase
         }
     }
 
+    [HttpPost("upload-prescription")]
+    [RequestSizeLimit(MaxFileBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxFileBytes)]
+    public async Task<ActionResult<UploadFileResult>> UploadPrescription(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (!HasPermission("sales.write")
+            && !HasPermission("rx.prescription.create")
+            && !User.IsInRole("ADMIN"))
+        {
+            return Forbid();
+        }
+        if (!AdminTokenRules.IsAdminPrincipal(User))
+            return Forbid();
+
+        try
+        {
+            return Ok(new UploadFileResult(await SaveFileAsync(
+                file,
+                "prescriptions",
+                PrescriptionAllowedExtensions,
+                "Chỉ hỗ trợ JPG, PNG, WebP hoặc PDF.",
+                cancellationToken)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     private async Task<string> SaveImageAsync(
         IFormFile file,
         string folder,
         CancellationToken cancellationToken)
+        => await SaveFileAsync(
+            file,
+            folder,
+            AllowedExtensions,
+            "Chỉ hỗ trợ ảnh JPG, PNG, WebP hoặc SVG.",
+            cancellationToken);
+
+    private async Task<string> SaveFileAsync(
+        IFormFile file,
+        string folder,
+        HashSet<string> allowedExtensions,
+        string invalidExtensionMessage,
+        CancellationToken cancellationToken)
     {
         if (file.Length == 0)
-            throw new InvalidOperationException("Chọn file ảnh để tải lên.");
+            throw new InvalidOperationException("Chọn file để tải lên.");
 
         if (file.Length > MaxFileBytes)
-            throw new InvalidOperationException("Ảnh tối đa 5 MB.");
+            throw new InvalidOperationException("File tối đa 5 MB.");
 
         var extension = Path.GetExtension(file.FileName);
-        if (string.IsNullOrWhiteSpace(extension) || !AllowedExtensions.Contains(extension))
-            throw new InvalidOperationException("Chỉ hỗ trợ ảnh JPG, PNG, WebP hoặc SVG.");
+        if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+            throw new InvalidOperationException(invalidExtensionMessage);
 
         var tenantFolder = _tenant.TenantId.ToString("N");
         var directory = Path.Combine(_environment.ContentRootPath, "uploads", folder, tenantFolder);
@@ -91,4 +140,7 @@ public sealed class FilesController : ControllerBase
 
         return $"/uploads/{folder}/{tenantFolder}/{fileName}";
     }
+
+    private bool HasPermission(string permission) =>
+        User.Claims.Any(c => c.Type == "permission" && c.Value == permission);
 }

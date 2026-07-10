@@ -108,7 +108,22 @@ const ReceivablesLayout = lazy(() =>
 const SalesLayout = lazy(() =>
   import('@/modules/sales/SalesLayout').then((m) => ({ default: m.SalesLayout })),
 );
+const AppOrdersLayout = lazy(() =>
+  import('@/modules/sales/AppOrdersLayout').then((m) => ({ default: m.AppOrdersLayout })),
+);
+const RxLayout = lazy(() =>
+  import('@/modules/rx/RxLayout').then((m) => ({ default: m.RxLayout })),
+);
 const PosPage = lazy(() => import('@/modules/sales/PosPage').then((m) => ({ default: m.PosPage })));
+const PrescriptionListPage = lazy(() =>
+  import('@/modules/sales/PrescriptionListPage').then((m) => ({ default: m.PrescriptionListPage })),
+);
+const PrescriberListPage = lazy(() =>
+  import('@/modules/sales/PrescriberListPage').then((m) => ({ default: m.PrescriberListPage })),
+);
+const PrescriberLinksPage = lazy(() =>
+  import('@/modules/sales/PrescriberLinksPage').then((m) => ({ default: m.PrescriberLinksPage })),
+);
 const SalesOrderListPage = lazy(() =>
   import('@/modules/sales/SalesOrderListPage').then((m) => ({ default: m.SalesOrderListPage })),
 );
@@ -181,6 +196,24 @@ const AuditLogListPage = lazy(() =>
 );
 const AssessmentLeadsPage = lazy(() =>
   import('@/modules/system/AssessmentLeadsPage').then((m) => ({ default: m.AssessmentLeadsPage })),
+);
+const KapLayout = lazy(() =>
+  import('@/modules/kap/KapLayout').then((m) => ({ default: m.KapLayout })),
+);
+const KapLeadsPage = lazy(() =>
+  import('@/modules/kap/KapLeadsPage').then((m) => ({ default: m.KapLeadsPage })),
+);
+const KapTemplatesPage = lazy(() =>
+  import('@/modules/kap/KapTemplatesPage').then((m) => ({ default: m.KapTemplatesPage })),
+);
+const KapRulesPage = lazy(() =>
+  import('@/modules/kap/KapRulesPage').then((m) => ({ default: m.KapRulesPage })),
+);
+const KapCampaignsPage = lazy(() =>
+  import('@/modules/kap/KapCampaignsPage').then((m) => ({ default: m.KapCampaignsPage })),
+);
+const KapPartnersPage = lazy(() =>
+  import('@/modules/kap/KapPartnersPage').then((m) => ({ default: m.KapPartnersPage })),
 );
 const ReportsLayout = lazy(() =>
   import('@/modules/reports/ReportsLayout').then((m) => ({ default: m.ReportsLayout })),
@@ -280,7 +313,7 @@ export function AppRouter() {
                   </SuspenseRoute>
                 }
               >
-                <Route index element={<Navigate to="/inventory/opening-balance" replace />} />
+                <Route index element={<Navigate to="/inventory/stock" replace />} />
                 <Route path="stock" element={<StockListPage />} />
                 <Route path="low-stock" element={<LowStockPage />} />
                 <Route path="gpp-checklist" element={<GppOperationalChecklistPage />} />
@@ -337,6 +370,15 @@ export function AppRouter() {
               >
                 <Route index element={<Navigate to="/sales/pos" replace />} />
                 <Route path="pos" element={<PosPage />} />
+                <Route
+                  path="prescriptions"
+                  element={<RedirectPreserveSearch to="/rx/prescriptions" />}
+                />
+                <Route path="prescribers" element={<RedirectPreserveSearch to="/rx/prescribers" />} />
+                <Route
+                  path="prescriber-links"
+                  element={<RedirectPreserveSearch to="/rx/prescriber-links" />}
+                />
                 <Route path="orders" element={<SalesOrderListPage />} />
                 <Route
                   path="customer-receivables"
@@ -346,8 +388,26 @@ export function AppRouter() {
                   path="customer-payments"
                   element={<RedirectPreserveSearch to="/receivables/customer-payments" />}
                 />
-                <Route path="customer-drafts" element={<CustomerDraftOrderListPage />} />
-                <Route path="customer-reservations" element={<CustomerReservationListPage />} />
+                <Route
+                  path="customer-drafts"
+                  element={<RedirectPreserveSearch to="/sales/app-orders/drafts" />}
+                />
+                <Route
+                  path="customer-reservations"
+                  element={<RedirectPreserveSearch to="/sales/app-orders/reservations" />}
+                />
+                <Route
+                  path="app-orders"
+                  element={
+                    <SuspenseRoute>
+                      <AppOrdersLayout />
+                    </SuspenseRoute>
+                  }
+                >
+                  <Route index element={<Navigate to="/sales/app-orders/drafts" replace />} />
+                  <Route path="drafts" element={<CustomerDraftOrderListPage />} />
+                  <Route path="reservations" element={<CustomerReservationListPage />} />
+                </Route>
                 <Route path="returns" element={<SalesReturnListPage />} />
                 <Route path="shift" element={<SalesShiftReportPage />} />
                 <Route path="customers" element={<Navigate to="/customer/list" replace />} />
@@ -355,6 +415,19 @@ export function AppRouter() {
                 <Route path="settings" element={<Navigate to="/system/pos-settings" replace />} />
                 <Route path="loyalty" element={<Navigate to="/customer/loyalty" replace />} />
                 <Route path="vouchers" element={<Navigate to="/customer/vouchers" replace />} />
+              </Route>
+              <Route
+                path="rx"
+                element={
+                  <SuspenseRoute>
+                    <RxLayout />
+                  </SuspenseRoute>
+                }
+              >
+                <Route index element={<Navigate to="/rx/prescriptions" replace />} />
+                <Route path="prescriptions" element={<PrescriptionListPage />} />
+                <Route path="prescribers" element={<PrescriberListPage />} />
+                <Route path="prescriber-links" element={<PrescriberLinksPage />} />
               </Route>
               <Route
                 path="customer"
@@ -370,6 +443,21 @@ export function AppRouter() {
                 <Route path="loyalty" element={<LoyaltySettingsPage />} />
                 <Route path="vouchers" element={<VoucherListPage />} />
                 <Route path=":customerId" element={<CustomerDetailPage />} />
+              </Route>
+              <Route
+                path="kap"
+                element={
+                  <SuspenseRoute>
+                    <KapLayout />
+                  </SuspenseRoute>
+                }
+              >
+                <Route index element={<Navigate to="/kap/leads" replace />} />
+                <Route path="leads" element={<KapLeadsPage />} />
+                <Route path="templates" element={<KapTemplatesPage />} />
+                <Route path="rules" element={<KapRulesPage />} />
+                <Route path="campaigns" element={<KapCampaignsPage />} />
+                <Route path="partners" element={<KapPartnersPage />} />
               </Route>
               <Route
                 path="reports"

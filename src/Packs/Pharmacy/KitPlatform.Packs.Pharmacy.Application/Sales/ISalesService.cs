@@ -114,4 +114,8 @@ public interface ISalesService
         SaleDiscountInput? orderDiscount,
         SalesDiscountPolicy discountPolicy,
         CancellationToken cancellationToken = default);
+
+    Task ReportRxPosBlockAsync(
+        ReportRxPosBlockRequest request,
+        CancellationToken cancellationToken = default);
 }

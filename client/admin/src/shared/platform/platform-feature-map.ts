@@ -15,11 +15,21 @@ export const PRODUCT_FEATURE_PLATFORM_GATES: Partial<Record<ProductFeatureKey, P
 
 export const ADMIN_MODULE_PLATFORM_CODES: Partial<
   Record<
-    'dashboard' | 'catalog' | 'inventory' | 'procurement' | 'sales' | 'receivables' | 'customer' | 'reports' | 'system',
+    | 'dashboard'
+    | 'catalog'
+    | 'inventory'
+    | 'procurement'
+    | 'sales'
+    | 'rx'
+    | 'receivables'
+    | 'customer'
+    | 'reports'
+    | 'system',
     string
   >
 > = {
   sales: 'sales',
+  rx: 'e_rx',
   procurement: 'procurement',
   inventory: 'inventory',
   receivables: 'sales',

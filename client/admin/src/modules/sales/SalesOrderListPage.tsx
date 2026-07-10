@@ -67,7 +67,7 @@ import {
   buildDocumentSearchSuggestions,
 } from '@/modules/sales/sales-list-customer-search';
 import { SalesListDualSearchBar, SalesListDualSearchWrap } from '@/modules/sales/SalesListDualSearchBar';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { formatDisplayDate } from '@/shared/utils/date';
 import { formatDisplayMoney } from '@/shared/utils/money';
 
@@ -463,8 +463,10 @@ export function SalesOrderListPage() {
       },
       {
         title: t('columns.actions'),
-        width: 130,
-        render: (_, row) => (
+        width: 170,
+        render: (_, row) => {
+          const outstanding = row.outstanding ?? 0;
+          return (
           <Space size="small" onClick={(e) => e.stopPropagation()}>
             <Button
               type="link"
@@ -474,6 +476,19 @@ export function SalesOrderListPage() {
             >
               {t('columns.view')}
             </Button>
+            {outstanding > 0.009 && row.customerId ? (
+              <Link
+                to={buildCustomerPaymentCreateUrl({
+                  customerId: row.customerId,
+                  salesOrderId: row.id,
+                  amount: outstanding,
+                })}
+              >
+                <Button type="link" size="small" icon={<DollarOutlined />}>
+                  {t('columns.collectDebt')}
+                </Button>
+              </Link>
+            ) : null}
             {isCompletedSaleStatus(row.status) && canRead && (
               <Button
                 type="link"
@@ -484,7 +499,8 @@ export function SalesOrderListPage() {
               />
             )}
           </Space>
-        ),
+          );
+        },
       },
     ],
     [canRead, openDetail, printOrderById, renderOrderStatus, t],
@@ -646,7 +662,7 @@ export function SalesOrderListPage() {
         message={t('appDraftAlert.message')}
         description={t('appDraftAlert.description')}
         action={
-          <Button size="small" onClick={() => navigate('/sales/customer-drafts')}>
+          <Button size="small" onClick={() => navigate('/sales/app-orders/drafts')}>
             {t('appDraftAlert.action')}
           </Button>
         }

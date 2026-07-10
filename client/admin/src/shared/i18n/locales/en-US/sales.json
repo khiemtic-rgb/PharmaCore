@@ -668,11 +668,16 @@
       "orders": "Sales orders",
       "customerReceivables": "Receivables",
       "customerPayments": "Collections",
+      "appOrders": "App orders",
       "customerDrafts": "Customer app orders",
       "customerReservations": "App reservations",
       "returns": "Returns",
       "chat": "Customer chat",
       "shift": "Work shift"
+    },
+    "appOrders": {
+      "drafts": "Awaiting confirmation",
+      "reservations": "Reservations"
     }
   },
   "salesListSearch": {

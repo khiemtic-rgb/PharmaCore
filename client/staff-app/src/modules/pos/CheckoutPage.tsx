@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   App,
   Alert,
@@ -21,6 +21,7 @@ import {
   fetchPosStockBulk,
   previewPosAllocation,
   fetchBatchModeSettings,
+  fetchRxSettings,
 } from '@/shared/api/sales.api';
 import {
   SALES_DISCOUNT_TYPES,
@@ -37,7 +38,6 @@ import { formatMoney } from '@/shared/utils/money';
 import { priceCart, roundMoney } from '@/modules/sales/pos-pricing';
 import { buildCreateSalePayload, buildDraftCompletePayload } from '@/modules/sales/pos-sale-payload';
 import { validateCartBatchLabels } from '@/modules/sales/pos-batch';
-import { usePosHotkeys } from '@/shared/hooks/usePosHotkeys';
 import {
   canOfferLoyaltyRedeem,
   computeMaxLoyaltyRedeem,
@@ -56,6 +56,8 @@ import {
   sumNonCreditPayments,
 } from '@/modules/sales/pos-checkout-payments';
 import { usePosSession } from '@/modules/pos/pos-session.store';
+import { RX_POS_BLOCK_MESSAGE, shouldBlockRxAtPos } from '@/modules/pos/rx-dispensing';
+import type { TenantRxSettings } from '@/shared/api/sales.types';
 import { useSalesDiscountPolicy } from '@/modules/sales/useSalesDiscountPolicy';
 import { useCanSalesWrite } from '@/shared/auth/usePermission';
 import {
@@ -92,6 +94,7 @@ export function CheckoutPage() {
     clearCart,
     loadedReservationId,
     loadedCustomerDraftOrderId,
+    loadedPrescriptionId,
     editingDraftId,
     clearDraftEdit,
   } = usePosSession();
@@ -106,6 +109,7 @@ export function CheckoutPage() {
     [customer?.allowCredit],
   );
   const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('suggest');
+  const [rxSettings, setRxSettings] = useState<TenantRxSettings>({ enforcementMode: 'off', posBlockedAudit: true });
   const [shiftReady, setShiftReady] = useState<boolean | null>(null);
   const [vouchers, setVouchers] = useState<PosCustomerVoucher[]>([]);
   const [selectedVoucherId, setSelectedVoucherId] = useState<string>();
@@ -130,7 +134,10 @@ export function CheckoutPage() {
   }, [warehouseId]);
 
   useEffect(() => {
-    void fetchBatchModeSettings().then(setBatchMode);
+    void Promise.all([fetchBatchModeSettings(), fetchRxSettings()]).then(([mode, rx]) => {
+      setBatchMode(mode);
+      setRxSettings(rx);
+    });
   }, []);
 
   const priced = useMemo(() => priceCart(cart, orderDiscount), [cart, orderDiscount]);
@@ -262,6 +269,11 @@ export function CheckoutPage() {
       navigate('/pos');
       return;
     }
+    if (cart.some((line) => shouldBlockRxAtPos(line.dispensingClass, rxSettings.enforcementMode))) {
+      message.error(RX_POS_BLOCK_MESSAGE);
+      navigate('/pos');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -287,6 +299,7 @@ export function CheckoutPage() {
         undefined,
         loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
         selectedVoucherId,
+        loadedPrescriptionId ?? undefined,
       );
       await previewPosAllocation({ warehouseId, items: payloadBase.items });
 
@@ -303,6 +316,7 @@ export function CheckoutPage() {
               orderDiscount,
               loyaltyDiscount > 0 ? loyaltyDiscount : undefined,
               selectedVoucherId,
+              loadedPrescriptionId ?? undefined,
             ),
           })
         : await createSale({
@@ -337,16 +351,6 @@ export function CheckoutPage() {
       setSaving(false);
     }
   };
-
-  usePosHotkeys(
-    useMemo(
-      () => ({
-        onComplete: () => void submit(),
-      }),
-      [saving],
-    ),
-    !saving,
-  );
 
   return (
     <div className="staff-shell">

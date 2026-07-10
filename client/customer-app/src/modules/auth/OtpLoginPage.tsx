@@ -7,6 +7,7 @@ import { getApiErrorMessage, requestOtp, verifyOtp } from '@/shared/api/customer
 import {
   APP_BRAND,
   DEFAULT_TENANT_CODE,
+  isTenantCodeLocked,
   loadStoredTenantCode,
   saveStoredTenantCode,
 } from '@/shared/config/app-brand';
@@ -27,11 +28,11 @@ export function OtpLoginPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState(import.meta.env.DEV ? '0909123456' : '');
-  const [tenantCode, setTenantCode] = useState(initialTenant.code);
+  const [tenantCode, setTenantCode] = useState(initialTenant.code || DEFAULT_TENANT_CODE);
   const [pilotCode, setPilotCode] = useState<string | null>(null);
   const [expiresInSeconds, setExpiresInSeconds] = useState(0);
   const [form] = Form.useForm<{ code: string }>();
-  const tenantLocked = initialTenant.locked;
+  const tenantLocked = initialTenant.locked || isTenantCodeLocked();
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
 
@@ -66,7 +67,7 @@ export function OtpLoginPage() {
     }
     setLoading(true);
     try {
-      const code = tenantCode.trim().toUpperCase();
+      const code = (tenantLocked ? DEFAULT_TENANT_CODE || tenantCode : tenantCode).trim().toUpperCase();
       if (!code) {
         message.warning(t('auth.tenantRequired'));
         return;
@@ -92,7 +93,11 @@ export function OtpLoginPage() {
   const onVerifyOtp = async (values: { code: string }) => {
     setLoading(true);
     try {
-      const data = await verifyOtp(phone.trim(), values.code.trim(), tenantCode.trim().toUpperCase());
+      const data = await verifyOtp(
+        phone.trim(),
+        values.code.trim(),
+        (tenantLocked ? DEFAULT_TENANT_CODE || tenantCode : tenantCode).trim().toUpperCase(),
+      );
       setSession(data);
       message.success(t('auth.welcome', { name: data.profile.fullName }));
       navigate('/', { replace: true });

@@ -33,7 +33,7 @@
       "roles": "Vai trò",
       "posSettings": "Phiếu in & POS",
       "customerAppSettings": "App khách",
-      "platformPack": "KIT Platform / Pack",
+      "platformPack": "Gói tính năng Novixa",
       "auditLog": "Nhật ký",
       "assessmentLeads": "Khảo sát"
     }
@@ -55,7 +55,14 @@
       "contact": "Liên hệ",
       "score": "Điểm",
       "progress": "Tiến độ",
-      "actions": "Xem"
+      "actions": "Thao tác"
+    },
+    "actions": {
+      "detail": "Chi tiết",
+      "viewReport": "Xem báo cáo",
+      "reportConsulting": "Báo cáo tư vấn (đầy đủ)",
+      "reportExecutive": "Báo cáo điều hành",
+      "reportAppendix": "Phụ lục kỹ thuật"
     },
     "status": {
       "draft": "Đang làm",
@@ -81,7 +88,8 @@
     },
     "messages": {
       "loadFailed": "Không tải được danh sách khảo sát",
-      "detailFailed": "Không tải được chi tiết"
+      "detailFailed": "Không tải được chi tiết",
+      "reportFailed": "Không tải được báo cáo PDF"
     }
   },
   "branches": {
@@ -275,7 +283,7 @@
     }
   },
   "platformPack": {
-    "title": "KIT Platform — Solution Pack",
+    "title": "Gói tính năng Novixa",
     "intro": "Cấu hình module và tính năng theo tenant (Novixa Pharmacy Pack mặc định).",
     "introDetail": "Thay đổi có hiệu lực ngay trên menu Admin và API. Chỉ tài khoản ADMIN được lưu.",
     "readOnlyHint": "Bạn có thể xem; chỉ ADMIN được chỉnh pack/module.",
@@ -294,7 +302,7 @@
     "messages": {
       "loadFailed": "Không tải được cấu hình platform",
       "saveFailed": "Không lưu được cấu hình platform",
-      "saveSuccess": "Đã cập nhật KIT Platform / Pack",
+      "saveSuccess": "Đã cập nhật gói tính năng",
       "ignoredModules": "Bỏ qua module không có trong registry: {{codes}}"
     },
     "verticals": {

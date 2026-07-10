@@ -20,4 +20,5 @@ public static class DomainIds
     public const string Integration = "integration";
     public const string MasterData = "master_data";
     public const string Knowledge = "knowledge";
+    public const string Healthcare = "healthcare";
 }

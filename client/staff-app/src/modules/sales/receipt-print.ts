@@ -86,9 +86,19 @@ export function printReceiptDocument(html: string): void {
   doc.open();
   doc.write(html);
   doc.close();
-  iframe.onload = () => {
+
+  let printed = false;
+  const doPrint = () => {
+    if (printed) return;
+    printed = true;
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    setTimeout(() => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    }, 1000);
   };
+
+  iframe.onload = () => doPrint();
+  // Some mobile WebViews never fire onload after doc.write — fallback shortly after.
+  window.setTimeout(() => doPrint(), 400);
 }

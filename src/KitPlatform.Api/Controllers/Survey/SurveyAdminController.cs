@@ -25,12 +25,14 @@ public sealed class SurveyAdminController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? status = null,
         [FromQuery] bool? hasLead = null,
+        [FromQuery] Guid? partnerId = null,
+        [FromQuery] string? leadPipelineStatus = null,
         CancellationToken cancellationToken = default)
     {
         try
         {
             return Ok(await _admin.ListSubmissionsAsync(
-                new AssessmentSubmissionListQuery(page, pageSize, status, hasLead),
+                new AssessmentSubmissionListQuery(page, pageSize, status, hasLead, partnerId, leadPipelineStatus),
                 cancellationToken));
         }
         catch (UnauthorizedAccessException)
@@ -50,6 +52,82 @@ public sealed class SurveyAdminController : ControllerBase
         {
             var detail = await _admin.GetSubmissionAsync(id, cancellationToken);
             return detail is null ? NotFound() : Ok(detail);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpGet("submissions/{id:guid}/report")]
+    [ProducesResponseType(typeof(AssessmentFullReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AssessmentFullReportDto>> GetSubmissionReport(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Ok(await _admin.GetReportAsync(id, cancellationToken));
+        }
+        catch (AssessmentException ex) when (ex.StatusCode == 404)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (AssessmentException ex) when (ex.StatusCode == 403)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpGet("submissions/{id:guid}/report.pdf")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSubmissionReportPdf(
+        Guid id,
+        [FromQuery] string? kind,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var pdfKind = KapReportPdfKindParser.Parse(kind);
+            var (content, fileName, contentType) = await _admin.GetReportPdfAsync(id, pdfKind, cancellationToken);
+            return File(content, contentType, fileName);
+        }
+        catch (AssessmentException ex) when (ex.StatusCode == 404)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (AssessmentException ex) when (ex.StatusCode == 403)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpPatch("submissions/{id:guid}/pipeline")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateLeadPipeline(
+        Guid id,
+        [FromBody] UpdateLeadPipelineRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var ok = await _admin.UpdateLeadPipelineAsync(id, request, cancellationToken);
+            return ok ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (UnauthorizedAccessException)
         {

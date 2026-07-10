@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { loginApi } from '@/shared/api/auth.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useAuthStore } from '@/shared/auth/auth.store';
-import { APP_BRAND, loadStoredTenantCode, saveStoredTenantCode } from '@/shared/config/app-brand';
+import { APP_BRAND, DEFAULT_TENANT_CODE, isTenantCodeLocked, loadStoredTenantCode, saveStoredTenantCode } from '@/shared/config/app-brand';
 import { AppBrandLogo } from '@/shared/components/AppBrandLogo';
 import { apiPath, resolveApiOrigin } from '@/shared/api/api-base';
 
@@ -17,6 +17,7 @@ export function LoginPage() {
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
+  const tenantLocked = isTenantCodeLocked();
 
   useEffect(() => {
     void fetch(apiPath('/api/health'), { method: 'GET' })
@@ -25,7 +26,7 @@ export function LoginPage() {
   }, []);
 
   const onFinish = async (values: FormValues) => {
-    const tenantCode = values.tenantCode.trim().toUpperCase();
+    const tenantCode = (tenantLocked ? DEFAULT_TENANT_CODE : values.tenantCode).trim().toUpperCase();
     if (!tenantCode) {
       message.warning('Nhập mã nhà thuốc');
       return;
@@ -73,10 +74,19 @@ export function LoginPage() {
               }
             />
           ) : null}
-          <Form layout="vertical" onFinish={onFinish} initialValues={{ tenantCode: loadStoredTenantCode() || 'DEMO_PHARMACY', username: 'admin' }}>
-            <Form.Item name="tenantCode" label="Mã nhà thuốc" rules={[{ required: true }]}>
-              <Input prefix={<ShopOutlined />} placeholder="NT_XUANHOA" style={{ textTransform: 'uppercase' }} />
-            </Form.Item>
+          <Form
+            layout="vertical"
+            onFinish={onFinish}
+            initialValues={{
+              tenantCode: loadStoredTenantCode() || (import.meta.env.DEV ? 'DEMO_PHARMACY' : ''),
+              username: 'admin',
+            }}
+          >
+            {!tenantLocked ? (
+              <Form.Item name="tenantCode" label="Mã nhà thuốc" rules={[{ required: true }]}>
+                <Input prefix={<ShopOutlined />} placeholder="NT_XUANHOA" style={{ textTransform: 'uppercase' }} />
+              </Form.Item>
+            ) : null}
             <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true }]}>
               <Input prefix={<UserOutlined />} autoComplete="username" />
             </Form.Item>

@@ -1,4 +1,4 @@
-﻿using KitPlatform.Packs.Survey;
+using KitPlatform.Packs.Survey;
 
 namespace KitPlatform.Packs.Survey.Infrastructure;
 
@@ -59,7 +59,8 @@ internal sealed class AssessmentTemplateService : IAssessmentTemplateService
                                     qFirst.Scorable,
                                     qFirst.Required,
                                     qFirst.QuestionSort,
-                                    options);
+                                    options,
+                                    AssessmentMetadataHelper.ParseQuestionMetadata(qFirst.QuestionMetadataJson));
                             })
                             .ToList();
 

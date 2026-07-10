@@ -25,4 +25,6 @@ public interface ICatalogService
     Task<ProductDetailDto?> SyncProductIngredientsAsync(Guid id, SyncProductIngredientsRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LookupItemDto>> GetIngredientsAsync(CancellationToken cancellationToken = default);
     Task<BarcodeCheckResult> CheckBarcodeAsync(string barcode, Guid? excludeProductId = null, CancellationToken cancellationToken = default);
+    Task<DispensingClassSummaryDto> GetDispensingClassSummaryAsync(CancellationToken cancellationToken = default);
+    Task<SyncDispensingClassResultDto> SyncDispensingClassFromDrugTypeAsync(CancellationToken cancellationToken = default);
 }

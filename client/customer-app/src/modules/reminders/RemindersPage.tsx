@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Button,
   Checkbox,
   Empty,
@@ -31,6 +32,7 @@ import { normalizeReminderId } from '@/shared/api/reminder-normalize';
 import i18n from '@/shared/i18n';
 import { BackToHomeButton } from '@/shared/components/BackToHomeButton';
 import { ListCardSkeleton } from '@/shared/components/ListCardSkeleton';
+import { useRetryWhenApiOnline } from '@/shared/api/useApiHealth';
 import { RepurchaseSuggestionsPanel } from '@/modules/reminders/RepurchaseSuggestionsPanel';
 import { DueRemindersPanel, MissedMedicationAlert } from '@/modules/reminders/DueRemindersPanel';
 
@@ -180,6 +182,7 @@ export function RemindersPage() {
   const loading = isLoading && !overview;
   const dueLoading = loading;
   const repurchaseLoading = loading;
+  const loadError = error ? getApiErrorMessage(error, t('reminders.listLoadFailed')) : null;
 
   useEffect(() => {
     if (!overview) return;
@@ -192,6 +195,8 @@ export function RemindersPage() {
     if (!error) return;
     message.error(getApiErrorMessage(error, t('reminders.listLoadFailed')));
   }, [error, t]);
+
+  useRetryWhenApiOnline(() => void refetch());
 
   const familyNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -348,6 +353,20 @@ export function RemindersPage() {
         suggestionsLoading={repurchaseLoading}
         onAccepted={() => void refetch()}
       />
+
+      {loadError ? (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={loadError}
+          action={
+            <Button size="small" onClick={() => void refetch()}>
+              {t('common.retry')}
+            </Button>
+          }
+        />
+      ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Typography.Title level={5} style={{ margin: 0 }}>

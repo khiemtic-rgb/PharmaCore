@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { InputNumber, Modal, message } from 'antd';
+import { App, InputNumber, Modal } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import {
@@ -18,21 +18,21 @@ type Props = {
 export function OpenShiftModal({ open, loading, warehouseName, onCancel, onConfirm }: Props) {
   const { t } = useTranslation('sales');
   const { t: tc } = useTranslation('common');
+  const { message } = App.useApp();
   const [openingCash, setOpeningCash] = useState(0);
 
   useEffect(() => {
     if (open) setOpeningCash(0);
   }, [open]);
 
-  const handleOk = () =>
-    (async () => {
-      const cash = Number(openingCash ?? 0);
-      if (Number.isNaN(cash) || cash < 0) {
-        message.warning(t('pos.shift.invalidOpeningCash'));
-        throw new Error('invalid opening cash');
-      }
-      await onConfirm(cash);
-    })();
+  const handleOk = async () => {
+    const cash = Number(openingCash ?? 0);
+    if (Number.isNaN(cash) || cash < 0) {
+      message.warning(t('pos.shift.invalidOpeningCash'));
+      throw new Error('invalid opening cash');
+    }
+    await onConfirm(cash);
+  };
 
   return (
     <Modal

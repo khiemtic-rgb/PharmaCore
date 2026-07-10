@@ -1,0 +1,66 @@
+{
+  "capturedAt": "2026-07-10T08:59:33.547Z",
+  "adminUrl": "http://127.0.0.1:5173",
+  "tenant": "DEMO_PHARMACY",
+  "shots": [
+    {
+      "id": "01-login",
+      "file": "01-login.png"
+    },
+    {
+      "id": "02-dashboard",
+      "label": "Dashboard",
+      "file": "02-dashboard.png"
+    },
+    {
+      "id": "03-pos",
+      "label": "POS ban hang",
+      "file": "03-pos.png"
+    },
+    {
+      "id": "04-drug-master",
+      "label": "Danh muc thuoc",
+      "file": "04-drug-master.png"
+    },
+    {
+      "id": "05-inventory",
+      "label": "Kho FEFO",
+      "file": "05-inventory.png"
+    },
+    {
+      "id": "06-grn",
+      "label": "Nhap thuoc GRN",
+      "file": "06-grn.png"
+    },
+    {
+      "id": "07-sale",
+      "label": "Don ban thuoc",
+      "file": "07-sale.png"
+    },
+    {
+      "id": "08-report-nxt",
+      "label": "Bao cao N-X-T",
+      "file": "08-report-nxt.png"
+    },
+    {
+      "id": "09-report-revenue",
+      "label": "Bao cao doanh thu",
+      "file": "09-report-revenue.png"
+    },
+    {
+      "id": "10-drug-connectivity",
+      "label": "Lien thong QD540",
+      "file": "10-drug-connectivity.png"
+    },
+    {
+      "id": "11-api-config",
+      "label": "Cau hinh API / CSDL QG",
+      "file": "11-api-config.png"
+    },
+    {
+      "id": "12-sync-log",
+      "label": "Nhat ky dong bo",
+      "file": "12-sync-log.png"
+    }
+  ]
+}

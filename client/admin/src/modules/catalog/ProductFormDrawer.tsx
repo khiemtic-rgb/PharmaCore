@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   App,
@@ -21,7 +22,7 @@ import {
 } from 'antd';
 import type { FormInstance } from 'antd/es/form';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
-import { DeleteOutlined, StarFilled, StarOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DatabaseOutlined, StarFilled, StarOutlined, UploadOutlined } from '@ant-design/icons';
 import { isAxiosError } from 'axios';
 import {
   createProduct,
@@ -137,6 +138,7 @@ type Props = {
 export function ProductFormDrawer({ open, editing, nationalPrefill, onClose, onCreated, onUpdated }: Props) {
   const { t } = useTranslation('catalog');
   const { t: tc } = useTranslation('common');
+  const navigate = useNavigate();
   const {
     drugTypeOptions,
     productStatusOptions,
@@ -1104,26 +1106,6 @@ export function ProductFormDrawer({ open, editing, nationalPrefill, onClose, onC
       <Form.Item name="nationalDrugId" hidden>
         <Input />
       </Form.Item>
-      <Form.Item name="nationalRegistrationNumber" hidden>
-        <Input />
-      </Form.Item>
-      <Form.Item
-        name="dosageForm"
-        label={t('productForm.fields.dosageForm')}
-        tooltip={t('productForm.fields.dosageFormHint')}
-      >
-        <Input maxLength={20} />
-      </Form.Item>
-      <Form.Item
-        name="packaging"
-        label={t('productForm.fields.packaging')}
-        tooltip={t('productForm.fields.packagingHint')}
-      >
-        <Input maxLength={20} />
-      </Form.Item>
-      <Form.Item name="importerName" label={t('productForm.fields.importerName')}>
-        <Input maxLength={100} />
-      </Form.Item>
       <Form.Item label={t('productForm.fields.productCode')}>
         <Space.Compact style={{ width: '100%' }}>
           <Form.Item name="productCode" noStyle>
@@ -1210,6 +1192,35 @@ export function ProductFormDrawer({ open, editing, nationalPrefill, onClose, onC
       <Form.Item name="brandId" label={t('productForm.fields.brandId')}>
         <Select allowClear options={brands.map((b) => ({ value: b.id, label: b.name }))} />
       </Form.Item>
+
+      <Divider orientation="left" plain style={{ margin: '8px 0 16px' }}>
+        {t('productForm.sections.qd540')}
+      </Divider>
+      <Form.Item
+        name="nationalRegistrationNumber"
+        label={t('productForm.fields.nationalRegistrationNumber')}
+        tooltip={t('productForm.fields.nationalRegistrationNumberHint')}
+      >
+        <Input maxLength={20} disabled={Boolean(linkedNationalDrugId && linkedNationalReg)} />
+      </Form.Item>
+      <Form.Item
+        name="dosageForm"
+        label={t('productForm.fields.dosageForm')}
+        tooltip={t('productForm.fields.dosageFormHint')}
+      >
+        <Input maxLength={20} />
+      </Form.Item>
+      <Form.Item
+        name="packaging"
+        label={t('productForm.fields.packaging')}
+        tooltip={t('productForm.fields.packagingHint')}
+      >
+        <Input maxLength={20} />
+      </Form.Item>
+      <Form.Item name="importerName" label={t('productForm.fields.importerName')}>
+        <Input maxLength={100} />
+      </Form.Item>
+
       <Form.Item name="description" label={t('productForm.fields.description')}>
         <Input.TextArea rows={2} />
       </Form.Item>
@@ -1630,6 +1641,18 @@ export function ProductFormDrawer({ open, editing, nationalPrefill, onClose, onC
       extra={
         <Space>
           <Button onClick={handleSkip}>{t('productForm.actions.skip')}</Button>
+          {hasPersistedId && (
+            <Button
+              icon={<DatabaseOutlined />}
+              onClick={() =>
+                navigate(
+                  `/inventory/stock?productId=${encodeURIComponent(displayProduct!.id)}&tab=fefo`,
+                )
+              }
+            >
+              {t('products.viewStock')}
+            </Button>
+          )}
           {hasPersistedId && (
             <Popconfirm
               title={t('products.deleteConfirm')}

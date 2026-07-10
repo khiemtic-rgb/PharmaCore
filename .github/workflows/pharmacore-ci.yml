@@ -1,0 +1,30 @@
+﻿name: KitPlatform CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'KitPlatform.slnx'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'KitPlatform.slnx'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build API
+        run: dotnet build src/KitPlatform.Api/KitPlatform.Api.csproj --configuration Release
+
+      - name: Test Platform module gate
+        run: dotnet test tests/KitPlatform.Platform.Tests/KitPlatform.Platform.Tests.csproj --configuration Release --verbosity minimal

@@ -182,8 +182,10 @@ export function ProfilePage() {
 
       if (pushResult.status === 'fulfilled') {
         setPushStatus(pushResult.value);
+        setPushError(null);
       } else {
         setPushStatus(null);
+        setPushError(getApiErrorMessage(pushResult.reason, t('profile.pushLoadFailed')));
       }
     } finally {
       setConsentLoading(false);
@@ -552,7 +554,7 @@ export function ProfilePage() {
             type="warning"
             showIcon
             message={t('profile.pushLoadFailed')}
-            description={t('profile.pushLoadFailedDesc')}
+            description={pushError ?? t('profile.pushLoadFailedDesc')}
             action={
               <Button size="small" onClick={() => void loadConsents()}>
                 {t('common.retry')}

@@ -2,7 +2,11 @@
 
 Kiểm tra app khách trước pilot hoặc demo O2O. Chạy song song Admin (`5173`) + API (`5290`) + Customer App (`5174`).
 
-Liên quan: [demo-pos-checklist.md](../admin/demo-pos-checklist.md) · [demo-procurement-checklist.md](../admin/demo-procurement-checklist.md)
+**Liên quan:**
+- [customer-app-phase-gates-v1.md](../../docs/novixa/07-customer/customer-app-phase-gates-v1.md) — UAT production (G1.4)
+- [customer-app-roadmap-p12-p18.md](../../docs/novixa/07-customer/customer-app-roadmap-p12-p18.md)
+- Handoff P11b: `.cursor/handoff/customer-app-p11b.md`
+- Admin [POS](../admin/demo-pos-checklist.md) · [Mua hàng](../admin/demo-procurement-checklist.md)
 
 ## Chuẩn bị
 
@@ -18,58 +22,119 @@ Liên quan: [demo-pos-checklist.md](../admin/demo-pos-checklist.md) · [demo-pro
 | Tenant | `DEMO_PHARMACY` |
 | SĐT | `0909123456` (Trần Thị Mai) |
 | OTP (Development) | `000000` |
-| SP gợi ý nhắc thuốc | Vitamin C 1000mg (`PARA500` / catalog demo) |
+| SP gợi ý nhắc thuốc | Tra catalog API (vd. Paracetamol) |
 
 ---
 
 ## 1. Đăng nhập OTP
 
-- [ ] Màn login — nhập SĐT `0909123456`
+- [ ] Màn login — nhập SĐT `0909123456`, tenant `DEMO_PHARMACY`
 - [ ] Nhận OTP (dev: `000000`) → vào **Trang chủ**
+- [ ] Deep link `/login?tenant=DEMO_PHARMACY` hoạt động
 - [ ] Đăng xuất → đăng nhập lại (session ổn)
 
 ## 2. Trang chủ
 
-- [ ] Hiển thị tóm tắt **điểm thưởng** và **nhắc thuốc** (nếu có)
-- [ ] Điều hướng menu dưới: Trang chủ / Điểm / Nhắc thuốc / Tài khoản
+- [ ] Tóm tắt điểm thưởng, nhắc thuốc, adherence
+- [ ] Shortcut: Sức khỏe, Nhắc thuốc, Đặt trước, AI, Gia đình, Điểm, Chat
+- [ ] Bottom nav: Trang chủ / **Đơn hàng** / Nhắc thuốc / Chat / Tài khoản
 
-## 3. Tích điểm (Loyalty)
+## 3. Đơn hàng (`/orders`)
 
-- [ ] **Điểm thưởng** — số dư hiển thị (seed: khách Mai có điểm)
-- [ ] Lịch sử giao dịch điểm load OK
-- [ ] Danh sách **voucher** của khách (nếu đã phát từ admin)
-- [ ] *(Liên thông admin)* Bán POS gắn khách Mai → điểm cộng / đổi điểm trên app cập nhật sau refresh
+- [ ] Tab **Đặt** — draft orders từ quầy; xác nhận / ẩn
+- [ ] Tab **Đã mua** — lịch sử; chi tiết thanh toán
+- [ ] Tab **Đặt trước** — danh sách reservation
 
-## 4. Nhắc thuốc (Reminders)
+## 4. Nhắc thuốc (`/reminders`)
 
-- [ ] Xem danh sách nhắc — bật/tắt từng nhắc (toggle theo dòng)
-- [ ] **Thêm nhắc** — tra cứu SP qua API catalog (không còn list demo cứng)
-- [ ] Sửa giờ uống / ghi chú → lưu OK
-- [ ] Xóa nhắc (nếu có quyền)
+- [ ] Danh sách nhắc — bật/tắt toggle
+- [ ] **Thêm nhắc** — tra SP qua catalog API
+- [ ] Panel **Đến giờ uống** — Đã uống / Bỏ qua / Nhắc sau
+- [ ] **Gợi ý mua lại** — chấp nhận / bỏ qua / snooze
+- [ ] Cảnh báo bỏ liều (nếu streak ≥ ngưỡng)
 
-## 5. Tài khoản & CDP
+## 5. Chat (`/chat`)
 
-- [ ] **Tài khoản** — hiển thị họ tên, SĐT
-- [ ] **Đồng ý CDP** (SMS / app push) — bật/tắt, lưu được
-- [ ] *(Push)* Bật **Thông báo push** khi API đã cấu hình VAPID (`appsettings.Development.json`)
+- [ ] Consent chat — bật đồng ý
+- [ ] Gửi / nhận tin (SSE hoặc refresh)
+- [ ] Badge chưa đọc trên tab Chat
 
-## 6. Liên thông Admin — Đơn từ app
+## 6. Tích điểm (`/loyalty`)
 
-- [ ] *(Nếu có luồng đặt hàng app)* Khách tạo đơn tạm → Admin **Bán hàng → Đơn hàng từ app** thấy badge
-- [ ] Admin duyệt / đưa vào POS → hoàn tất đơn
+- [ ] Số dư, tier, lịch sử giao dịch
+- [ ] Danh sách voucher
+- [ ] *(Admin)* Bán POS gắn khách → điểm cập nhật sau refresh
 
-## 7. Liên thông Admin — Đặt trước
+## 7. Tài khoản (`/profile`)
 
-- [ ] Khách đặt trước SP (nếu bật trên app) → Admin **Đặt trước app**
-- [ ] Duyệt → **Sẵn sàng** → khách nhận / admin **Thu POS** load giỏ
+- [ ] Họ tên, SĐT
+- [ ] Đồng ý CDP (SMS / push nhắc chăm sóc)
+- [ ] Bật **Thông báo push** (cần VAPID)
+- [ ] Đổi ngôn ngữ EN → UI đổi; refresh giữ locale
+- [ ] Menu: Sức khỏe, Gia đình, Thuốc của tôi, Nhà thuốc, AI, Công nợ, Địa chỉ, Thông báo
 
-## 8. Liên thông Admin — Chat
+## 8. Hồ sơ sức khỏe (`/health`)
 
-- [ ] Khách gửi tin (nếu có UI chat app) → Admin **Chat KH** badge chưa đọc
-- [ ] Admin trả lời → khách thấy tin mới
+- [ ] Thêm hồ sơ (đơn thuốc, khám, xét nghiệm…)
+- [ ] Thêm chỉ số (BMI, HA, đường huyết)
+- [ ] Nhắc tái khám — tạo / đánh dấu xong
+- [ ] Upload đính kèm ≤5MB
 
-## 9. Hồi quy nhanh
+## 9. Gia đình (`/family`)
 
-- [ ] Refresh app — không màn trắng
-- [ ] Mở trên mobile viewport / Add to Home Screen (PWA) — layout ổn
-- [ ] API tắt → thông báo lỗi rõ, không treo vô hạn
+- [ ] Thêm / sửa thành viên
+- [ ] Bật thông báo người chăm sóc
+- [ ] Nhắc thuốc gắn `familyMemberId`
+
+## 10. Thuốc của tôi (`/medications`)
+
+- [ ] Danh sách thuốc đang dùng
+- [ ] Ngày còn lại / gợi ý mua lại
+- [ ] Timeline sự kiện
+
+## 11. Nhà thuốc (`/pharmacy`)
+
+- [ ] Branding tenant, điểm, voucher
+- [ ] Liên kết đặt trước, chat, gọi hỗ trợ
+
+## 12. AI (`/ai`)
+
+- [ ] Gửi câu hỏi; disclaimer hiển thị
+- [ ] Gợi ý chat dược sĩ khi cần
+
+## 13. Đặt trước (`/reservations`)
+
+- [ ] Tạo đặt trước — tìm SP, số lượng
+- [ ] Lấy tại quầy / giao tận nơi + địa chỉ
+- [ ] Hủy đặt trước pending
+
+## 14. Địa chỉ & công nợ
+
+- [ ] `/addresses` — CRUD địa chỉ giao hàng
+- [ ] `/receivables` — công nợ khớp POS (nếu có seed)
+
+## 15. Thông báo (`/notifications`)
+
+- [ ] Inbox server-side; đánh dấu đã đọc
+
+## 16. Liên thông Admin
+
+- [ ] Draft order: POS gửi → app `/orders` → POS nạp giỏ → hoàn tất
+- [ ] Reservation: app tạo → admin duyệt → sẵn sàng → thu POS
+- [ ] Chat: admin badge + trả lời
+- [ ] Branding: admin **App khách** cập nhật logo/màu
+
+## 17. Hồi quy & PWA
+
+- [ ] Refresh — không màn trắng
+- [ ] Mobile / Add to Home Screen — layout ổn
+- [ ] API tắt → `ApiHealthBanner` báo lỗi
+- [ ] `AppErrorBoundary` — lỗi runtime có thông báo
+
+---
+
+## UAT production (G1.4)
+
+Trên NT pilot production: tick cùng bảng [phase gates G1.4](../../docs/novixa/07-customer/customer-app-phase-gates-v1.md#g14--uat-p11a-6-kịch-bản--nt).
+
+*Các mục `/shop`, giỏ hàng, e-Rx OCR — backlog P12–P13, chưa trong checklist này.*

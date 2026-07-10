@@ -28,9 +28,6 @@ export function ReportsHomePage() {
             <Col xs={24} sm={12} lg={8} key={report.code}>
               <Link to={report.path}>
                 <Card size="small" hoverable>
-                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                    {report.code}
-                  </Typography.Text>
                   <Typography.Text strong style={{ display: 'block' }}>
                     {report.name}
                   </Typography.Text>
@@ -57,11 +54,7 @@ export function ReportsHomePage() {
               <List.Item>
                 <List.Item.Meta
                   title={<Link to={item.path}>{item.name}</Link>}
-                  description={
-                    <>
-                      <Typography.Text code>{item.code}</Typography.Text> — {item.description}
-                    </>
-                  }
+                  description={item.description}
                 />
               </List.Item>
             )}

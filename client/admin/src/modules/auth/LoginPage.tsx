@@ -8,6 +8,8 @@ import { apiErrorMessage } from '@/shared/api/api-error';
 import { useAuthStore } from '@/shared/auth/auth.store';
 import {
   APP_BRAND,
+  DEFAULT_TENANT_CODE,
+  isTenantCodeLocked,
   loadStoredTenantCode,
   saveStoredTenantCode,
 } from '@/shared/config/app-brand';
@@ -31,6 +33,7 @@ export function LoginPage() {
   const setSession = useAuthStore((s) => s.setSession);
 
   const from = (location.state as { from?: string } | null)?.from ?? '/';
+  const tenantLocked = isTenantCodeLocked();
 
   const fillDemo = () => {
     form.setFieldsValue({
@@ -41,7 +44,7 @@ export function LoginPage() {
   };
 
   const onFinish = async (values: LoginFormValues) => {
-    const tenantCode = values.tenantCode.trim().toUpperCase();
+    const tenantCode = (tenantLocked ? DEFAULT_TENANT_CODE : values.tenantCode).trim().toUpperCase();
     if (!tenantCode) {
       message.warning(t('messages.tenantRequired'));
       return;
@@ -111,20 +114,22 @@ export function LoginPage() {
             }}
             autoComplete="on"
           >
-            <Form.Item
-              name="tenantCode"
-              label={t('tenantCode')}
-              rules={[{ required: true, message: t('tenantCodeRequired') }]}
-              tooltip={t('tenantCodeTooltip')}
-            >
-              <Input
-                prefix={<ShopOutlined />}
-                placeholder="NT_A"
-                size="large"
-                style={{ textTransform: 'uppercase' }}
-                autoComplete="organization"
-              />
-            </Form.Item>
+            {!tenantLocked ? (
+              <Form.Item
+                name="tenantCode"
+                label={t('tenantCode')}
+                rules={[{ required: true, message: t('tenantCodeRequired') }]}
+                tooltip={t('tenantCodeTooltip')}
+              >
+                <Input
+                  prefix={<ShopOutlined />}
+                  placeholder="NT_A"
+                  size="large"
+                  style={{ textTransform: 'uppercase' }}
+                  autoComplete="organization"
+                />
+              </Form.Item>
+            ) : null}
             <Form.Item
               name="username"
               label={t('username')}

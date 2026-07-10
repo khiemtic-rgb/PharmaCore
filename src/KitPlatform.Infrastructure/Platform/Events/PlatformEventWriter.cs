@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using KitPlatform.Application.Abstractions;
 using KitPlatform.Application.Platform.Events;
+using KitPlatform.Infrastructure.Data;
 using KitPlatform.Infrastructure.Kernel.Event;
 
 namespace KitPlatform.Infrastructure.Platform.Events;
@@ -8,8 +9,13 @@ namespace KitPlatform.Infrastructure.Platform.Events;
 internal sealed class PlatformEventWriter : IPlatformEventWriter
 {
     private readonly ITenantContext _tenant;
+    private readonly IDbConnectionFactory _db;
 
-    public PlatformEventWriter(ITenantContext tenant) => _tenant = tenant;
+    public PlatformEventWriter(ITenantContext tenant, IDbConnectionFactory db)
+    {
+        _tenant = tenant;
+        _db = db;
+    }
 
     public Task WriteAsync(
         IDbConnection conn,
@@ -35,4 +41,59 @@ internal sealed class PlatformEventWriter : IPlatformEventWriter
             correlationId,
             _tenant.WorkspaceId,
             cancellationToken);
+
+    public Task WriteForTenantAsync(
+        IDbConnection conn,
+        IDbTransaction tx,
+        Guid tenantId,
+        string eventType,
+        string aggregateType,
+        Guid aggregateId,
+        object data,
+        Guid? actorUserId = null,
+        Guid? correlationId = null,
+        string source = PlatformEventSources.PharmacyPack,
+        CancellationToken cancellationToken = default) =>
+        PlatformEventDualWrite.WriteAsync(
+            conn,
+            tx,
+            tenantId,
+            eventType,
+            aggregateType,
+            aggregateId,
+            data,
+            source,
+            actorUserId,
+            correlationId,
+            workspaceId: null,
+            cancellationToken);
+
+    public async Task PublishForTenantAsync(
+        Guid tenantId,
+        string eventType,
+        string aggregateType,
+        Guid aggregateId,
+        object data,
+        Guid? actorUserId = null,
+        Guid? correlationId = null,
+        string source = PlatformEventSources.PharmacyPack,
+        CancellationToken cancellationToken = default)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+        await PlatformEventDualWrite.WriteAsync(
+            conn,
+            tx,
+            tenantId,
+            eventType,
+            aggregateType,
+            aggregateId,
+            data,
+            source,
+            actorUserId,
+            correlationId,
+            workspaceId: null,
+            cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+    }
 }

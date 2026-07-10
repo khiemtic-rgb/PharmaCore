@@ -432,6 +432,25 @@ export async function bulkDeleteProducts(ids: string[]): Promise<number> {
   return data.deletedCount;
 }
 
+export type BulkNationalLinkResult = {
+  scanned: number;
+  updated: number;
+  skipped: number;
+};
+
+export async function bulkSuggestNationalRegistration(limit = 50): Promise<BulkNationalLinkResult> {
+  const { data } = await http.post<Record<string, unknown>>(
+    '/catalog/products/bulk-suggest-national-registration',
+    null,
+    { params: { limit } },
+  );
+  return {
+    scanned: Number(data.scanned ?? data.Scanned ?? 0),
+    updated: Number(data.updated ?? data.Updated ?? 0),
+    skipped: Number(data.skipped ?? data.Skipped ?? 0),
+  };
+}
+
 export async function addBarcode(
   productId: string,
   body: { barcode: string; barcodeType: number; isPrimary: boolean },

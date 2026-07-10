@@ -18,7 +18,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { fetchProducts } from '@/shared/api/catalog.api';
+import { fetchProducts, fetchProduct } from '@/shared/api/catalog.api';
 import type { ProductListItem } from '@/shared/api/catalog.types';
 import { fetchStockBatches, fetchStockProducts, fetchWarehouses } from '@/shared/api/inventory.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
@@ -116,6 +116,21 @@ export function StockListPage() {
     const tab = searchParams.get('tab');
     if (tab === 'fefo') setActiveTab('fefo');
     else if (tab === 'summary') setActiveTab('summary');
+
+    const productId = searchParams.get('productId');
+    if (productId) {
+      setActiveTab('fefo');
+      setFefoProductId(productId);
+      setPage(1);
+      void (async () => {
+        try {
+          const product = await fetchProduct(productId);
+          setFefoProductLabel(`${product.productCode} — ${product.productName}`);
+        } catch {
+          /* optional label */
+        }
+      })();
+    }
   }, [searchParams]);
 
   useEffect(() => {

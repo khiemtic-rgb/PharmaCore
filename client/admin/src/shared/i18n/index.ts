@@ -11,6 +11,7 @@ import viSystem from '@/shared/i18n/locales/vi-VN/system.json';
 import viAuth from '@/shared/i18n/locales/vi-VN/auth.json';
 import viReports from '@/shared/i18n/locales/vi-VN/reports.json';
 import viReceivables from '@/shared/i18n/locales/vi-VN/receivables.json';
+import viRx from '@/shared/i18n/locales/vi-VN/rx.json';
 import enCommon from '@/shared/i18n/locales/en-US/common.json';
 import enDashboard from '@/shared/i18n/locales/en-US/dashboard.json';
 import enSales from '@/shared/i18n/locales/en-US/sales.json';
@@ -22,6 +23,7 @@ import enSystem from '@/shared/i18n/locales/en-US/system.json';
 import enAuth from '@/shared/i18n/locales/en-US/auth.json';
 import enReports from '@/shared/i18n/locales/en-US/reports.json';
 import enReceivables from '@/shared/i18n/locales/en-US/receivables.json';
+import enRx from '@/shared/i18n/locales/en-US/rx.json';
 
 export const ADMIN_LOCALE_STORAGE_KEY = 'admin-locale';
 
@@ -52,6 +54,7 @@ void i18n.use(initReactI18next).init({
       auth: viAuth,
       reports: viReports,
       receivables: viReceivables,
+      rx: viRx,
     },
     'en-US': {
       common: enCommon,
@@ -65,6 +68,7 @@ void i18n.use(initReactI18next).init({
       auth: enAuth,
       reports: enReports,
       receivables: enReceivables,
+      rx: enRx,
     },
   },
   lng: resolveInitialAdminLocale(),
@@ -74,6 +78,7 @@ void i18n.use(initReactI18next).init({
     'common',
     'dashboard',
     'sales',
+    'rx',
     'catalog',
     'inventory',
     'procurement',

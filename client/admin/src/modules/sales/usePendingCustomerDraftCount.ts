@@ -51,7 +51,7 @@ export function usePendingCustomerDraftCount(enabled = true) {
         const newConfirmed = confirmed.filter((item) => !knownConfirmedIdsRef.current.has(item.id));
         const newCancelled = cancelledOrders.filter((item) => !knownCancelledIdsRef.current.has(item.id));
 
-        const onDraftPage = location.pathname.startsWith('/sales/customer-drafts');
+        const onDraftPage = location.pathname.startsWith('/sales/app-orders/drafts');
         const shouldNotify = initializedRef.current && (!onDraftPage || document.hidden);
 
         if (shouldNotify && newConfirmed.length > 0) {

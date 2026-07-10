@@ -18,14 +18,18 @@ import {
   createSale,
   fetchBatchModeSettings,
   fetchOpenShift,
+  fetchPrescriptionPosLoad,
+  fetchRxSettings,
   fetchSalesOrder,
   fetchWarehouses,
   lookupPosProduct,
+  reportRxPosBlock,
   searchCustomers,
   searchPosProducts,
   updateDraftSale,
 } from '@/shared/api/sales.api';
-import type { PosProductSearchItem, SalesShiftDetail, TenantBatchModeValue } from '@/shared/api/sales.types';
+import type { PosProductSearchItem, SalesShiftDetail, TenantBatchModeValue, TenantRxSettings } from '@/shared/api/sales.types';
+import { RX_POS_BLOCK_MESSAGE, shouldBlockRxAtPos } from '@/modules/pos/rx-dispensing';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useAuthStore } from '@/shared/auth/auth.store';
 import { formatMoney } from '@/shared/utils/money';
@@ -86,6 +90,7 @@ export function PosPage() {
     setEditingDraft,
     clearDraftEdit,
     setLoadedCustomerDraft,
+    setLoadedPrescription,
     setLoadedReservation,
   } = usePosSession();
 
@@ -98,6 +103,7 @@ export function PosPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [shift, setShift] = useState<SalesShiftDetail | null>(null);
   const [batchMode, setBatchMode] = useState<TenantBatchModeValue>('off');
+  const [rxSettings, setRxSettings] = useState<TenantRxSettings>({ enforcementMode: 'off', posBlockedAudit: true });
   const [shiftModal, setShiftModal] = useState(false);
   const [closeShiftModal, setCloseShiftModal] = useState(false);
   const [shiftDrawer, setShiftDrawer] = useState(false);
@@ -110,6 +116,7 @@ export function PosPage() {
   const orderDiscount = usePosSession((s) => s.orderDiscount);
   const loadedReservationNumber = usePosSession((s) => s.loadedReservationNumber);
   const loadedCustomerDraftNumber = usePosSession((s) => s.loadedCustomerDraftNumber);
+  const loadedPrescriptionCode = usePosSession((s) => s.loadedPrescriptionCode);
   const priced = useMemo(() => priceCart(cart, orderDiscount), [cart, orderDiscount]);
 
   const selectCustomer = (c: CustomerListItem | null) => {
@@ -231,9 +238,14 @@ export function PosPage() {
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           if (attempt > 0) await new Promise((r) => window.setTimeout(r, 700));
-          const [wh, mode] = await Promise.all([fetchWarehouses(), fetchBatchModeSettings()]);
+          const [wh, mode, rx] = await Promise.all([
+            fetchWarehouses(),
+            fetchBatchModeSettings(),
+            fetchRxSettings(),
+          ]);
           setWarehouses(wh, wh[0]?.id);
           setBatchMode(mode);
+          setRxSettings(rx);
           return;
         } catch (error) {
           lastError = error;
@@ -288,6 +300,45 @@ export function PosPage() {
     });
   }, [loadCustomerReservationIntoPos, searchParams, setSearchParams]);
 
+  const prescriptionDeepLink = useRef<string | null>(null);
+  useEffect(() => {
+    const prescriptionId = searchParams.get('prescriptionId');
+    if (!prescriptionId) {
+      prescriptionDeepLink.current = null;
+      return;
+    }
+    if (!warehouseId) return;
+    if (prescriptionDeepLink.current === prescriptionId) return;
+    prescriptionDeepLink.current = prescriptionId;
+    void fetchPrescriptionPosLoad(prescriptionId, warehouseId)
+      .then((payload) => {
+        replaceCart(
+          payload.lines
+            .filter((line) => line.productUnitId && line.qtyRemaining > 0)
+            .map((line) => ({
+              key: `${line.productUnitId}-${line.prescriptionLineId}`,
+              productId: line.productId,
+              productCode: line.productCode,
+              productName: line.productName,
+              productUnitId: line.productUnitId as string,
+              unitName: line.unitName ?? '',
+              quantity: line.qtyRemaining,
+              unitPrice: line.unitPrice,
+              stockAvailable: line.stockAvailable,
+              dispensingClass: line.lineDispensingClass,
+              prescriptionLineId: line.prescriptionLineId,
+            })),
+        );
+        setLoadedPrescription(payload.id, payload.prescriptionCode);
+        message.success(`Đã nạp đơn BS ${payload.prescriptionCode}`);
+      })
+      .catch((error) => message.error(apiErrorMessage(error, 'Không nạp được đơn BS')))
+      .finally(() => {
+        prescriptionDeepLink.current = null;
+        setSearchParams({}, { replace: true });
+      });
+  }, [searchParams, setSearchParams, warehouseId, replaceCart, setLoadedPrescription, message]);
+
   useEffect(() => {
     if (query.trim().length < 2) {
       setHits([]);
@@ -309,10 +360,20 @@ export function PosPage() {
     return () => window.clearTimeout(timer);
   }, [query, warehouseId]);
 
+  const blockRxProduct = (product: { productId: string; dispensingClass?: string | null }) => {
+    if (!shouldBlockRxAtPos(product.dispensingClass, rxSettings.enforcementMode)) return false;
+    message.error(RX_POS_BLOCK_MESSAGE);
+    if (rxSettings.posBlockedAudit && warehouseId) {
+      void reportRxPosBlock(product.productId, warehouseId).catch(() => undefined);
+    }
+    return true;
+  };
+
   const addFromLookup = async (lookupCode: string) => {
     if (!warehouseId) return;
     try {
       const product = await lookupPosProduct(lookupCode, warehouseId);
+      if (blockRxProduct(product)) return;
       const key = `${product.productUnitId}`;
       addLine({
         key,
@@ -323,6 +384,7 @@ export function PosPage() {
         unitName: product.unitName,
         quantity: 1,
         unitPrice: product.unitPrice,
+        dispensingClass: product.dispensingClass,
         stockAvailable: product.stockAvailable,
         batchHints: product.batchHints,
         batchLabel: defaultBatchLabel(product.batchHints),
@@ -341,6 +403,7 @@ export function PosPage() {
       if (!warehouseId || !value) return;
       try {
         const item = await lookupPosProduct(value, warehouseId);
+        if (blockRxProduct(item)) return;
         if (item.stockAvailable <= 0) {
           message.warning('Hết hàng');
           return;
@@ -362,6 +425,7 @@ export function PosPage() {
             unitName: item.unitName,
             quantity: 1,
             unitPrice: item.unitPrice,
+            dispensingClass: item.dispensingClass,
             stockAvailable: item.stockAvailable,
             batchHints: item.batchHints,
             batchLabel: defaultBatchLabel(item.batchHints),
@@ -528,6 +592,15 @@ export function PosPage() {
             showIcon
             message={`Đơn nháp app ${loadedCustomerDraftNumber}`}
             description="Sau khi bán xong, đơn nháp sẽ được liên kết với hóa đơn."
+            style={{ marginBottom: 12 }}
+          />
+        ) : null}
+        {loadedPrescriptionCode ? (
+          <Alert
+            type="success"
+            showIcon
+            message={`Đơn BS ${loadedPrescriptionCode}`}
+            description="Giỏ hàng đang liên kết đơn thuốc bác sĩ."
             style={{ marginBottom: 12 }}
           />
         ) : null}

@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Dapper;
 using KitPlatform.Application.Abstractions;
 using KitPlatform.Application.Configuration;
@@ -8,6 +8,7 @@ using KitPlatform.Application.Platform.Events;
 using KitPlatform.Packs.Pharmacy;
 using KitPlatform.Packs.Pharmacy.Inventory;
 using KitPlatform.Packs.Pharmacy.Sales;
+using KitPlatform.Packs.Pharmacy.Rx;
 using KitPlatform.Infrastructure.Data;
 using KitPlatform.Packs.Pharmacy.Infrastructure;
 using KitPlatform.Infrastructure.Loyalty;
@@ -27,6 +28,7 @@ internal sealed class SalesRepository
     private readonly IWorkflowEngine _workflow;
     private readonly LoyaltyPosService _loyaltyPos;
     private readonly VoucherPosService _voucherPos;
+    private readonly PrescriptionRepository _prescriptions;
 
     public SalesRepository(
         IDbConnectionFactory db,
@@ -39,7 +41,8 @@ internal sealed class SalesRepository
         IPlatformEventWriter platformEvents,
         IWorkflowEngine workflow,
         LoyaltyPosService loyaltyPos,
-        VoucherPosService voucherPos)
+        VoucherPosService voucherPos,
+        PrescriptionRepository prescriptions)
     {
         _db = db;
         _tenant = tenant;
@@ -52,6 +55,7 @@ internal sealed class SalesRepository
         _workflow = workflow;
         _loyaltyPos = loyaltyPos;
         _voucherPos = voucherPos;
+        _prescriptions = prescriptions;
     }
 
     private Guid TenantId => _tenant.TenantId;
@@ -168,7 +172,8 @@ internal sealed class SalesRepository
             row.UnitName,
             row.ConversionFactor,
             row.UnitPrice,
-            stockInSaleUnit);
+            stockInSaleUnit,
+            row.DispensingClass);
 
         var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
         if (batchMode == TenantBatchMode.Off)
@@ -196,11 +201,59 @@ internal sealed class SalesRepository
         return lookup with { BatchHints = hints, StockSourceLabel = StockSourceLabels.SystemBook };
     }
 
+    public async Task ReportRxPosBlockAsync(
+        ReportRxPosBlockRequest request,
+        Guid? userId,
+        CancellationToken cancellationToken)
+    {
+        var rxSettings = await _tenantSettings.GetRxSettingsAsync(cancellationToken);
+        if (!rxSettings.PosBlockedAudit)
+            return;
+
+        if (RxEnforcementMode.Parse(rxSettings.EnforcementMode) != RxEnforcementMode.Strict)
+            return;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        const string productSql = """
+            SELECT dispensing_class AS DispensingClass
+            FROM products
+            WHERE id = @ProductId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+        var dispensingClass = await conn.QuerySingleOrDefaultAsync<string?>(
+            productSql, new { request.ProductId, TenantId });
+        if (!DispensingClass.RequiresPrescription(dispensingClass))
+            return;
+
+        var branchId = await conn.QuerySingleOrDefaultAsync<Guid?>(
+            """
+            SELECT branch_id FROM warehouses
+            WHERE id = @WarehouseId AND tenant_id = @TenantId AND deleted_at IS NULL
+            """,
+            new { request.WarehouseId, TenantId });
+
+        await conn.ExecuteAsync(
+            """
+            INSERT INTO pack_pharmacy.rx_pos_block_events
+                (tenant_id, branch_id, warehouse_id, product_id, user_id, source)
+            VALUES
+                (@TenantId, @BranchId, @WarehouseId, @ProductId, @UserId, 'pos_scan')
+            """,
+            new
+            {
+                TenantId,
+                BranchId = branchId,
+                request.WarehouseId,
+                request.ProductId,
+                UserId = userId,
+            });
+    }
+
     private const string PosProductLookupSelect = """
             SELECT
                 p.id AS ProductId,
                 p.product_code AS ProductCode,
                 p.product_name AS ProductName,
+                COALESCE(p.dispensing_class, CASE p.drug_type WHEN 2 THEN 'prescription' WHEN 3 THEN 'controlled' ELSE 'otc' END) AS DispensingClass,
                 u.id AS ProductUnitId,
                 u.unit_name AS UnitName,
                 u.conversion_factor AS ConversionFactor,
@@ -781,6 +834,22 @@ internal sealed class SalesRepository
             discountPolicy,
             request.DiscountOverrideWorkflowTaskId,
             cancellationToken: cancellationToken);
+        if (pricing.Lines.Count != request.Items.Count)
+            throw new InvalidOperationException("Không đồng bộ số dòng đơn nháp.");
+
+        var rxSettings = await _tenantSettings.GetRxSettingsAsync(cancellationToken);
+        await RxDispensingEnforcer.EnforceStrictSaleAsync(
+            conn,
+            tx,
+            TenantId,
+            request.Items,
+            request.PrescriptionId,
+            rxSettings,
+            userId,
+            request.WarehouseId,
+            branchId,
+            "pos_complete",
+            cancellationToken);
 
         var voucher = await _voucherPos.ResolveVoucherAsync(
             TenantId,
@@ -803,7 +872,13 @@ internal sealed class SalesRepository
 
         var paymentResolution = await NormalizeAndValidatePaymentsAsync(
             conn, tx, request.CustomerId, request.Payments, redeem.FinalTotal, cancellationToken);
-        var linePlans = await BuildFifoPlansAsync(conn, tx, request.WarehouseId, pricing.Lines, cancellationToken);
+        var linePlans = await BuildFifoPlansAsync(
+            conn,
+            tx,
+            request.WarehouseId,
+            pricing.Lines,
+            pricedInputs,
+            cancellationToken);
         var orderReminder = SalesOrderReminderNormalizer.Normalize(
             request.OrderReminderLabel,
             request.OrderReminderDaysSupply);
@@ -814,10 +889,35 @@ internal sealed class SalesRepository
             request.OrderDiscountType, request.OrderDiscountValue ?? 0, redeem.FinalTotal,
             paymentResolution.AmountPaid, paymentResolution.Outstanding, request.Notes,
             shiftId, voucher.VoucherId, voucher.DiscountAmount, redeem.PointsRedeemed, redeem.DiscountAmount,
-            orderReminder.Label, orderReminder.DaysSupply);
+            orderReminder.Label, orderReminder.DaysSupply, request.PrescriptionId);
 
-        await InsertCompletedLinesAsync(conn, tx, orderId, request.WarehouseId, linePlans, cancellationToken);
+        var insertedLines = await InsertCompletedLinesAsync(
+            conn,
+            tx,
+            orderId,
+            request.WarehouseId,
+            linePlans,
+            cancellationToken);
         await InsertPaymentsAsync(conn, tx, orderId, paymentResolution.CashPayments);
+
+        if (request.PrescriptionId is Guid prescriptionId)
+        {
+            var dispenseItems = insertedLines
+                .Where(x => x.PrescriptionLineId.HasValue)
+                .Select(x => new PrescriptionDispenseSaleItem(
+                    x.SalesOrderItemId,
+                    x.PrescriptionLineId!.Value,
+                    x.Quantity))
+                .ToList();
+            await _prescriptions.ApplyDispenseFromSaleAsync(
+                conn,
+                tx,
+                prescriptionId,
+                orderId,
+                dispenseItems,
+                userId,
+                cancellationToken);
+        }
 
         if (voucher.VoucherId is Guid voucherId && voucher.CustomerVoucherId is Guid customerVoucherId)
         {
@@ -931,11 +1031,17 @@ internal sealed class SalesRepository
         var orderId = await InsertSaleHeaderAsync(
             conn, tx, orderNumber, branchId, request.WarehouseId, request.CustomerId, employeeId,
             SalesOrderStatuses.Draft, request.PriceType, pricing.SubtotalGross, pricing.OrderDiscountAmount,
-            request.OrderDiscountType, request.OrderDiscountValue ?? 0, pricing.TotalAmount, 0, 0, request.Notes);
+            request.OrderDiscountType, request.OrderDiscountValue ?? 0, pricing.TotalAmount, 0, 0, request.Notes,
+            prescriptionId: request.PrescriptionId);
 
-        foreach (var line in pricing.Lines)
+        for (var i = 0; i < pricing.Lines.Count; i++)
         {
-            await InsertDraftItemAsync(conn, tx, orderId, line);
+            await InsertDraftItemAsync(
+                conn,
+                tx,
+                orderId,
+                pricing.Lines[i],
+                request.Items[i].PrescriptionLineId);
         }
 
         await tx.CommitAsync(cancellationToken);
@@ -969,6 +1075,8 @@ internal sealed class SalesRepository
             request.DiscountOverrideWorkflowTaskId,
             salesOrderId: id,
             cancellationToken: cancellationToken);
+        if (pricing.Lines.Count != request.Items.Count)
+            throw new InvalidOperationException("Không đồng bộ số dòng đơn nháp.");
 
         await conn.ExecuteAsync("""
             UPDATE sales_orders SET
@@ -993,9 +1101,14 @@ internal sealed class SalesRepository
         }, tx);
 
         await conn.ExecuteAsync("DELETE FROM sales_order_items WHERE sales_order_id = @OrderId", new { OrderId = id }, tx);
-        foreach (var line in pricing.Lines)
+        for (var i = 0; i < pricing.Lines.Count; i++)
         {
-            await InsertDraftItemAsync(conn, tx, id, line);
+            await InsertDraftItemAsync(
+                conn,
+                tx,
+                id,
+                pricing.Lines[i],
+                request.Items[i].PrescriptionLineId);
         }
 
         await tx.CommitAsync(cancellationToken);
@@ -1040,7 +1153,8 @@ internal sealed class SalesRepository
             const string draftItemsSql = """
                 SELECT
                     product_id AS ProductId, product_unit_id AS ProductUnitId, quantity AS Quantity,
-                    discount_type AS DiscountType, discount_value AS DiscountValue
+                    discount_type AS DiscountType, discount_value AS DiscountValue,
+                    prescription_line_id AS PrescriptionLineId
                 FROM sales_order_items WHERE sales_order_id = @OrderId
                 """;
             saleItems = (await conn.QueryAsync<DraftSaleLineRow>(draftItemsSql, new { OrderId = id }, tx))
@@ -1050,7 +1164,8 @@ internal sealed class SalesRepository
                     row.Quantity,
                     row.DiscountType,
                     row.DiscountValue,
-                    null))
+                    null,
+                    row.PrescriptionLineId))
                 .ToList();
         }
 
@@ -1073,6 +1188,23 @@ internal sealed class SalesRepository
         var customerId = syncFromRequest ? request!.CustomerId : header.CustomerId;
         var notes = syncFromRequest ? request!.Notes : null;
 
+        var branchId = await conn.QuerySingleAsync<Guid>(
+            "SELECT branch_id FROM warehouses WHERE id = @Id AND tenant_id = @TenantId AND deleted_at IS NULL",
+            new { Id = header.WarehouseId, TenantId }, tx);
+        var rxSettings = await _tenantSettings.GetRxSettingsAsync(cancellationToken);
+        await RxDispensingEnforcer.EnforceStrictSaleAsync(
+            conn,
+            tx,
+            TenantId,
+            saleItems.ToList(),
+            request?.PrescriptionId,
+            rxSettings,
+            userId: null,
+            header.WarehouseId,
+            branchId,
+            "pos_checkout",
+            cancellationToken);
+
         var voucher = await _voucherPos.ResolveVoucherAsync(
             TenantId,
             customerId,
@@ -1094,7 +1226,13 @@ internal sealed class SalesRepository
 
         var paymentResolution = await NormalizeAndValidatePaymentsAsync(
             conn, tx, customerId, request?.Payments, redeem.FinalTotal, cancellationToken);
-        var linePlans = await BuildFifoPlansAsync(conn, tx, header.WarehouseId, pricing.Lines, cancellationToken);
+        var linePlans = await BuildFifoPlansAsync(
+            conn,
+            tx,
+            header.WarehouseId,
+            pricing.Lines,
+            pricedInputs,
+            cancellationToken);
         var orderReminder = SalesOrderReminderNormalizer.Normalize(
             request?.OrderReminderLabel,
             request?.OrderReminderDaysSupply);
@@ -1111,7 +1249,8 @@ internal sealed class SalesRepository
                 loyalty_discount_amount = @LoyaltyDiscountAmount,
                 sales_shift_id = @ShiftId, notes = COALESCE(@Notes, notes),
                 reminder_label = @ReminderLabel,
-                reminder_days_supply = @ReminderDaysSupply
+                reminder_days_supply = @ReminderDaysSupply,
+                prescription_id = @PrescriptionId
             WHERE id = @Id AND tenant_id = @TenantId
             """, new
         {
@@ -1134,10 +1273,36 @@ internal sealed class SalesRepository
             Notes = notes,
             ReminderLabel = orderReminder.Label,
             ReminderDaysSupply = orderReminder.DaysSupply,
+            PrescriptionId = request?.PrescriptionId,
         }, tx);
 
-        await InsertCompletedLinesAsync(conn, tx, id, header.WarehouseId, linePlans, cancellationToken);
+        var insertedLines = await InsertCompletedLinesAsync(
+            conn,
+            tx,
+            id,
+            header.WarehouseId,
+            linePlans,
+            cancellationToken);
         await InsertPaymentsAsync(conn, tx, id, paymentResolution.CashPayments);
+
+        if (request?.PrescriptionId is Guid prescriptionId)
+        {
+            var dispenseItems = insertedLines
+                .Where(x => x.PrescriptionLineId.HasValue)
+                .Select(x => new PrescriptionDispenseSaleItem(
+                    x.SalesOrderItemId,
+                    x.PrescriptionLineId!.Value,
+                    x.Quantity))
+                .ToList();
+            await _prescriptions.ApplyDispenseFromSaleAsync(
+                conn,
+                tx,
+                prescriptionId,
+                id,
+                dispenseItems,
+                _tenant.UserId,
+                cancellationToken);
+        }
 
         var orderNumber = await conn.QuerySingleAsync<string>(
             "SELECT order_number FROM sales_orders WHERE id = @Id",
@@ -1602,7 +1767,15 @@ internal sealed class SalesRepository
             WHERE tenant_id = @TenantId AND warehouse_id = @WarehouseId AND status = @Open
             """,
             new { TenantId, WarehouseId = warehouseId, Open = SalesShiftStatuses.Open });
-        return shiftId is null ? null : await GetShiftAsync(conn, shiftId.Value);
+        if (shiftId is null)
+            return null;
+
+        var detail = await GetShiftAsync(conn, shiftId.Value);
+        if (detail is not null)
+            return detail;
+
+        // Retry on a fresh connection (avoids rare null after concurrent commit).
+        return await GetShiftAsync(shiftId.Value, cancellationToken);
     }
 
     public async Task<SalesShiftDetailDto?> GetShiftAsync(
@@ -1635,7 +1808,13 @@ internal sealed class SalesRepository
             """,
             new { TenantId, WarehouseId = request.WarehouseId, Open = SalesShiftStatuses.Open }, tx);
         if (hasOpen)
-            throw new InvalidOperationException("Kho này đang có ca mở. Hãy đóng ca trước khi mở ca mới.");
+        {
+            await tx.CommitAsync(cancellationToken);
+            var existing = await GetOpenShiftAsync(request.WarehouseId, cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "Kho này đang có ca mở nhưng không tải được chi tiết. Hãy tải lại trang.");
+            return existing;
+        }
 
         var shiftNumber = await _inventory.NextDocumentNumberAsync(conn, tx, "SH", "sales_shifts", cancellationToken);
         var shiftId = await conn.QuerySingleAsync<Guid>(
@@ -1657,7 +1836,9 @@ internal sealed class SalesRepository
             }, tx);
 
         await tx.CommitAsync(cancellationToken);
-        return (await GetShiftAsync(shiftId, cancellationToken))!;
+        return await GetShiftAsync(shiftId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                "Ca đã mở nhưng không tải được chi tiết. Hãy tải lại trang.");
     }
 
     public async Task<SalesShiftDetailDto> CloseShiftAsync(
@@ -2086,12 +2267,18 @@ internal sealed class SalesRepository
         IDbTransaction tx,
         Guid warehouseId,
         IReadOnlyList<PricedSaleLineResult> lines,
+        IReadOnlyList<(CreateSaleLineRequest Request, decimal UnitPrice, decimal ConversionFactor)> resolvedInputs,
         CancellationToken cancellationToken)
     {
+        if (lines.Count != resolvedInputs.Count)
+            throw new InvalidOperationException("Không đồng bộ dữ liệu dòng bán.");
+
         var batchMode = await _tenantSettings.GetBatchModeAsync(cancellationToken);
         var linePlans = new List<PlannedSaleLine>();
-        foreach (var pricedLine in lines)
+        for (var index = 0; index < lines.Count; index++)
         {
+            var pricedLine = lines[index];
+            var requestLine = resolvedInputs[index].Request;
             var baseQtyNeeded = pricedLine.Quantity * pricedLine.ConversionFactor;
             var labelBatch = pricedLine.BatchNumber?.Trim();
 
@@ -2175,7 +2362,8 @@ internal sealed class SalesRepository
                     pricedLine.DiscountValue,
                     alloc.UnitCost,
                     alloc.BaseQuantity,
-                    batchSource));
+                    batchSource,
+                    requestLine.PrescriptionLineId));
                 lineQtyRemaining -= saleQty;
             }
 
@@ -2244,20 +2432,21 @@ internal sealed class SalesRepository
         decimal loyaltyPointsRedeemed = 0,
         decimal loyaltyDiscountAmount = 0,
         string? reminderLabel = null,
-        int? reminderDaysSupply = null)
+        int? reminderDaysSupply = null,
+        Guid? prescriptionId = null)
     {
         const string sql = """
             INSERT INTO sales_orders (
                 tenant_id, order_number, branch_id, warehouse_id, customer_id, employee_id,
                 status, price_type, subtotal, discount_amount, order_discount_type, order_discount_value,
                 total_amount, amount_paid, outstanding, notes, sales_shift_id, voucher_id, voucher_discount_amount,
-                loyalty_points_redeemed, loyalty_discount_amount, reminder_label, reminder_days_supply
+                loyalty_points_redeemed, loyalty_discount_amount, reminder_label, reminder_days_supply, prescription_id
             )
             VALUES (
                 @TenantId, @OrderNumber, @BranchId, @WarehouseId, @CustomerId, @EmployeeId,
                 @Status, @PriceType, @Subtotal, @OrderDiscountAmount, @OrderDiscountType, @OrderDiscountValue,
                 @TotalAmount, @AmountPaid, @Outstanding, @Notes, @SalesShiftId, @VoucherId, @VoucherDiscountAmount,
-                @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount, @ReminderLabel, @ReminderDaysSupply
+                @LoyaltyPointsRedeemed, @LoyaltyDiscountAmount, @ReminderLabel, @ReminderDaysSupply, @PrescriptionId
             )
             RETURNING id
             """;
@@ -2286,6 +2475,7 @@ internal sealed class SalesRepository
             LoyaltyDiscountAmount = loyaltyDiscountAmount,
             ReminderLabel = reminderLabel,
             ReminderDaysSupply = reminderDaysSupply,
+            PrescriptionId = prescriptionId,
         }, tx);
     }
 
@@ -2413,16 +2603,17 @@ internal sealed class SalesRepository
         IDbConnection conn,
         IDbTransaction tx,
         Guid orderId,
-        PricedSaleLineResult line)
+        PricedSaleLineResult line,
+        Guid? prescriptionLineId)
     {
         const string sql = """
             INSERT INTO sales_order_items (
                 sales_order_id, product_id, product_unit_id, batch_id,
-                quantity, unit_price, discount_amount, discount_type, discount_value, line_total
+                quantity, unit_price, discount_amount, discount_type, discount_value, line_total, prescription_line_id
             )
             VALUES (
                 @OrderId, @ProductId, @ProductUnitId, NULL,
-                @Quantity, @UnitPrice, @DiscountAmount, @DiscountType, @DiscountValue, @LineTotal
+                @Quantity, @UnitPrice, @DiscountAmount, @DiscountType, @DiscountValue, @LineTotal, @PrescriptionLineId
             )
             """;
         await conn.ExecuteAsync(sql, new
@@ -2436,10 +2627,11 @@ internal sealed class SalesRepository
             DiscountType = line.DiscountType,
             DiscountValue = line.DiscountValue,
             LineTotal = line.LineTotal,
+            PrescriptionLineId = prescriptionLineId,
         }, tx);
     }
 
-    private async Task InsertCompletedLinesAsync(
+    private async Task<List<CompletedSaleLineInsert>> InsertCompletedLinesAsync(
         IDbConnection conn,
         IDbTransaction tx,
         Guid orderId,
@@ -2447,16 +2639,17 @@ internal sealed class SalesRepository
         List<PlannedSaleLine> linePlans,
         CancellationToken cancellationToken)
     {
+        var inserted = new List<CompletedSaleLineInsert>(linePlans.Count);
         foreach (var plan in linePlans)
         {
             const string itemSql = """
                 INSERT INTO sales_order_items (
                     sales_order_id, product_id, product_unit_id, batch_id, batch_source,
-                    quantity, unit_price, discount_amount, discount_type, discount_value, line_total
+                    quantity, unit_price, discount_amount, discount_type, discount_value, line_total, prescription_line_id
                 )
                 VALUES (
                     @OrderId, @ProductId, @ProductUnitId, @BatchId, @BatchSource,
-                    @Quantity, @UnitPrice, @DiscountAmount, @DiscountType, @DiscountValue, @LineTotal
+                    @Quantity, @UnitPrice, @DiscountAmount, @DiscountType, @DiscountValue, @LineTotal, @PrescriptionLineId
                 )
                 RETURNING id
                 """;
@@ -2473,7 +2666,9 @@ internal sealed class SalesRepository
                 DiscountType = plan.DiscountType,
                 DiscountValue = plan.DiscountValue,
                 plan.LineTotal,
+                plan.PrescriptionLineId,
             }, tx);
+            inserted.Add(new CompletedSaleLineInsert(itemId, plan.PrescriptionLineId, plan.Quantity));
 
             const string allocSql = """
                 INSERT INTO sales_order_batch_allocations (
@@ -2495,6 +2690,8 @@ internal sealed class SalesRepository
                 StockMovementTypes.Out, StockReferenceTypes.SalesOrder, orderId,
                 plan.BaseQuantity, plan.UnitCost, null, cancellationToken);
         }
+
+        return inserted;
     }
 
     private static decimal SplitReturnRefund(
@@ -2612,7 +2809,13 @@ internal sealed class SalesRepository
         decimal DiscountValue,
         decimal UnitCost,
         decimal BaseQuantity,
-        short BatchSource);
+        short BatchSource,
+        Guid? PrescriptionLineId);
+
+    private sealed record CompletedSaleLineInsert(
+        Guid SalesOrderItemId,
+        Guid? PrescriptionLineId,
+        decimal Quantity);
 
     private sealed class BatchLockRow
     {
@@ -2729,6 +2932,7 @@ internal sealed class SalesRepository
         Guid ProductId,
         string ProductCode,
         string ProductName,
+        string DispensingClass,
         Guid ProductUnitId,
         string UnitName,
         decimal ConversionFactor,
@@ -2800,6 +3004,7 @@ internal sealed class SalesRepository
         public decimal Quantity { get; init; }
         public short? DiscountType { get; init; }
         public decimal? DiscountValue { get; init; }
+        public Guid? PrescriptionLineId { get; init; }
     }
 
     public async Task<bool> CustomerExistsAsync(Guid customerId, CancellationToken cancellationToken)

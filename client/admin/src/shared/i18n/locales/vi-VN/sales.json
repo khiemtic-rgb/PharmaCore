@@ -362,7 +362,8 @@
       "outstanding": "Nợ {{amount}}",
       "actions": "Thao tác",
       "view": "Xem",
-      "printInvoice": "In hóa đơn"
+      "printInvoice": "In hóa đơn",
+      "collectDebt": "Thu nợ"
     },
     "lines": {
       "productCode": "Mã SP",
@@ -665,14 +666,22 @@
     "loading": "Đang tải...",
     "tabs": {
       "pos": "Bán hàng (POS)",
+      "prescriptions": "Đơn thuốc",
+      "prescribers": "Bác sĩ kê đơn",
+      "prescriberLinks": "Mạng bác sĩ",
       "orders": "Đơn bán",
       "customerReceivables": "Công nợ KH",
       "customerPayments": "Thu nợ KH",
+      "appOrders": "Đơn từ app",
       "customerDrafts": "Đơn hàng từ app",
       "customerReservations": "Đặt trước app",
       "returns": "Hàng trả lại",
       "chat": "Chat KH",
       "shift": "Ca làm việc"
+    },
+    "appOrders": {
+      "drafts": "Chờ xác nhận",
+      "reservations": "Đặt trước"
     }
   },
   "salesListSearch": {

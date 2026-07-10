@@ -32,6 +32,8 @@
     "search": "Tìm",
     "importExcel": "Import Excel",
     "nationalLookup": "Tra cứu QG",
+    "bulkLinkSdk": "Gợi ý SĐK hàng loạt",
+    "viewStock": "Tồn kho",
     "nationalMockBannerTitle": "CSDL Dược QG — đang dùng dữ liệu mock",
     "nationalMockBannerDescription": "Tra cứu trên trang SP là bộ mẫu nội bộ, không thay tra cứu chính thức. Khi có liên thông: đặt NationalDrugCatalog__Mode=sandbox hoặc live trên API.",
     "addProduct": "Thêm sản phẩm",
@@ -76,7 +78,9 @@
       "deleteSuccess": "Đã xóa sản phẩm",
       "deleteFailed": "Không xóa được sản phẩm",
       "bulkDeleteSuccess": "Đã xóa {{count}} sản phẩm",
-      "bulkDeleteFailed": "Không xóa được các sản phẩm đã chọn"
+      "bulkDeleteFailed": "Không xóa được các sản phẩm đã chọn",
+      "bulkLinkSdkSuccess": "Đã quét {{scanned}} SP — cập nhật {{updated}}, bỏ qua {{skipped}}",
+      "bulkLinkSdkFailed": "Không gợi ý được SĐK hàng loạt"
     }
   },
   "catalogLayout": {
@@ -303,11 +307,13 @@
       "description": "Mô tả",
       "status": "Trạng thái",
       "minStockQty": "Tồn tối thiểu (cảnh báo)",
-      "dosageForm": "Dạng bào chế (QĐ 540)",
+      "nationalRegistrationNumber": "Số ĐK lưu hành",
+      "nationalRegistrationNumberHint": "so_dang_ky — bắt buộc khi xuất liên thông QĐ 540",
+      "dosageForm": "Dạng bào chế",
       "dosageFormHint": "dang_bao_che — tối đa 20 ký tự",
-      "packaging": "Quy cách đóng gói (QĐ 540)",
+      "packaging": "Quy cách đóng gói",
       "packagingHint": "quy_cach_dong_goi — tối đa 20 ký tự",
-      "importerName": "Nhà nhập khẩu (QĐ 540)",
+      "importerName": "Nhà nhập khẩu",
       "conversionFactor": "Hệ số",
       "strengthValue": "Hàm lượng",
       "strengthUnit": "Đơn vị"
@@ -325,6 +331,7 @@
     },
     "sections": {
       "detailsHint": "Mỗi lần bấm Thêm sẽ lưu ngay.",
+      "qd540": "Liên thông dược (QĐ 540)",
       "units": "ĐVT quy đổi",
       "barcode": "Barcode",
       "prices": "Giá bán",

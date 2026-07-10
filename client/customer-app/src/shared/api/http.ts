@@ -3,6 +3,7 @@ import { useAuthStore } from '@/shared/auth/auth.store';
 import { clearCustomerCachedData } from '@/shared/api/customer-session-cleanup';
 import type { CustomerLoginResponse } from '@/shared/api/customer-app.types';
 import { apiPath } from '@/shared/api/api-base';
+import { forceCustomerLogout } from '@/shared/auth/force-logout';
 
 export const http = axios.create({
   baseURL: apiPath('/api/customer-app'),
@@ -29,7 +30,12 @@ http.interceptors.response.use(
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const status = error.response?.status;
 
-    if (status === 401 && original && !original._retry && !original.url?.includes('/auth/')) {
+    if (status === 401 && original && !original.url?.includes('/auth/')) {
+      if (original._retry) {
+        forceCustomerLogout();
+        return Promise.reject(error);
+      }
+
       original._retry = true;
 
       if (!refreshPromise) {
@@ -44,9 +50,7 @@ http.interceptors.response.use(
         return http(original);
       }
 
-      if (!useAuthStore.getState().accessToken) {
-        window.location.href = '/login';
-      }
+      forceCustomerLogout();
       return Promise.reject(error);
     }
 

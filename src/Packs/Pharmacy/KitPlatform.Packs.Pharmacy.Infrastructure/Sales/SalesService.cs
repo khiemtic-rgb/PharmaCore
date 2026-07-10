@@ -329,4 +329,9 @@ internal sealed class SalesService : ISalesService
         SalesDiscountPolicy discountPolicy,
         CancellationToken cancellationToken = default) =>
         _repository.PriceSaleLinesAsync(items, priceType, orderDiscount, discountPolicy, cancellationToken);
+
+    public Task ReportRxPosBlockAsync(
+        ReportRxPosBlockRequest request,
+        CancellationToken cancellationToken = default) =>
+        _repository.ReportRxPosBlockAsync(request, _tenant.UserId, cancellationToken);
 }

@@ -12,6 +12,7 @@
 |--------|------|-----------------|-----|
 | **Dashboard** | `/` | Doanh thu, KPI tổng quan | ✅ |
 | **Sales / POS** | `/sales/*` | POS, đơn bán, trả hàng, ca, cài bill | ✅ |
+| **Sales — e-Rx** | `/pharmacy/prescriptions/*` | Đơn BS, BS liên kết, bán Rx strict, portal BS | 🧪 Pilot — [rx-prescription-module-v1.md](./rx-prescription-module-v1.md) · [network](./rx-prescriber-network-v1.md) |
 | **Sales — O2O** | `/sales/*` | Đơn app khách, đặt trước, chat KH | ✅ |
 | **Procurement** | `/procurement/*` | NCC, PO, GRN, thuế GTGT cơ bản | ✅ |
 | **Procurement — AP** | `/procurement/*` | Công nợ NCC, thanh toán NCC | ✅ |
