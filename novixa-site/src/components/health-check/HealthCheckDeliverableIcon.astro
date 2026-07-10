@@ -1,0 +1,71 @@
+---
+interface Props {
+  name: 'gauge' | 'report' | 'swot' | 'roadmap' | 'consulting';
+}
+
+const { name } = Astro.props;
+---
+
+<span class="hc-card__icon" aria-hidden="true">
+  {name === 'gauge' && (
+    <svg viewBox="0 0 72 52" fill="none" class="hc-card__svg">
+      <path d="M10 42 A32 32 0 0 1 62 42" stroke="#edf2f7" stroke-width="7" stroke-linecap="round" />
+      <path d="M10 42 A32 32 0 0 1 22 14" stroke="#ef4444" stroke-width="7" stroke-linecap="round" />
+      <path d="M22 14 A32 32 0 0 1 36 8" stroke="#f97316" stroke-width="7" stroke-linecap="round" />
+      <path d="M36 8 A32 32 0 0 1 50 14" stroke="#fbbf24" stroke-width="7" stroke-linecap="round" />
+      <path d="M50 14 A32 32 0 0 1 62 42" stroke="#19c37d" stroke-width="7" stroke-linecap="round" />
+      <circle cx="36" cy="42" r="4.5" fill="#0f2747" />
+      <path d="M36 42 L50 24" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round" />
+      <circle cx="50" cy="24" r="3" fill="#1d4ed8" />
+    </svg>
+  )}
+  {name === 'report' && (
+    <svg viewBox="0 0 72 56" fill="none" class="hc-card__svg">
+      <rect x="8" y="4" width="36" height="48" rx="4" fill="#f8fafc" stroke="#3b82f6" stroke-width="1.75" />
+      <path d="M8 13h36" stroke="#3b82f6" stroke-width="1.75" />
+      <path d="M14 22h18M14 28h14M14 34h16" stroke="#93c5fd" stroke-width="1.75" stroke-linecap="round" />
+      <path d="M18 40l4-5 4 3 6-8" stroke="#19c37d" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="50" cy="36" r="14" fill="#fff" stroke="#3b82f6" stroke-width="1.75" />
+      <circle cx="50" cy="36" r="8.5" stroke="#3b82f6" stroke-width="1.75" />
+      <path d="M56 42l7 7" stroke="#3b82f6" stroke-width="2.25" stroke-linecap="round" />
+      <path d="M46 32l3-2 2 3-3 2-2-3z" fill="#19c37d" />
+    </svg>
+  )}
+  {name === 'swot' && (
+    <svg viewBox="0 0 72 56" fill="none" class="hc-card__svg">
+      <rect x="8" y="8" width="24" height="20" rx="5" fill="#19c37d" />
+      <text x="20" y="22" text-anchor="middle" fill="#fff" font-size="12" font-weight="800" font-family="Inter,system-ui,sans-serif">S</text>
+      <rect x="40" y="8" width="24" height="20" rx="5" fill="#1d4ed8" />
+      <text x="52" y="22" text-anchor="middle" fill="#fff" font-size="12" font-weight="800" font-family="Inter,system-ui,sans-serif">W</text>
+      <rect x="8" y="32" width="24" height="20" rx="5" fill="#f59e0b" />
+      <text x="20" y="46" text-anchor="middle" fill="#fff" font-size="12" font-weight="800" font-family="Inter,system-ui,sans-serif">O</text>
+      <rect x="40" y="32" width="24" height="20" rx="5" fill="#14b8a6" />
+      <text x="52" y="46" text-anchor="middle" fill="#fff" font-size="12" font-weight="800" font-family="Inter,system-ui,sans-serif">T</text>
+    </svg>
+  )}
+  {name === 'roadmap' && (
+    <svg viewBox="0 0 72 52" fill="none" class="hc-card__svg">
+      <path d="M8 38 C14 38 16 24 26 24 C36 24 38 10 54 10" stroke="#3b82f6" stroke-width="2.25" stroke-linecap="round" />
+      <circle cx="8" cy="38" r="4.5" fill="#3b82f6" />
+      <circle cx="26" cy="24" r="4.5" fill="#3b82f6" />
+      <circle cx="54" cy="10" r="4.5" fill="#3b82f6" />
+      <path d="M50 6h12v12" stroke="#0f2747" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="52" y="4" width="4.5" height="4.5" fill="#19c37d" />
+      <rect x="58.5" y="4" width="4.5" height="4.5" fill="#fff" stroke="#0f2747" stroke-width="0.85" />
+      <rect x="52" y="10.5" width="4.5" height="4.5" fill="#fff" stroke="#0f2747" stroke-width="0.85" />
+      <rect x="58.5" y="10.5" width="4.5" height="4.5" fill="#19c37d" />
+    </svg>
+  )}
+  {name === 'consulting' && (
+    <svg viewBox="0 0 72 56" fill="none" class="hc-card__svg">
+      <circle cx="36" cy="22" r="10" stroke="#3b82f6" stroke-width="2.25" />
+      <path d="M22 38c0-7.7 6.3-14 14-14s14 6.3 14 14" stroke="#3b82f6" stroke-width="2.25" stroke-linecap="round" />
+      <path d="M14 30c0-6 4.5-10 10-10" stroke="#3b82f6" stroke-width="2.75" stroke-linecap="round" />
+      <rect x="8" y="28" width="12" height="16" rx="6" fill="#3b82f6" />
+      <path d="M48 20c0-6 4.5-10 10-10" stroke="#3b82f6" stroke-width="2.75" stroke-linecap="round" />
+      <rect x="52" y="18" width="12" height="16" rx="6" fill="#3b82f6" />
+      <path d="M30 44h12" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" />
+      <rect x="28" y="44" width="16" height="5" rx="2.5" fill="#3b82f6" />
+    </svg>
+  )}
+</span>
