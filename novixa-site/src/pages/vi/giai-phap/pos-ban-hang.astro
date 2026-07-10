@@ -1,0 +1,172 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import '../../../styles/global.css';
+
+const title = 'POS Bán hàng';
+const description =
+  'Novixa POS giúp nhà thuốc bán hàng nhanh tại quầy, đồng bộ tồn kho và doanh thu theo thời gian thực.';
+---
+
+<BaseLayout title={title} description={description} canonicalPath="/vi/giai-phap/pos-ban-hang">
+  <Header slot="header" />
+  <article class="section module-detail">
+    <div class="container prose module-detail__body">
+      <p><a href="/vi#giai-phap">← Quay lại Giải pháp</a></p>
+      <p class="eyebrow">Novixa POS</p>
+      <h1 class="section-title">{title}</h1>
+      <p class="module-detail__lead">Bán hàng nhanh, chính xác và đồng bộ theo thời gian thực</p>
+
+      <p>
+        Novixa POS được thiết kế dành riêng cho nhà thuốc Việt Nam, giúp nhân viên bán hàng thao tác nhanh,
+        giảm sai sót và kiểm soát toàn bộ quy trình bán hàng ngay tại quầy. Mọi giao dịch được đồng bộ tức thời
+        với tồn kho, doanh thu và dữ liệu khách hàng, giúp chủ nhà thuốc luôn nắm bắt tình hình kinh doanh theo
+        thời gian thực.
+      </p>
+
+      <h2>Bán hàng nhanh chỉ với vài thao tác</h2>
+      <ul>
+        <li>Tìm kiếm thuốc theo tên, hoạt chất hoặc mã vạch.</li>
+        <li>Quét Barcode/QR Code.</li>
+        <li>Tìm kiếm tức thì với hàng nghìn sản phẩm.</li>
+        <li>Thêm sản phẩm nhanh bằng phím tắt.</li>
+        <li>Hỗ trợ màn hình cảm ứng.</li>
+        <li>Tối ưu tốc độ thanh toán tại quầy.</li>
+      </ul>
+
+      <h2>Đồng bộ tồn kho theo thời gian thực</h2>
+      <p>Mỗi giao dịch bán hàng sẽ tự động:</p>
+      <ul>
+        <li>Trừ tồn kho.</li>
+        <li>Cập nhật số lượng theo lô.</li>
+        <li>Theo dõi hạn sử dụng.</li>
+        <li>Đồng bộ dữ liệu giữa các chi nhánh.</li>
+        <li>Cập nhật doanh thu ngay lập tức.</li>
+      </ul>
+      <p>Không cần nhập liệu thủ công sau khi bán hàng.</p>
+
+      <h2>Quản lý bán thuốc theo lô và hạn sử dụng</h2>
+      <p>Novixa hỗ trợ quản lý:</p>
+      <ul>
+        <li>Số lô.</li>
+        <li>Hạn sử dụng.</li>
+        <li>FEFO (First Expired First Out).</li>
+        <li>FIFO.</li>
+        <li>Cảnh báo thuốc cận hạn.</li>
+        <li>Kiểm soát xuất đúng lô.</li>
+      </ul>
+      <p>Giúp giảm thất thoát và hạn chế thuốc hết hạn trong kho.</p>
+
+      <h2>Quản lý khách hàng ngay khi bán hàng</h2>
+      <p>Mỗi hóa đơn được liên kết với hồ sơ khách hàng:</p>
+      <ul>
+        <li>Lưu lịch sử mua thuốc.</li>
+        <li>Theo dõi đơn thuốc.</li>
+        <li>Tích điểm thành viên.</li>
+        <li>Quản lý công nợ.</li>
+        <li>Gợi ý mua lại.</li>
+        <li>Hỗ trợ chăm sóc khách hàng sau bán.</li>
+      </ul>
+
+      <h2>Hỗ trợ nhiều hình thức thanh toán</h2>
+      <ul>
+        <li>Tiền mặt.</li>
+        <li>Chuyển khoản.</li>
+        <li>QR Banking.</li>
+        <li>Ví điện tử.</li>
+        <li>Thanh toán kết hợp nhiều phương thức.</li>
+        <li>Ghi nhận công nợ.</li>
+      </ul>
+
+      <h2>Khuyến mại và chiết khấu linh hoạt</h2>
+      <ul>
+        <li>Giảm giá theo sản phẩm.</li>
+        <li>Giảm giá theo hóa đơn.</li>
+        <li>Voucher.</li>
+        <li>Tích điểm.</li>
+        <li>Chương trình khách hàng thân thiết.</li>
+        <li>Chính sách giá theo từng nhóm khách hàng.</li>
+      </ul>
+
+      <h2>Quản lý đơn thuốc</h2>
+      <ul>
+        <li>Bán theo đơn thuốc.</li>
+        <li>Lưu hình ảnh đơn thuốc.</li>
+        <li>Quản lý lịch sử kê đơn.</li>
+        <li>Theo dõi thuốc đã bán.</li>
+        <li>Hỗ trợ mua lại theo đơn.</li>
+      </ul>
+
+      <h2>Báo cáo doanh thu tức thời</h2>
+      <p>Sau mỗi giao dịch, hệ thống tự động cập nhật:</p>
+      <ul>
+        <li>Doanh thu trong ngày.</li>
+        <li>Lợi nhuận.</li>
+        <li>Số lượng hóa đơn.</li>
+        <li>Giá trị trung bình mỗi hóa đơn.</li>
+        <li>Sản phẩm bán chạy.</li>
+        <li>Nhân viên bán hàng.</li>
+        <li>Hiệu quả theo ca làm việc.</li>
+      </ul>
+
+      <h2>Hỗ trợ chuỗi nhà thuốc</h2>
+      <ul>
+        <li>Đồng bộ dữ liệu nhiều chi nhánh.</li>
+        <li>Quản lý doanh thu từng cửa hàng.</li>
+        <li>Chuyển hàng giữa các chi nhánh.</li>
+        <li>Kiểm soát giá bán tập trung.</li>
+        <li>Theo dõi hiệu quả kinh doanh toàn chuỗi.</li>
+      </ul>
+
+      <h2>AI hỗ trợ bán hàng</h2>
+      <p>Novixa AI hỗ trợ nhân viên và chủ nhà thuốc:</p>
+      <ul>
+        <li>Gợi ý sản phẩm bán kèm.</li>
+        <li>Gợi ý sản phẩm thay thế khi hết hàng.</li>
+        <li>Phân tích xu hướng mua hàng.</li>
+        <li>Dự báo nhu cầu nhập hàng.</li>
+        <li>Cảnh báo bất thường trong doanh thu.</li>
+        <li>Phát hiện sản phẩm bán chậm.</li>
+      </ul>
+
+      <h2>Lợi ích mang lại</h2>
+      <ul>
+        <li>Tăng tốc độ bán hàng tại quầy.</li>
+        <li>Giảm sai sót khi xuất thuốc.</li>
+        <li>Kiểm soát tồn kho theo thời gian thực.</li>
+        <li>Theo dõi doanh thu tức thời.</li>
+        <li>Nâng cao trải nghiệm khách hàng.</li>
+        <li>Giảm thất thoát hàng hóa.</li>
+        <li>Hỗ trợ ra quyết định dựa trên dữ liệu.</li>
+      </ul>
+
+      <p>
+        Với Novixa POS, mỗi giao dịch không chỉ là một hóa đơn bán hàng mà còn là nguồn dữ liệu quan trọng
+        giúp nhà thuốc quản lý hiệu quả hơn, chăm sóc khách hàng tốt hơn và phát triển bền vững.
+      </p>
+
+      <p class="module-detail__actions">
+        <a class="btn btn-primary" href="https://survey.novixa.vn">Đánh giá miễn phí</a>
+        <a class="btn btn-secondary" href="/vi/lien-he">Đăng ký Demo</a>
+      </p>
+    </div>
+  </article>
+  <Footer slot="footer" />
+</BaseLayout>
+
+<style>
+  .module-detail__lead {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 1.25rem;
+  }
+
+  .module-detail__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+</style>
