@@ -2,10 +2,11 @@ src/**/bin/
 src/**/obj/
 tools/**/bin/
 tools/**/obj/
+tests/**/bin/
+tests/**/obj/
 client/**/node_modules/
 client/**/dist/
 .dev/
-tests/
 docs/*
 !docs/novixa/
 !docs/novixa/**
