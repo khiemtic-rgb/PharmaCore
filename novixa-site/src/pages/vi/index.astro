@@ -9,16 +9,19 @@ import SolutionSection from '../../components/SolutionSection.astro';
 import PricingSection from '../../components/PricingSection.astro';
 import FaqSection from '../../components/FaqSection.astro';
 import { t } from '../../i18n';
+import { buildSiteGraphStructuredData } from '../../lib/site-structured-data';
 import '../../styles/global.css';
 import '../../styles/homepage.css';
 
 const m = t('vi');
+const jsonLd = buildSiteGraphStructuredData();
 ---
 
 <BaseLayout
   title={m.meta.siteName}
   description={m.meta.description}
   canonicalPath="/vi"
+  jsonLd={jsonLd}
 >
   <Header slot="header" />
 

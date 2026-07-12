@@ -9,7 +9,18 @@ export default defineConfig({
   trailingSlash: 'always',
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/404') && !page.includes('/thong-ke'),
+      filter: (page) => {
+        try {
+          const path = new URL(page).pathname;
+          if (path === '/') return false;
+          if (path.includes('/404')) return false;
+          if (path.includes('/thong-ke')) return false;
+          if (path.includes('/health-check')) return false;
+          return true;
+        } catch {
+          return false;
+        }
+      },
     }),
   ],
   i18n: {

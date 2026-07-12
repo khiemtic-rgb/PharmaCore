@@ -1,6 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /vi/thong-ke/
+Disallow: /vi/health-check/
 
-Sitemap: https://novixa.vn/sitemap.xml
 Sitemap: https://novixa.vn/sitemap-index.xml
-Sitemap: https://novixa.vn/sitemap-0.xml
