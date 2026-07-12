@@ -120,8 +120,9 @@ $cStatus = if ($consumed.eventStatus) { $consumed.eventStatus } else { $consumed
 if ($cStatus -ne "consumed") { throw "expected consumed, got $cStatus" }
 $handoff2 = Invoke-RestMethod "$BaseUrl/api/connect/rx-handoffs/$handoffId" -Headers $hPharm
 $hStatus = if ($handoff2.handoffStatus) { $handoff2.handoffStatus } else { $handoff2.HandoffStatus }
-if ($hStatus -ne "consumed") { throw "expected handoff consumed, got $hStatus" }
-Write-Host "[OK] pharmacy consumed event + handoff" -ForegroundColor Green
+# Ack tin hieu Connect KHONG danh dau handoff da ban — van pending_pharmacy den khi POS thanh toan.
+if ($hStatus -ne "pending_pharmacy") { throw "expected handoff still pending_pharmacy after ack, got $hStatus" }
+Write-Host "[OK] pharmacy ack event; handoff still pending_pharmacy (ready for POS)" -ForegroundColor Green
 
 Write-Host "`nCL1.3 smoke PASSED" -ForegroundColor Green
 Write-Host "Admin clinic: http://localhost:5173/clinic/visits (DEMO_CLINIC) — Gửi NT"
