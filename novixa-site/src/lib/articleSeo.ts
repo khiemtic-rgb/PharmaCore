@@ -14,7 +14,7 @@ export function buildArticleJsonLd(post: {
   id: string;
   data: { title: string; description: string; pubDate: Date };
 }) {
-  const url = `${SITE_URL}/vi/tin-tuc/${post.id}`;
+  const url = absoluteUrl(`/vi/tin-tuc/${post.id}`);
   const image = articleOgImageUrl(post.id);
 
   return {
@@ -26,6 +26,7 @@ export function buildArticleJsonLd(post: {
     dateModified: post.data.pubDate.toISOString(),
     inLanguage: 'vi-VN',
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+    url,
     image: [image],
     author: {
       '@type': 'Organization',

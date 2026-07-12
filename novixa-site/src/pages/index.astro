@@ -1,3 +1,5 @@
 ---
-return Astro.redirect('/vi/', 302);
+// Cloudflare Pages `_redirects` issues a real HTTP 301 for `/` → `/vi/`.
+// Keep this Astro fallback for local `astro preview` / non-Pages hosts.
+return Astro.redirect('/vi/', 301);
 ---
