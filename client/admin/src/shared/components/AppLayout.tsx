@@ -95,7 +95,16 @@ function AppLayoutShell() {
     () =>
       moduleRegistry
         .filter((module) => !TEMP_HIDDEN_MODULE_KEYS.includes(module.key))
-        .filter((module) => isModuleVisibleForVertical(module, adminVertical))
+        .filter((module) => {
+          // Trước khi biết vertical tenant: chỉ hiện module dùng chung (dashboard, connect, system…).
+          // Tránh nháy menu Nhà thuốc (Bán hàng/Kho…) trên Clinic khi còn mặc định pharmacy.
+          if (!platformLoaded) {
+            const scopes = module.verticals;
+            if (!scopes || scopes.length === 0) return true;
+            return scopes.includes('pharmacy') && scopes.includes('clinic');
+          }
+          return isModuleVisibleForVertical(module, adminVertical);
+        })
         .flatMap((module) => {
           const platformOk =
             !module.platformModule || !platformLoaded || isModuleEnabled(module.platformModule);

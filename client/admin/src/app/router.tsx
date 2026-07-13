@@ -15,6 +15,11 @@ const AppLayout = lazy(() =>
 const SetupPage = lazy(() =>
   import('@/modules/platform/SetupPage').then((m) => ({ default: m.SetupPage })),
 );
+const PlatformOrganizationsPage = lazy(() =>
+  import('@/modules/platform/PlatformOrganizationsPage').then((m) => ({
+    default: m.PlatformOrganizationsPage,
+  })),
+);
 const LoginPage = lazy(() =>
   import('@/modules/auth/LoginPage').then((m) => ({ default: m.LoginPage })),
 );
@@ -306,6 +311,14 @@ export function AppRouter() {
             element={
               <SuspenseRoute>
                 <SetupPage />
+              </SuspenseRoute>
+            }
+          />
+          <Route
+            path="/setup/organizations"
+            element={
+              <SuspenseRoute>
+                <PlatformOrganizationsPage />
               </SuspenseRoute>
             }
           />

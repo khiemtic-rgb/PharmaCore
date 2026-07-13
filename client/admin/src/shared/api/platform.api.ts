@@ -3,9 +3,12 @@ import { apiPath } from '@/shared/api/api-base';
 import type {
   CreatePlatformTenantRequest,
   CreatePlatformTenantResponse,
+  PlatformModuleRegistryItem,
   PlatformPublicConfig,
   PlatformSetupStatus,
+  PlatformTenantEntitlement,
   PlatformTenantListItem,
+  UpdatePlatformTenantEntitlementRequest,
 } from '@/shared/api/platform.types';
 
 function platformHeaders(platformKey?: string) {
@@ -14,6 +17,51 @@ function platformHeaders(platformKey?: string) {
     headers['X-Platform-Key'] = platformKey.trim();
   }
   return headers;
+}
+
+function normalizeTenantListItem(raw: Record<string, unknown>): PlatformTenantListItem {
+  return {
+    id: String(raw.id ?? raw.Id),
+    tenantCode: String(raw.tenantCode ?? raw.TenantCode),
+    tenantName: String(raw.tenantName ?? raw.TenantName),
+    createdAt: String(raw.createdAt ?? raw.CreatedAt),
+    status: Number(raw.status ?? raw.Status ?? 1),
+    vertical: String(raw.vertical ?? raw.Vertical ?? 'pharmacy'),
+    allowedModuleCount: Number(raw.allowedModuleCount ?? raw.AllowedModuleCount ?? 0),
+    enabledModuleCount: Number(raw.enabledModuleCount ?? raw.EnabledModuleCount ?? 0),
+  };
+}
+
+function normalizeModule(raw: Record<string, unknown>): PlatformModuleRegistryItem {
+  const verticalsRaw = raw.verticals ?? raw.Verticals;
+  return {
+    moduleCode: String(raw.moduleCode ?? raw.ModuleCode),
+    moduleName: String(raw.moduleName ?? raw.ModuleName),
+    description: (raw.description ?? raw.Description) as string | null | undefined,
+    verticals: Array.isArray(verticalsRaw) ? verticalsRaw.map(String) : [],
+    sortOrder: Number(raw.sortOrder ?? raw.SortOrder ?? 0),
+  };
+}
+
+function normalizeEntitlement(raw: Record<string, unknown>): PlatformTenantEntitlement {
+  const allowed = raw.allowedModules ?? raw.AllowedModules;
+  const enabled = raw.enabledModules ?? raw.EnabledModules;
+  const maxRaw = raw.maxBranches ?? raw.MaxBranches;
+  const maxBranches =
+    maxRaw == null || maxRaw === ''
+      ? null
+      : Number.isFinite(Number(maxRaw)) && Number(maxRaw) >= 1
+        ? Math.floor(Number(maxRaw))
+        : null;
+  return {
+    tenantId: String(raw.tenantId ?? raw.TenantId),
+    tenantCode: String(raw.tenantCode ?? raw.TenantCode),
+    tenantName: String(raw.tenantName ?? raw.TenantName),
+    vertical: String(raw.vertical ?? raw.Vertical ?? 'pharmacy'),
+    allowedModules: Array.isArray(allowed) ? allowed.map(String) : [],
+    enabledModules: Array.isArray(enabled) ? enabled.map(String) : [],
+    maxBranches,
+  };
 }
 
 export async function fetchPlatformPublicConfig(): Promise<PlatformPublicConfig> {
@@ -31,11 +79,43 @@ export async function fetchPlatformSetupStatus(): Promise<PlatformSetupStatus> {
 }
 
 export async function fetchPlatformTenants(platformKey?: string): Promise<PlatformTenantListItem[]> {
-  const { data } = await axios.get<PlatformTenantListItem[]>(apiPath('/api/platform/tenants'), {
+  const { data } = await axios.get<Record<string, unknown>[]>(apiPath('/api/platform/tenants'), {
     headers: platformHeaders(platformKey),
     timeout: 15_000,
   });
-  return data;
+  return (data ?? []).map(normalizeTenantListItem);
+}
+
+export async function fetchPlatformModules(platformKey?: string): Promise<PlatformModuleRegistryItem[]> {
+  const { data } = await axios.get<Record<string, unknown>[]>(apiPath('/api/platform/modules'), {
+    headers: platformHeaders(platformKey),
+    timeout: 15_000,
+  });
+  return (data ?? []).map(normalizeModule);
+}
+
+export async function fetchPlatformTenantEntitlement(
+  tenantId: string,
+  platformKey?: string,
+): Promise<PlatformTenantEntitlement> {
+  const { data } = await axios.get<Record<string, unknown>>(
+    apiPath(`/api/platform/tenants/${tenantId}/entitlement`),
+    { headers: platformHeaders(platformKey), timeout: 15_000 },
+  );
+  return normalizeEntitlement(data);
+}
+
+export async function updatePlatformTenantEntitlement(
+  tenantId: string,
+  body: UpdatePlatformTenantEntitlementRequest,
+  platformKey?: string,
+): Promise<PlatformTenantEntitlement> {
+  const { data } = await axios.put<Record<string, unknown>>(
+    apiPath(`/api/platform/tenants/${tenantId}/entitlement`),
+    body,
+    { headers: platformHeaders(platformKey), timeout: 30_000 },
+  );
+  return normalizeEntitlement(data);
 }
 
 export async function createPlatformTenant(

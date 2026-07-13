@@ -147,7 +147,14 @@ $files = @(
     "120_clinic_cl3_encounter_modality.sql",
     "121_sales_connect_rx_handoff.sql",
     "122_clinic_patient_provider_profile.sql",
-    "123_clinic_specialty_vi_normalize.sql"
+    "123_clinic_specialty_vi_normalize.sql",
+    "124_connect_rx_handoff_reset_orphan_consumed.sql",
+    "125_enable_novixa_connect_sidebar.sql",
+    "126_clinic_strip_pharmacy_modules.sql",
+    "127_platform_allowed_modules_ceiling.sql",
+    "128_platform_max_branches_ceiling.sql",
+    "129_kap_partner_portal.sql",
+    "130_kap_assessment_partner_grants.sql"
 )
 
 Write-Host "=== KitPlatform Migrations ===" -ForegroundColor Cyan

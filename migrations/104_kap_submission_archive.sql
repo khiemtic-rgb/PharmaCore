@@ -1,5 +1,5 @@
 -- KitPlatform 104: soft-archive KAP assessment submissions (no hard delete)
--- Depends on: 068, 103_kap_partner_portal
+-- Depends on: 068; partner columns optional (129_kap_partner_portal)
 
 ALTER TABLE assessment_submission
     ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;

@@ -21,6 +21,36 @@ export interface PlatformTenantListItem {
   tenantName: string;
   createdAt: string;
   status: number;
+  vertical: string;
+  allowedModuleCount: number;
+  enabledModuleCount: number;
+}
+
+export interface PlatformModuleRegistryItem {
+  moduleCode: string;
+  moduleName: string;
+  description?: string | null;
+  verticals: string[];
+  sortOrder: number;
+}
+
+export interface PlatformTenantEntitlement {
+  tenantId: string;
+  tenantCode: string;
+  tenantName: string;
+  vertical: string;
+  allowedModules: string[];
+  enabledModules: string[];
+  /** Null = unlimited active branches. */
+  maxBranches: number | null;
+}
+
+export interface UpdatePlatformTenantEntitlementRequest {
+  vertical: string;
+  allowedModules: string[];
+  syncEnabledModules?: boolean;
+  /** Null/omit = unlimited. */
+  maxBranches?: number | null;
 }
 
 export interface CreatePlatformBranchRequest {

@@ -164,6 +164,11 @@
     "deleteConfirm": "Xóa «{{code}}»?",
     "deleteDescription": "Chi nhánh sẽ bị vô hiệu hóa.",
     "cannotDeleteHeadOffice": "Không thể xóa chi nhánh trụ sở chính",
+    "limit": {
+      "usage": "Đang dùng {{used}} / {{max}} cơ sở theo hợp đồng",
+      "unlimited": "Đang dùng {{used}} cơ sở — chưa giới hạn số cơ sở",
+      "reached": "Đã đạt hạn mức {{max}} cơ sở. Liên hệ Novixa để mở rộng."
+    },
     "messages": {
       "loadFailed": "Không tải được chi nhánh",
       "saveFailed": "Không lưu được chi nhánh",
@@ -330,12 +335,14 @@
   },
   "platformPack": {
     "title": "Gói Novixa",
-    "intro": "Cấu hình module và tính năng theo tenant (Novixa Pharmacy Pack mặc định).",
-    "introDetail": "Thay đổi có hiệu lực ngay trên menu Admin và API. Chỉ tài khoản ADMIN được lưu.",
+    "intro": "Bật/tắt module trong phạm vi gói Core đã cấp cho tài khoản này.",
+    "introDetail": "Loại hình và trần module do vận hành Novixa cấu hình tại /setup. ADMIN tenant chỉ chọn module trong gói đã mua.",
+    "ceilingHint": "Trần quyền (allowed modules) do Core cấp",
+    "ceilingHintDetail": "Muốn thêm module ngoài danh sách — liên hệ vận hành Novixa để mở rộng entitlement.",
     "readOnlyHint": "Bạn có thể xem; chỉ ADMIN được chỉnh pack/module.",
     "fields": {
-      "vertical": "Loại hình (vertical)",
-      "enabledModules": "Module đang bật",
+      "vertical": "Loại hình (vertical) — do Core cấu hình",
+      "enabledModules": "Module đang bật (trong gói được cấp)",
       "features": "Feature flags"
     },
     "validation": {
@@ -356,7 +363,7 @@
       "pharmacy_chain": "Chuỗi nhà thuốc",
       "supplement_store": "Cửa hàng TPCN",
       "medical_equipment_store": "Thiết bị y tế",
-      "clinic": "Phòng khám (roadmap)",
+      "clinic": "Phòng khám",
       "lab": "Xét nghiệm (roadmap)",
       "medical_spa": "Spa y khoa (roadmap)",
       "hybrid": "Lai (hybrid)"

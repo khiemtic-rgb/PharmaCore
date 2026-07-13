@@ -81,6 +81,18 @@ internal sealed class IdentityAdminRepository
         return await conn.ExecuteScalarAsync<bool>(sql, new { TenantId, BranchCode = branchCode, ExcludeBranchId = excludeBranchId });
     }
 
+    public async Task<int> CountActiveBranchesAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT COUNT(*)::int
+            FROM branches
+            WHERE tenant_id = @TenantId AND deleted_at IS NULL
+            """;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        return await conn.ExecuteScalarAsync<int>(sql, new { TenantId });
+    }
+
     public async Task<Guid> CreateBranchAsync(CreateBranchRequest request, CancellationToken cancellationToken)
     {
         const string sql = """

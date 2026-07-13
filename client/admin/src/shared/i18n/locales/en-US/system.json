@@ -164,6 +164,11 @@
     "deleteConfirm": "Delete «{{code}}»?",
     "deleteDescription": "The branch will be deactivated.",
     "cannotDeleteHeadOffice": "Cannot delete the head office branch",
+    "limit": {
+      "usage": "Using {{used}} / {{max}} facilities under contract",
+      "unlimited": "Using {{used}} facilities — no site ceiling set",
+      "reached": "Reached the {{max}}-facility limit. Contact Novixa to expand."
+    },
     "messages": {
       "loadFailed": "Could not load branches",
       "saveFailed": "Could not save branch",
@@ -330,12 +335,14 @@
   },
   "platformPack": {
     "title": "Novixa feature pack",
-    "intro": "Configure modules and features for this tenant (Novixa Pharmacy Pack by default).",
-    "introDetail": "Changes apply immediately to Admin menus and APIs. Only ADMIN can save.",
+    "intro": "Enable/disable modules within the Core entitlement for this account.",
+    "introDetail": "Vertical and module ceiling are set by Novixa ops at /setup. Tenant ADMIN may only toggle modules inside the purchased pack.",
+    "ceilingHint": "Entitlement ceiling (allowed modules) is Core-assigned",
+    "ceilingHintDetail": "Need modules outside this list — contact Novixa ops to expand entitlement.",
     "readOnlyHint": "View only — only ADMIN can edit pack/modules.",
     "fields": {
-      "vertical": "Business vertical",
-      "enabledModules": "Enabled modules",
+      "vertical": "Business vertical — Core-managed",
+      "enabledModules": "Enabled modules (within entitlement)",
       "features": "Feature flags"
     },
     "validation": {
@@ -356,7 +363,7 @@
       "pharmacy_chain": "Pharmacy chain",
       "supplement_store": "Supplement store",
       "medical_equipment_store": "Medical equipment",
-      "clinic": "Clinic (roadmap)",
+      "clinic": "Clinic",
       "lab": "Lab (roadmap)",
       "medical_spa": "Medical spa (roadmap)",
       "hybrid": "Hybrid"

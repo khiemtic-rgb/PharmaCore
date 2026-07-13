@@ -14,7 +14,9 @@ function resolveNovixaApiFromHost(): string {
 
 /** Base URL API (không có /api). Dev: để trống → Vite proxy. Prod: https://api.example.com */
 export function resolveApiOrigin(): string {
-  const fromEnv = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+  const fromEnv = (import.meta.env.VITE_API_BASE_URL ?? '')
+    .trim()
+    .replace(/\/$/, '');
   if (fromEnv) return fromEnv;
   return resolveNovixaApiFromHost();
 }

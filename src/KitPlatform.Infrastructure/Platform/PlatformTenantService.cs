@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Options;
 using KitPlatform.Application.Configuration;
 using KitPlatform.Application.Platform;
+using KitPlatform.Infrastructure.Kernel.Workspace;
 
 namespace KitPlatform.Infrastructure.Platform;
 
@@ -14,15 +15,18 @@ internal sealed class PlatformTenantService : IPlatformTenantService
     private readonly PlatformTenantRepository _repository;
     private readonly PlatformSettings _settings;
     private readonly IHostEnvironment _environment;
+    private readonly WorkspacePackProvisioner _workspaceProvisioner;
 
     public PlatformTenantService(
         PlatformTenantRepository repository,
         IOptions<PlatformSettings> settings,
-        IHostEnvironment environment)
+        IHostEnvironment environment,
+        WorkspacePackProvisioner workspaceProvisioner)
     {
         _repository = repository;
         _settings = settings.Value;
         _environment = environment;
+        _workspaceProvisioner = workspaceProvisioner;
     }
 
     public PlatformPublicConfigDto GetPublicConfig() =>
@@ -47,6 +51,50 @@ internal sealed class PlatformTenantService : IPlatformTenantService
 
     public Task<IReadOnlyList<PlatformTenantListItemDto>> ListTenantsAsync(CancellationToken cancellationToken = default) =>
         _repository.ListTenantsAsync(cancellationToken);
+
+    public Task<IReadOnlyList<PlatformModuleRegistryItemDto>> ListModulesAsync(
+        CancellationToken cancellationToken = default) =>
+        _repository.ListModulesAsync(cancellationToken);
+
+    public Task<PlatformTenantEntitlementDto> GetTenantEntitlementAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default) =>
+        _repository.GetTenantEntitlementAsync(tenantId, cancellationToken);
+
+    public async Task<PlatformTenantEntitlementDto> UpdateTenantEntitlementAsync(
+        Guid tenantId,
+        UpdatePlatformTenantEntitlementRequest request,
+        string? provisioningKey,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantCount = await _repository.CountTenantsAsync(cancellationToken);
+        EnsureProvisioningAuthorized(tenantCount, provisioningKey);
+
+        var registry = await _repository.ListModulesAsync(cancellationToken);
+        var registryCodes = registry.Select(m => m.ModuleCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var vertical = TenantPlatformSettingsValidator.NormalizeVertical(request.Vertical);
+        var allowed = TenantPlatformSettingsValidator.NormalizeAllowedModules(
+            request.AllowedModules,
+            registryCodes);
+
+        var maxBranches = TenantPlatformSettingsValidator.NormalizeMaxBranches(request.MaxBranches);
+
+        var current = await _repository.GetTenantEntitlementAsync(tenantId, cancellationToken);
+        var enabled = request.SyncEnabledModules
+            ? allowed.ToList()
+            : TenantPlatformSettingsValidator.ClampEnabledToAllowed(current.EnabledModules, allowed);
+
+        var updated = await _repository.UpdateTenantEntitlementAsync(
+            tenantId,
+            vertical,
+            allowed,
+            enabled,
+            maxBranches,
+            cancellationToken);
+
+        await _workspaceProvisioner.EnsurePacksForTenantAsync(tenantId, enabled, cancellationToken);
+        return updated;
+    }
 
     public async Task EnsureCanManageTenantsAsync(string? provisioningKey, CancellationToken cancellationToken = default)
     {
@@ -84,6 +132,10 @@ internal sealed class PlatformTenantService : IPlatformTenantService
         ValidateUniqueBranchCodes(branchCode, additional);
         ValidateUniqueWarehouseCodes(warehouseCode, additional);
 
+        var maxBranches = TenantPlatformSettingsValidator.NormalizeMaxBranches(request.MaxBranches);
+        var plannedBranchCount = 1 + additional.Count;
+        TenantPlatformSettingsValidator.EnsureWithinBranchQuota(plannedBranchCount, maxBranches);
+
         var normalized = request with
         {
             TenantCode = tenantCode,
@@ -98,6 +150,7 @@ internal sealed class PlatformTenantService : IPlatformTenantService
                 ? "Quản trị viên"
                 : request.AdminFullName.Trim(),
             AdditionalBranches = additional,
+            MaxBranches = maxBranches,
         };
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.AdminPassword);

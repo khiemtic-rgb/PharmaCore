@@ -13,18 +13,19 @@ import {
   Row,
   Space,
   Switch,
-  Table,
   Typography,
 } from 'antd';
-import { KeyOutlined, LoginOutlined, PlusOutlined, ShopOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
 import {
-  createPlatformTenant,
-  fetchPlatformSetupStatus,
-  fetchPlatformTenants,
-} from '@/shared/api/platform.api';
+  KeyOutlined,
+  LoginOutlined,
+  PlusOutlined,
+  ShopOutlined,
+  UnorderedListOutlined,
+} from '@ant-design/icons';
+import { Link } from 'react-router-dom';
+import { createPlatformTenant, fetchPlatformSetupStatus } from '@/shared/api/platform.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import type { CreatePlatformBranchRequest, PlatformTenantListItem } from '@/shared/api/platform.types';
+import type { CreatePlatformBranchRequest } from '@/shared/api/platform.types';
 import {
   APP_BRAND,
   loadStoredPlatformKey,
@@ -90,31 +91,7 @@ export function SetupPage() {
   const [saving, setSaving] = useState(false);
   const [tenantsCount, setTenantsCount] = useState(0);
   const [provisioningKeyRequired, setProvisioningKeyRequired] = useState(false);
-  const [tenants, setTenants] = useState<PlatformTenantListItem[]>([]);
   const [extraBranchCount, setExtraBranchCount] = useState(0);
-
-  const refreshTenantList = useCallback(
-    async (platformKey?: string) => {
-      const key = platformKey?.trim() || form.getFieldValue('platformKey')?.trim() || loadStoredPlatformKey();
-      if (key) {
-        saveStoredPlatformKey(key);
-        form.setFieldValue('platformKey', key);
-      }
-
-      const count = tenantsCount;
-      if (count === 0 && !key) {
-        setTenants([]);
-        return;
-      }
-
-      try {
-        setTenants(await fetchPlatformTenants(key || undefined));
-      } catch {
-        setTenants([]);
-      }
-    },
-    [form, tenantsCount],
-  );
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -123,19 +100,12 @@ export function SetupPage() {
       setTenantsCount(status.tenantsCount);
       setProvisioningKeyRequired(status.provisioningKeyRequired);
 
-      const storedKey = loadStoredPlatformKey();
+      const storedKey =
+        loadStoredPlatformKey() ||
+        (import.meta.env.DEV ? 'dev-platform-key-for-local-setup-only' : '');
       if (storedKey) {
         form.setFieldValue('platformKey', storedKey);
-      }
-
-      if (status.tenantsCount === 0 || storedKey) {
-        try {
-          setTenants(await fetchPlatformTenants(storedKey || undefined));
-        } catch {
-          setTenants([]);
-        }
-      } else {
-        setTenants([]);
+        saveStoredPlatformKey(storedKey);
       }
     } catch (error) {
       message.error(apiErrorMessage(error, t('messages.loadFailed')));
@@ -147,10 +117,6 @@ export function SetupPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
-
-  const handlePlatformKeyBlur = () => {
-    void refreshTenantList();
-  };
 
   const onFinish = async (values: SetupFormValues) => {
     if (values.adminPassword !== values.adminPasswordConfirm) {
@@ -256,8 +222,30 @@ export function SetupPage() {
                   showIcon
                   message={t('existingTenants.title', { count: tenantsCount })}
                   description={t('existingTenants.description')}
+                  action={
+                    <Link to="/setup/organizations">
+                      <Button size="small" icon={<UnorderedListOutlined />}>
+                        {t('organizations.openList')}
+                      </Button>
+                    </Link>
+                  }
                 />
               )}
+
+              {tenantsCount > 0 ? (
+                <Card size="small" type="inner" title={t('existingTenantsTitle')}>
+                  <Space wrap>
+                    <Typography.Text type="secondary">
+                      {t('organizations.listHint', { count: tenantsCount })}
+                    </Typography.Text>
+                    <Link to="/setup/organizations">
+                      <Button type="primary" icon={<UnorderedListOutlined />}>
+                        {t('organizations.openList')}
+                      </Button>
+                    </Link>
+                  </Space>
+                </Card>
+              ) : null}
 
               <Form
                 form={form}
@@ -284,32 +272,12 @@ export function SetupPage() {
                     <Input.Password
                       prefix={<KeyOutlined />}
                       placeholder={t('platformKeyPlaceholder')}
-                      onBlur={handlePlatformKeyBlur}
+                      onBlur={() => {
+                        const key = form.getFieldValue('platformKey')?.trim();
+                        if (key) saveStoredPlatformKey(key);
+                      }}
                     />
                   </Form.Item>
-                ) : null}
-
-                {tenants.length > 0 ? (
-                  <>
-                    <Typography.Title level={5}>{t('existingTenantsTitle')}</Typography.Title>
-                    <Table
-                      size="small"
-                      rowKey="id"
-                      pagination={false}
-                      dataSource={tenants}
-                      columns={[
-                        { title: t('columns.code'), dataIndex: 'tenantCode', width: 120 },
-                        { title: t('columns.name'), dataIndex: 'tenantName' },
-                        {
-                          title: t('columns.createdAt'),
-                          dataIndex: 'createdAt',
-                          width: 180,
-                          render: (v: string) => new Date(v).toLocaleString('vi-VN'),
-                        },
-                      ]}
-                    />
-                    <Divider />
-                  </>
                 ) : null}
 
                 <Typography.Title level={5}>

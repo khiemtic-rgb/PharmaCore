@@ -20,7 +20,28 @@ public sealed record PlatformTenantListItemDto(
     string TenantCode,
     string TenantName,
     DateTimeOffset CreatedAt,
-    short Status);
+    short Status,
+    string Vertical,
+    int AllowedModuleCount,
+    int EnabledModuleCount);
+
+public sealed record PlatformTenantEntitlementDto(
+    Guid TenantId,
+    string TenantCode,
+    string TenantName,
+    string Vertical,
+    IReadOnlyList<string> AllowedModules,
+    IReadOnlyList<string> EnabledModules,
+    /// <summary>Core ceiling for active branches. Null = unlimited.</summary>
+    int? MaxBranches);
+
+public sealed record UpdatePlatformTenantEntitlementRequest(
+    string Vertical,
+    IReadOnlyList<string> AllowedModules,
+    /// <summary>When true (default), clamp enabled_modules to allowed and fill if empty.</summary>
+    bool SyncEnabledModules = true,
+    /// <summary>Null = unlimited. Lowering below current count does not delete branches.</summary>
+    int? MaxBranches = null);
 
 public sealed record CreatePlatformBranchRequest(
     string BranchCode,
@@ -44,7 +65,9 @@ public sealed record CreatePlatformTenantRequest(
     string AdminFullName,
     string AdminPassword,
     bool LoyaltyEnabled,
-    IReadOnlyList<CreatePlatformBranchRequest>? AdditionalBranches = null);
+    IReadOnlyList<CreatePlatformBranchRequest>? AdditionalBranches = null,
+    /// <summary>Optional Core ceiling at provision time. Null = unlimited.</summary>
+    int? MaxBranches = null);
 
 public sealed record CreatePlatformTenantResponse(
     Guid TenantId,

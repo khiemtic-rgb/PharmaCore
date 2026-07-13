@@ -2,6 +2,10 @@ export interface TenantPlatformSettings {
   schemaVersion: number;
   vertical: string;
   enabledModules: string[];
+  /** Core-assigned ceiling — tenant ADMIN may only enable within this set. */
+  allowedModules: string[];
+  /** Core-assigned max active branches. Null = unlimited. */
+  maxBranches: number | null;
   i18n: {
     defaultLocale: string;
     supportedLocales: string[];
@@ -18,10 +22,23 @@ export function normalizeTenantPlatformSettings(raw: Record<string, unknown>): T
   const featuresRaw = (raw.features ?? raw.Features ?? {}) as Record<string, unknown>;
   const labelsRaw = (raw.labels ?? raw.Labels ?? {}) as Record<string, unknown>;
   const modulesRaw = raw.enabledModules ?? raw.EnabledModules;
+  const allowedRaw = raw.allowedModules ?? raw.AllowedModules;
+  const maxRaw = raw.maxBranches ?? raw.MaxBranches;
 
   const enabledModules = Array.isArray(modulesRaw)
     ? modulesRaw.map((m) => String(m).trim()).filter(Boolean)
     : [];
+
+  const allowedModules = Array.isArray(allowedRaw)
+    ? allowedRaw.map((m) => String(m).trim()).filter(Boolean)
+    : enabledModules.slice();
+
+  const maxBranches =
+    maxRaw == null || maxRaw === ''
+      ? null
+      : Number.isFinite(Number(maxRaw)) && Number(maxRaw) >= 1
+        ? Math.floor(Number(maxRaw))
+        : null;
 
   const features: Record<string, boolean> = {};
   for (const [key, value] of Object.entries(featuresRaw)) {
@@ -42,6 +59,8 @@ export function normalizeTenantPlatformSettings(raw: Record<string, unknown>): T
     schemaVersion: Number(raw.schemaVersion ?? raw.SchemaVersion ?? 1),
     vertical: String(raw.vertical ?? raw.Vertical ?? 'pharmacy'),
     enabledModules,
+    allowedModules: allowedModules.length > 0 ? allowedModules : enabledModules.slice(),
+    maxBranches,
     i18n: {
       defaultLocale: String(i18nRaw.defaultLocale ?? i18nRaw.DefaultLocale ?? 'vi-VN'),
       supportedLocales,

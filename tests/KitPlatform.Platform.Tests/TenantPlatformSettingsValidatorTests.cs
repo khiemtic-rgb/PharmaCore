@@ -10,6 +10,7 @@ public sealed class TenantPlatformSettingsValidatorTests
     {
         PlatformModuleCodes.Sales,
         PlatformModuleCodes.Medication,
+        PlatformModuleCodes.ClinicEmrLite,
         "unknown_pack",
     };
 
@@ -33,6 +34,57 @@ public sealed class TenantPlatformSettingsValidatorTests
 
         Assert.Single(accepted);
         Assert.Equal("not_a_module", ignored[0]);
+    }
+
+    [Fact]
+    public void NormalizeModules_rejects_codes_outside_allowed_ceiling()
+    {
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            PlatformModuleCodes.ClinicEmrLite,
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            TenantPlatformSettingsValidator.NormalizeModules(
+                [PlatformModuleCodes.ClinicEmrLite, PlatformModuleCodes.Sales],
+                Registry,
+                allowed));
+
+        Assert.Contains("allowed_modules", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NormalizeModules_accepts_within_allowed_ceiling()
+    {
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            PlatformModuleCodes.ClinicEmrLite,
+            PlatformModuleCodes.Medication,
+        };
+
+        var (accepted, ignored) = TenantPlatformSettingsValidator.NormalizeModules(
+            [PlatformModuleCodes.ClinicEmrLite],
+            Registry,
+            allowed);
+
+        Assert.Equal([PlatformModuleCodes.ClinicEmrLite], accepted);
+        Assert.Empty(ignored);
+    }
+
+    [Fact]
+    public void ClampEnabledToAllowed_intersects_and_falls_back_to_allowed()
+    {
+        var clamped = TenantPlatformSettingsValidator.ClampEnabledToAllowed(
+            [PlatformModuleCodes.Sales, PlatformModuleCodes.ClinicEmrLite],
+            [PlatformModuleCodes.ClinicEmrLite, PlatformModuleCodes.Medication]);
+
+        Assert.Equal([PlatformModuleCodes.ClinicEmrLite], clamped);
+
+        var fallback = TenantPlatformSettingsValidator.ClampEnabledToAllowed(
+            [PlatformModuleCodes.Sales],
+            [PlatformModuleCodes.ClinicEmrLite]);
+
+        Assert.Equal([PlatformModuleCodes.ClinicEmrLite], fallback);
     }
 
     [Fact]
@@ -62,5 +114,37 @@ public sealed class TenantPlatformSettingsValidatorTests
         Assert.False(merged[PlatformFeatureCodes.NationalDrugCatalog]);
         Assert.True(merged[PlatformFeatureCodes.BatchTracking]);
         Assert.False(merged.ContainsKey("custom_unknown"));
+    }
+
+    [Fact]
+    public void NormalizeMaxBranches_null_means_unlimited()
+    {
+        Assert.Null(TenantPlatformSettingsValidator.NormalizeMaxBranches(null));
+    }
+
+    [Fact]
+    public void NormalizeMaxBranches_rejects_zero_or_negative()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            TenantPlatformSettingsValidator.NormalizeMaxBranches(0));
+        Assert.Throws<InvalidOperationException>(() =>
+            TenantPlatformSettingsValidator.NormalizeMaxBranches(-1));
+    }
+
+    [Fact]
+    public void EnsureWithinBranchQuota_blocks_when_over_ceiling()
+    {
+        TenantPlatformSettingsValidator.EnsureWithinBranchQuota(1, maxBranches: 1);
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            TenantPlatformSettingsValidator.EnsureWithinBranchQuota(2, maxBranches: 1));
+
+        Assert.Contains("hạn mức", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EnsureWithinBranchQuota_allows_when_unlimited()
+    {
+        TenantPlatformSettingsValidator.EnsureWithinBranchQuota(99, maxBranches: null);
     }
 }

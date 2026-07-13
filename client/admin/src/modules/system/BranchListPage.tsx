@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Drawer, Form, Input, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, message } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Drawer,
+  Form,
+  Input,
+  Popconfirm,
+  Select,
+  Space,
+  Switch,
+  Table,
+  Tag,
+  Tooltip,
+  message,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
@@ -13,6 +28,7 @@ import type { BranchListItem } from '@/shared/api/identity-admin.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { useHasPermission } from '@/shared/auth/usePermission';
 import { useSystemEnums } from '@/shared/i18n/use-system-enums';
+import { useTenantPlatformStore } from '@/shared/platform/tenant-platform.store';
 
 interface BranchFormValues {
   branchCode: string;
@@ -29,12 +45,17 @@ export function BranchListPage() {
   const { t: tc } = useTranslation('common');
   const { branchStatusLabel, branchStatusOptions } = useSystemEnums();
   const canWrite = useHasPermission('system.write');
+  const maxBranches = useTenantPlatformStore((s) => s.settings?.maxBranches ?? null);
+  const platformLoaded = useTenantPlatformStore((s) => s.loaded);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<BranchListItem[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<BranchListItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<BranchFormValues>();
+
+  const atBranchLimit =
+    platformLoaded && maxBranches != null && items.length >= maxBranches;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +73,10 @@ export function BranchListPage() {
   }, [load]);
 
   const openCreate = () => {
+    if (atBranchLimit) {
+      message.warning(t('limit.reached', { max: maxBranches }));
+      return;
+    }
     setEditing(null);
     form.resetFields();
     form.setFieldsValue({ status: 1, isHeadOffice: false });
@@ -193,13 +218,33 @@ export function BranchListPage() {
             {tc('actions.reload')}
           </Button>
           {canWrite ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              {t('add')}
-            </Button>
+            <Tooltip title={atBranchLimit ? t('limit.reached', { max: maxBranches }) : undefined}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openCreate}
+                disabled={atBranchLimit}
+              >
+                {t('add')}
+              </Button>
+            </Tooltip>
           ) : null}
         </Space>
       }
     >
+      {platformLoaded ? (
+        <Alert
+          type={atBranchLimit ? 'warning' : 'info'}
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={
+            maxBranches == null
+              ? t('limit.unlimited', { used: items.length })
+              : t('limit.usage', { used: items.length, max: maxBranches })
+          }
+        />
+      ) : null}
+
       <Table rowKey="id" loading={loading} columns={columns} dataSource={items} pagination={false} />
 
       <Drawer

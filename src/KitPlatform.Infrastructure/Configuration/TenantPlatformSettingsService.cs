@@ -87,15 +87,19 @@ internal sealed class TenantPlatformSettingsService : ITenantPlatformSettings
         UpdateTenantPlatformSettingsRequest request,
         CancellationToken cancellationToken = default)
     {
-        var registry = await ListModulesAsync(cancellationToken);
-        var registryCodes = registry.Select(m => m.ModuleCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var vertical = TenantPlatformSettingsValidator.NormalizeVertical(request.Vertical);
-        var (modules, ignored) = TenantPlatformSettingsValidator.NormalizeModules(
-            request.EnabledModules,
-            registryCodes);
-
         var row = await LoadRowAsync(cancellationToken);
         var current = Parse(row);
+
+        var registry = await ListModulesAsync(cancellationToken);
+        var registryCodes = registry.Select(m => m.ModuleCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allowedCeiling = current.AllowedModules.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Tenant ADMIN may toggle modules within Core ceiling; vertical is Core-owned.
+        var vertical = current.Vertical;
+        var (modules, ignored) = TenantPlatformSettingsValidator.NormalizeModules(
+            request.EnabledModules,
+            registryCodes,
+            allowedCeiling);
         var features = TenantPlatformSettingsValidator.MergeFeatures(current.Features, request.Features);
 
         var platformNode = new JsonObject
@@ -103,6 +107,8 @@ internal sealed class TenantPlatformSettingsService : ITenantPlatformSettings
             ["schema_version"] = current.SchemaVersion,
             ["vertical"] = vertical,
             ["enabled_modules"] = new JsonArray(modules.Select(m => JsonValue.Create(m)).ToArray()),
+            ["allowed_modules"] = new JsonArray(
+                current.AllowedModules.Select(m => JsonValue.Create(m)).ToArray()),
             ["i18n"] = new JsonObject
             {
                 ["default_locale"] = current.I18n.DefaultLocale,
@@ -118,6 +124,8 @@ internal sealed class TenantPlatformSettingsService : ITenantPlatformSettings
                     pair => (JsonNode?)JsonValue.Create(pair.Value),
                     StringComparer.OrdinalIgnoreCase)),
         };
+        if (current.MaxBranches is int maxBranches)
+            platformNode["max_branches"] = maxBranches;
 
         var root = string.IsNullOrWhiteSpace(row.SettingsJson)
             ? new JsonObject()
@@ -318,10 +326,12 @@ internal sealed class TenantPlatformSettingsService : ITenantPlatformSettings
             vertical = "pharmacy";
 
         var modules = PharmacyModules.ToList();
+        List<string>? allowedModules = null;
         var features = new Dictionary<string, bool>(PharmacyFeatures, StringComparer.OrdinalIgnoreCase);
         var i18n = DefaultI18n(row.CountryCode);
         var labels = new Dictionary<string, string>(DefaultViLabels, StringComparer.OrdinalIgnoreCase);
         var schemaVersion = 1;
+        int? maxBranches = null;
 
         if (!string.IsNullOrWhiteSpace(row.SettingsJson))
         {
@@ -350,6 +360,25 @@ internal sealed class TenantPlatformSettingsService : ITenantPlatformSettings
                             .ToList();
                     }
 
+                    if (platform.TryGetProperty("allowed_modules", out var allowed)
+                        && allowed.ValueKind == JsonValueKind.Array)
+                    {
+                        allowedModules = allowed.EnumerateArray()
+                            .Select(m => m.GetString()?.Trim())
+                            .Where(m => !string.IsNullOrWhiteSpace(m))
+                            .Select(m => m!)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+                    }
+
+                    if (platform.TryGetProperty("max_branches", out var mbEl)
+                        && mbEl.ValueKind == JsonValueKind.Number
+                        && mbEl.TryGetInt32(out var mb)
+                        && mb >= 1)
+                    {
+                        maxBranches = mb;
+                    }
+
                     if (platform.TryGetProperty("features", out var feat) && feat.ValueKind == JsonValueKind.Object)
                     {
                         foreach (var prop in feat.EnumerateObject())
@@ -376,13 +405,20 @@ internal sealed class TenantPlatformSettingsService : ITenantPlatformSettings
             }
         }
 
+        // Legacy tenants without allowed_modules: ceiling = currently enabled set.
+        allowedModules ??= modules.ToList();
+        if (allowedModules.Count == 0)
+            allowedModules = modules.ToList();
+
         return new TenantPlatformSettingsDto(
             schemaVersion,
             vertical,
             modules,
+            allowedModules,
             i18n,
             features,
-            labels);
+            labels,
+            maxBranches);
     }
 
     private static TenantPlatformI18nDto DefaultI18n(string? countryCode)

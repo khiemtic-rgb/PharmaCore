@@ -27,9 +27,15 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
-$apiBase = $ApiBaseUrl.TrimEnd("/")
+$apiBase = $ApiBaseUrl.Trim().TrimEnd("/")
 Write-Host "=== KitPlatform production build ===" -ForegroundColor Cyan
-Write-Host "API base: $apiBase"
+Write-Host "API base: [$apiBase]"
+if ($apiBase -notmatch '^https?://') {
+    throw "ApiBaseUrl must be absolute http(s) URL, got: [$ApiBaseUrl]"
+}
+if ($apiBase -match '\s') {
+    throw "ApiBaseUrl must not contain whitespace: [$apiBase]"
+}
 
 $out = Join-Path $root $OutputRoot
 $apiOut = Join-Path $out "api"

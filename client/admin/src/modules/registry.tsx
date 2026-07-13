@@ -38,9 +38,8 @@ export type AdminVertical = 'pharmacy' | 'clinic';
 /**
  * Module tạm ẩn khỏi sidebar/header (giữ code + route).
  * - rx: Portal BS / e-Rx NT — kê đơn pháp lý qua Clinic + Connect.
- * - kap: pack khảo sát (CS/event) — không thuộc sidebar NT / PK vận hành.
  */
-export const TEMP_HIDDEN_MODULE_KEYS: readonly ModuleKey[] = ['rx', 'kap'];
+export const TEMP_HIDDEN_MODULE_KEYS: readonly ModuleKey[] = ['rx'];
 
 /**
  * Module trên header POS dropdown — cùng thứ tự sidebar.
@@ -171,7 +170,14 @@ export const moduleRegistry: ModuleMenuItem[] = [
     platformModule: ADMIN_MODULE_PLATFORM_CODES.reports,
     verticals: PHARMACY_ONLY,
   },
-  { key: 'kap', label: 'kap', path: '/kap/leads', icon: <FormOutlined />, enabled: true },
+  {
+    key: 'kap',
+    label: 'kap',
+    path: '/kap/leads',
+    icon: <FormOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.kap,
+  },
   { key: 'system', label: 'system', path: '/system/branches', icon: <SettingOutlined />, enabled: true },
 ];
 

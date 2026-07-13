@@ -1,4 +1,5 @@
-﻿using KitPlatform.Application.Identity;
+﻿using KitPlatform.Application.Configuration;
+using KitPlatform.Application.Identity;
 
 namespace KitPlatform.Infrastructure.Identity;
 
@@ -8,8 +9,15 @@ internal sealed class IdentityAdminService : IIdentityAdminService
     private const int MinPasswordLength = 8;
 
     private readonly IdentityAdminRepository _repository;
+    private readonly ITenantPlatformSettings _platformSettings;
 
-    public IdentityAdminService(IdentityAdminRepository repository) => _repository = repository;
+    public IdentityAdminService(
+        IdentityAdminRepository repository,
+        ITenantPlatformSettings platformSettings)
+    {
+        _repository = repository;
+        _platformSettings = platformSettings;
+    }
 
     public Task<IReadOnlyList<BranchAdminListItemDto>> ListBranchesAsync(CancellationToken cancellationToken = default) =>
         _repository.ListBranchesAsync(cancellationToken);
@@ -26,6 +34,10 @@ internal sealed class IdentityAdminService : IIdentityAdminService
         var code = request.BranchCode.Trim().ToUpperInvariant();
         if (await _repository.BranchCodeExistsAsync(code, excludeBranchId: null, cancellationToken))
             throw new InvalidOperationException($"Mã chi nhánh «{code}» đã tồn tại.");
+
+        var platform = await _platformSettings.GetAsync(cancellationToken);
+        var activeCount = await _repository.CountActiveBranchesAsync(cancellationToken);
+        TenantPlatformSettingsValidator.EnsureWithinBranchQuota(activeCount + 1, platform.MaxBranches);
 
         var id = await _repository.CreateBranchAsync(
             request with { BranchCode = code, BranchName = request.BranchName.Trim() },

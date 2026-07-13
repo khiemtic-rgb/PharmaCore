@@ -23,21 +23,9 @@ const FEATURE_KEYS = [
 type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 interface PlatformPackFormValues {
-  vertical: string;
   enabledModules: string[];
   features: Record<FeatureKey, boolean>;
 }
-
-const VERTICAL_OPTIONS = [
-  'pharmacy',
-  'pharmacy_chain',
-  'supplement_store',
-  'medical_equipment_store',
-  'clinic',
-  'lab',
-  'medical_spa',
-  'hybrid',
-] as const;
 
 export function PlatformPackSettingsPage() {
   const { t } = useTranslation('system', { keyPrefix: 'platformPack' });
@@ -52,6 +40,8 @@ export function PlatformPackSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modules, setModules] = useState<PlatformModuleRegistryItem[]>([]);
+  const [vertical, setVertical] = useState('pharmacy');
+  const [allowedModules, setAllowedModules] = useState<string[]>([]);
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -66,8 +56,9 @@ export function PlatformPackSettingsPage() {
           fetchPlatformModuleRegistry(),
         ]);
         setModules(registry);
+        setVertical(settings.vertical);
+        setAllowedModules(settings.allowedModules);
         form.setFieldsValue({
-          vertical: settings.vertical,
           enabledModules: settings.enabledModules,
           features: FEATURE_KEYS.reduce(
             (acc, key) => {
@@ -85,36 +76,43 @@ export function PlatformPackSettingsPage() {
     })();
   }, [form, message, t]);
 
+  const allowedSet = useMemo(
+    () => new Set(allowedModules.map((m) => m.toLowerCase())),
+    [allowedModules],
+  );
+
   const moduleOptions = useMemo(
     () =>
-      modules.map((item) => ({
-        label: (
-          <Space direction="vertical" size={0}>
-            <span>{item.moduleName}</span>
-            {item.description ? (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {item.description}
-              </Typography.Text>
-            ) : null}
-          </Space>
-        ),
-        value: item.moduleCode,
-      })),
-    [modules],
+      modules
+        .filter((item) => allowedSet.size === 0 || allowedSet.has(item.moduleCode.toLowerCase()))
+        .map((item) => ({
+          label: (
+            <Space direction="vertical" size={0}>
+              <span>{item.moduleName}</span>
+              {item.description ? (
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {item.description}
+                </Typography.Text>
+              ) : null}
+            </Space>
+          ),
+          value: item.moduleCode,
+        })),
+    [modules, allowedSet],
   );
 
   const onSave = async (values: PlatformPackFormValues) => {
     setSaving(true);
     try {
       const result = await updateTenantPlatformSettings({
-        vertical: values.vertical,
+        vertical,
         enabledModules: values.enabledModules,
         features: values.features,
       });
       setPlatformSettings(result.settings);
       setPlatformLoaded(true);
+      setAllowedModules(result.settings.allowedModules);
       form.setFieldsValue({
-        vertical: result.settings.vertical,
         enabledModules: result.settings.enabledModules,
         features: FEATURE_KEYS.reduce(
           (acc, key) => {
@@ -139,19 +137,25 @@ export function PlatformPackSettingsPage() {
     <Card title={t('title')} loading={loading}>
       <Space direction="vertical" size={16} style={{ width: '100%', maxWidth: 720 }}>
         <Alert type="info" showIcon message={t('intro')} description={t('introDetail')} />
+        <Alert
+          type="warning"
+          showIcon
+          message={t('ceilingHint')}
+          description={t('ceilingHintDetail')}
+        />
         {!canEdit ? <Alert type="warning" showIcon message={t('readOnlyHint')} /> : null}
 
         <Form form={form} layout="vertical" disabled={!canEdit} onFinish={(v) => void onSave(v)}>
-          <Form.Item
-            name="vertical"
-            label={t('fields.vertical')}
-            rules={[{ required: true, message: t('validation.verticalRequired') }]}
-          >
+          <Form.Item label={t('fields.vertical')}>
             <Select
-              options={VERTICAL_OPTIONS.map((code) => ({
-                value: code,
-                label: tv(code, { defaultValue: code }),
-              }))}
+              disabled
+              value={vertical}
+              options={[
+                {
+                  value: vertical,
+                  label: tv(vertical, { defaultValue: vertical }),
+                },
+              ]}
             />
           </Form.Item>
 

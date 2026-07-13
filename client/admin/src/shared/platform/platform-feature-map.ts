@@ -26,6 +26,7 @@ export const ADMIN_MODULE_PLATFORM_CODES: Partial<
     | 'receivables'
     | 'customer'
     | 'reports'
+    | 'kap'
     | 'system',
     string
   >
@@ -40,6 +41,8 @@ export const ADMIN_MODULE_PLATFORM_CODES: Partial<
   customer: 'sales',
   catalog: 'sales',
   reports: 'reports',
+  /** Survey / KAP — SKU cha `assessment` (gói Survey·KAP). */
+  kap: 'assessment',
 };
 
 export function isPlatformGateOpen(
