@@ -34,7 +34,11 @@ public sealed record OwnerCockpitRiskStripDto(
     int OpenShiftCountToday,
     int CashVarianceAlertCount,
     decimal MaxAbsCashVarianceToday,
-    string? TopAlertShiftNumber);
+    string? TopAlertShiftNumber,
+    /// <summary>AC3 — not_done | in_progress | done | has_variance</summary>
+    string CycleCountStatusToday = "not_done",
+    Guid? CycleCountAdjustmentId = null,
+    string? CycleCountAdjustmentNumber = null);
 
 /// <summary>
 /// AC4 — three by-employee reports. Attribution uses as-built proxies only
@@ -97,3 +101,54 @@ public sealed record LossAuditFeedItemDto(
     string? DocumentHref,
     Guid? BranchId,
     string? BranchName);
+
+/// <summary>AC3 — cycle count compose over inventory counting sessions (reason tag [cycle_count]).</summary>
+public sealed record LossCycleCountSuggestionDto(
+    Guid ProductId,
+    string Sku,
+    string ProductName,
+    string Source,
+    decimal? OnHandQty,
+    decimal? MinStock);
+
+public sealed record LossCycleCountSuggestionsDto(
+    Guid WarehouseId,
+    string WarehouseName,
+    Guid BranchId,
+    string BranchName,
+    IReadOnlyList<LossCycleCountSuggestionDto> Items);
+
+public sealed record LossCycleCountSessionDto(
+    Guid AdjustmentId,
+    string AdjustmentNumber,
+    Guid WarehouseId,
+    string WarehouseName,
+    string Reason,
+    string CountHref,
+    IReadOnlyList<LossCycleCountSuggestionDto> Suggestions);
+
+public sealed record LossCycleCountStatusDto(
+    DateOnly BusinessDate,
+    string Status,
+    Guid? AdjustmentId,
+    string? AdjustmentNumber,
+    string? CountHref,
+    int VarianceSkuCount);
+
+public sealed record LossCycleCountVarianceRowDto(
+    DateOnly BusinessDate,
+    Guid ProductId,
+    string Sku,
+    string ProductName,
+    Guid AdjustmentId,
+    string AdjustmentNumber,
+    decimal SystemQuantity,
+    decimal ActualQuantity,
+    decimal DifferenceQuantity,
+    string CountHref);
+
+public sealed record LossCycleCountVarianceReportDto(
+    DateTime FromUtc,
+    DateTime ToUtc,
+    Guid? BranchId,
+    IReadOnlyList<LossCycleCountVarianceRowDto> Items);

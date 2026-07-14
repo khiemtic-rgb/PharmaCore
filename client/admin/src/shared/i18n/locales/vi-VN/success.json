@@ -37,11 +37,20 @@
     "closedShiftsToday": "{{count}} ca đã đóng hôm nay",
     "openShiftsHint": "Nên đóng ca để đối chiếu tiền",
     "topAlertShift": "Ca {{shift}}",
-    "thresholdHint": "Ngưỡng cảnh báo {{value}}"
+    "thresholdHint": "Ngưỡng cảnh báo {{value}}",
+    "cycleCountToday": "Kiểm kê cuốn chiếu hôm nay",
+    "cycleCountHint": "Gợi ý 10–20 SKU · chốt trên kho",
+    "cycleCountDoc": "Phiếu {{number}}",
+    "cycleStatus": {
+      "not_done": "Chưa làm",
+      "in_progress": "Đang làm",
+      "done": "Xong",
+      "has_variance": "Có lệch"
+    }
   },
   "loss": {
     "title": "Rủi ro / thất thoát",
-    "pageSubtitle": "AC2 lệch quỹ · AC1 nhật ký · AC4 theo nhân viên (compose as-built)",
+    "pageSubtitle": "AC2 quỹ · AC1 nhật ký · AC3 cycle count · AC4 theo NV",
     "subtitle": "Ngày VN: {{date}} — đọc từ sales_shifts, không bảng tiền mới",
     "tip": "Cảnh báo khi |lệch| > {{threshold}} (closing − expected). Tiền đếm = closing_cash.",
     "reportsTip": "Gán NV theo cột sẵn có (seller / người duyệt) — xem ghi chú hệ thống khi tải.",
@@ -59,11 +68,18 @@
     "tabs": {
       "cash": "Lệch quỹ ca",
       "audit": "Nhật ký thao tác",
+      "cycle": "Kiểm kê cuốn chiếu",
       "byEmployee": "Theo nhân viên"
     },
     "branchAll": "Tất cả chi nhánh",
     "userAll": "Tất cả người dùng",
     "eventAll": "Tất cả loại sự kiện",
+    "warehousePick": "Chọn kho/quầy",
+    "cycleTip": "Gợi ý SKU (bán chạy 7 ngày / tồn thấp / ngẫu nhiên) → tạo phiên đếm → nhập SL trên màn kho. Reason gắn [cycle_count].",
+    "cycleCreate": "Tạo phiên cycle count",
+    "cycleOpenCount": "Mở màn đếm tồn →",
+    "cycleStatusLabel": "Trạng thái hôm nay",
+    "cycleVarianceTitle": "Lệch cycle count (đã duyệt)",
     "applyFilter": "Áp dụng",
     "events": {
       "order_create": "Tạo HĐ",
@@ -99,7 +115,14 @@
       "event": "Loại",
       "actor": "Người thao tác",
       "summary": "Tóm tắt",
-      "document": "Chứng từ"
+      "document": "Chứng từ",
+      "sku": "Mã SP",
+      "product": "Sản phẩm",
+      "source": "Nguồn gợi ý",
+      "onHand": "Tồn",
+      "systemQty": "Hệ thống",
+      "countedQty": "Đếm",
+      "diffQty": "Lệch"
     }
   },
   "checklist": {

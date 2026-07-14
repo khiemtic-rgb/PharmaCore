@@ -150,6 +150,26 @@ export function OwnerCockpitPage() {
             tone={(risk?.openShiftCountToday ?? 0) > 0 ? 'warning' : 'default'}
           />
         </Col>
+        <Col xs={24} sm={12} lg={8}>
+          <Tile
+            title={t('kpi.cycleCountToday')}
+            value={t(`kpi.cycleStatus.${risk?.cycleCountStatusToday ?? 'not_done'}`)}
+            hint={
+              risk?.cycleCountAdjustmentNumber
+                ? t('kpi.cycleCountDoc', { number: risk.cycleCountAdjustmentNumber })
+                : t('kpi.cycleCountHint')
+            }
+            to="/success/loss"
+            icon={<CheckCircleOutlined />}
+            tone={
+              risk?.cycleCountStatusToday === 'has_variance'
+                ? 'danger'
+                : risk?.cycleCountStatusToday === 'done'
+                  ? 'default'
+                  : 'warning'
+            }
+          />
+        </Col>
       </Row>
 
       <Typography.Title level={5} style={{ marginTop: 24 }}>

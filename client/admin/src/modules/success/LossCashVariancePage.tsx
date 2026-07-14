@@ -19,12 +19,20 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { apiErrorMessage } from '@/shared/api/api-error';
 import { fetchBranches, fetchUsers } from '@/shared/api/identity-admin.api';
 import type { BranchListItem } from '@/shared/api/identity-admin.types';
+import { fetchWarehouses } from '@/shared/api/inventory.api';
 import {
+  createLossCycleSession,
   fetchLossAuditFeed,
   fetchLossCashVarianceToday,
+  fetchLossCycleStatus,
+  fetchLossCycleSuggestions,
+  fetchLossCycleVariance,
   fetchLossEmployeeReports,
   type LossAuditFeed,
   type LossCashVarianceToday,
+  type LossCycleCountStatus,
+  type LossCycleCountSuggestion,
+  type LossCycleCountVarianceRow,
   type LossEmployeeReports,
 } from '@/shared/api/success.api';
 import { formatDisplayMoney } from '@/shared/utils/money';
@@ -45,6 +53,11 @@ export function LossCashVariancePage() {
   const [cash, setCash] = useState<LossCashVarianceToday | null>(null);
   const [reports, setReports] = useState<LossEmployeeReports | null>(null);
   const [audit, setAudit] = useState<LossAuditFeed | null>(null);
+  const [cycleStatus, setCycleStatus] = useState<LossCycleCountStatus | null>(null);
+  const [cycleSuggestions, setCycleSuggestions] = useState<LossCycleCountSuggestion[]>([]);
+  const [cycleVariance, setCycleVariance] = useState<LossCycleCountVarianceRow[]>([]);
+  const [warehouses, setWarehouses] = useState<{ id: string; warehouseName: string }[]>([]);
+  const [warehouseId, setWarehouseId] = useState<string | undefined>();
   const [branches, setBranches] = useState<BranchListItem[]>([]);
   const [users, setUsers] = useState<{ id: string; username: string }[]>([]);
   const [branchId, setBranchId] = useState<string | undefined>();
@@ -53,6 +66,7 @@ export function LossCashVariancePage() {
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [auditPage, setAuditPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [creatingCycle, setCreatingCycle] = useState(false);
 
   const rangeParams = useCallback(() => {
     if (range == null) return {};
@@ -83,6 +97,18 @@ export function LossCashVariancePage() {
     );
   }, [auditPage, branchId, eventType, rangeParams, userId]);
 
+  const loadCycle = useCallback(async () => {
+    setCycleStatus(await fetchLossCycleStatus(branchId));
+    const variance = await fetchLossCycleVariance({ ...rangeParams(), branchId });
+    setCycleVariance(variance.items);
+    if (warehouseId) {
+      const sug = await fetchLossCycleSuggestions({ warehouseId, branchId, limit: 15 });
+      setCycleSuggestions(sug.items);
+    } else {
+      setCycleSuggestions([]);
+    }
+  }, [branchId, rangeParams, warehouseId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -90,9 +116,15 @@ export function LossCashVariancePage() {
         loadCash(),
         loadReports(),
         loadAudit(),
+        loadCycle(),
         fetchBranches()
           .then(setBranches)
           .catch(() => setBranches([])),
+        fetchWarehouses()
+          .then((list) =>
+            setWarehouses(list.map((w) => ({ id: w.id, warehouseName: w.warehouseName }))),
+          )
+          .catch(() => setWarehouses([])),
         fetchUsers({ page: 1, pageSize: 200 })
           .then((res) =>
             setUsers(
@@ -109,7 +141,7 @@ export function LossCashVariancePage() {
     } finally {
       setLoading(false);
     }
-  }, [loadAudit, loadCash, loadReports, t]);
+  }, [loadAudit, loadCash, loadCycle, loadReports, t]);
 
   useEffect(() => {
     void load();
@@ -369,6 +401,124 @@ export function LossCashVariancePage() {
                         ) : (
                           row.documentNumber || '—'
                         ),
+                    },
+                  ]}
+                />
+              </>
+            ),
+          },
+          {
+            key: 'cycle',
+            label: t('loss.tabs.cycle'),
+            children: (
+              <>
+                <Alert type="info" showIcon message={t('loss.cycleTip')} />
+                <Space wrap style={{ marginTop: 16 }}>
+                  <Tag color={cycleStatus?.status === 'has_variance' ? 'error' : undefined}>
+                    {t('loss.cycleStatusLabel')}:{' '}
+                    {t(`kpi.cycleStatus.${cycleStatus?.status ?? 'not_done'}`)}
+                  </Tag>
+                  {cycleStatus?.countHref ? (
+                    <Link to={cycleStatus.countHref}>{t('loss.cycleOpenCount')}</Link>
+                  ) : null}
+                  <Select
+                    placeholder={t('loss.warehousePick')}
+                    style={{ minWidth: 240 }}
+                    value={warehouseId}
+                    options={warehouses.map((w) => ({ value: w.id, label: w.warehouseName }))}
+                    onChange={(v) => setWarehouseId(v)}
+                  />
+                  <Button
+                    type="primary"
+                    loading={creatingCycle}
+                    disabled={!warehouseId}
+                    onClick={() => {
+                      void (async () => {
+                        if (!warehouseId) return;
+                        setCreatingCycle(true);
+                        try {
+                          const session = await createLossCycleSession({ warehouseId, limit: 15 });
+                          message.success(session.adjustmentNumber);
+                          await loadCycle();
+                          window.open(session.countHref, '_self');
+                        } catch (error) {
+                          message.error(apiErrorMessage(error, t('loss.loadFailed')));
+                        } finally {
+                          setCreatingCycle(false);
+                        }
+                      })();
+                    }}
+                  >
+                    {t('loss.cycleCreate')}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      void (async () => {
+                        setLoading(true);
+                        try {
+                          await loadCycle();
+                        } catch (error) {
+                          message.error(apiErrorMessage(error, t('loss.loadFailed')));
+                        } finally {
+                          setLoading(false);
+                        }
+                      })();
+                    }}
+                  >
+                    {t('loss.applyFilter')}
+                  </Button>
+                </Space>
+                <Typography.Title level={5} style={{ marginTop: 24 }}>
+                  {t('loss.tabs.cycle')}
+                </Typography.Title>
+                <Table
+                  rowKey="productId"
+                  loading={loading}
+                  dataSource={cycleSuggestions}
+                  pagination={false}
+                  columns={[
+                    { title: t('loss.col.sku'), dataIndex: 'sku' },
+                    { title: t('loss.col.product'), dataIndex: 'productName' },
+                    { title: t('loss.col.source'), dataIndex: 'source' },
+                    {
+                      title: t('loss.col.onHand'),
+                      dataIndex: 'onHandQty',
+                      align: 'right',
+                      render: (v: number | null | undefined) => (v == null ? '—' : v),
+                    },
+                  ]}
+                />
+                <Typography.Title level={5} style={{ marginTop: 24 }}>
+                  {t('loss.cycleVarianceTitle')}
+                </Typography.Title>
+                <Table
+                  rowKey={(r) => `${r.adjustmentId}-${r.productId}`}
+                  loading={loading}
+                  dataSource={cycleVariance}
+                  pagination={false}
+                  columns={[
+                    { title: t('loss.col.time'), dataIndex: 'businessDate' },
+                    { title: t('loss.col.sku'), dataIndex: 'sku' },
+                    { title: t('loss.col.product'), dataIndex: 'productName' },
+                    {
+                      title: t('loss.col.systemQty'),
+                      dataIndex: 'systemQuantity',
+                      align: 'right',
+                    },
+                    {
+                      title: t('loss.col.countedQty'),
+                      dataIndex: 'actualQuantity',
+                      align: 'right',
+                    },
+                    {
+                      title: t('loss.col.diffQty'),
+                      dataIndex: 'differenceQuantity',
+                      align: 'right',
+                    },
+                    {
+                      title: t('loss.col.document'),
+                      dataIndex: 'adjustmentNumber',
+                      render: (v: string, row) => <Link to={row.countHref}>{v}</Link>,
                     },
                   ]}
                 />

@@ -2,6 +2,7 @@ using KitPlatform.Application.Abstractions;
 using KitPlatform.Application.Success;
 using KitPlatform.Infrastructure.Dashboard;
 using KitPlatform.Infrastructure.Reports;
+using KitPlatform.Packs.Pharmacy.Inventory;
 
 namespace KitPlatform.Infrastructure.Success;
 
@@ -25,11 +26,16 @@ internal sealed class LossPreventionService : ILossPreventionService
 
     private readonly LossPreventionRepository _repo;
     private readonly IBranchAccessService _branchAccess;
+    private readonly IInventoryService _inventory;
 
-    public LossPreventionService(LossPreventionRepository repo, IBranchAccessService branchAccess)
+    public LossPreventionService(
+        LossPreventionRepository repo,
+        IBranchAccessService branchAccess,
+        IInventoryService inventory)
     {
         _repo = repo;
         _branchAccess = branchAccess;
+        _inventory = inventory;
     }
 
     public async Task<LossCashVarianceTodayDto> GetCashVarianceTodayAsync(
@@ -58,13 +64,17 @@ internal sealed class LossPreventionService : ILossPreventionService
     {
         var today = await GetCashVarianceTodayAsync(cashVarianceThreshold, cancellationToken);
         var top = today.Shifts.FirstOrDefault(s => s.IsAlert);
+        var cycle = await GetCycleCountStatusTodayAsync(cancellationToken: cancellationToken);
         return new OwnerCockpitRiskStripDto(
             today.Threshold,
             today.ClosedShiftCount,
             today.OpenShiftCount,
             today.AlertCount,
             today.MaxAbsVariance,
-            top?.ShiftNumber);
+            top?.ShiftNumber,
+            cycle.Status,
+            cycle.AdjustmentId,
+            cycle.AdjustmentNumber);
     }
 
     public async Task<LossEmployeeReportsDto> GetEmployeeReportsAsync(
@@ -113,6 +123,85 @@ internal sealed class LossPreventionService : ILossPreventionService
 
         return new LossAuditFeedDto(
             from, to, branchId, userId, normalizedType, AuditFeedNotes, total, page, pageSize, items);
+    }
+
+    public async Task<LossCycleCountSuggestionsDto> GetCycleCountSuggestionsAsync(
+        Guid? warehouseId = null,
+        Guid? branchId = null,
+        int limit = 15,
+        CancellationToken cancellationToken = default)
+    {
+        limit = Math.Clamp(limit, 10, 20);
+        if (branchId is Guid bid)
+            await _branchAccess.EnsureBranchAccessAsync(bid, cancellationToken);
+        var (scopedWh, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(warehouseId, cancellationToken);
+        if (scopedWh is null)
+            throw new InvalidOperationException("Chọn kho/quầy để gợi ý kiểm kê cuốn chiếu.");
+
+        var (name, branch, branchName) = await _repo.GetWarehouseMetaAsync(scopedWh.Value, cancellationToken)
+            ?? throw new InvalidOperationException("Kho không tồn tại.");
+        if (branchId is Guid filterBranch && branch != filterBranch)
+            throw new UnauthorizedAccessException("Kho không thuộc chi nhánh đã chọn.");
+
+        var items = await _repo.ListCycleCountSuggestionsAsync(scopedWh.Value, allowed, limit, cancellationToken);
+        return new LossCycleCountSuggestionsDto(scopedWh.Value, name, branch, branchName, items);
+    }
+
+    public async Task<LossCycleCountSessionDto> CreateCycleCountSessionAsync(
+        Guid warehouseId,
+        int limit = 15,
+        string? note = null,
+        CancellationToken cancellationToken = default)
+    {
+        limit = Math.Clamp(limit, 10, 20);
+        await _branchAccess.EnsureWarehouseAccessAsync(warehouseId, cancellationToken);
+        var suggestions = await GetCycleCountSuggestionsAsync(warehouseId, null, limit, cancellationToken);
+        var reason = string.IsNullOrWhiteSpace(note)
+            ? $"{LossPreventionRepository.CycleCountReasonPrefix} · hot/min/random · {limit} SKU"
+            : $"{LossPreventionRepository.CycleCountReasonPrefix} · {note.Trim()}";
+
+        var created = await _inventory.CreateCountingSessionAsync(
+            new CreateCountingSessionRequest(warehouseId, reason),
+            cancellationToken);
+
+        return new LossCycleCountSessionDto(
+            created.Id,
+            created.AdjustmentNumber,
+            created.WarehouseId,
+            created.WarehouseName,
+            reason,
+            $"/inventory/adjustments/{created.Id}/count",
+            suggestions.Items);
+    }
+
+    public async Task<LossCycleCountStatusDto> GetCycleCountStatusTodayAsync(
+        Guid? branchId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (branchId is Guid bid)
+            await _branchAccess.EnsureBranchAccessAsync(bid, cancellationToken);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var status = await _repo.GetCycleCountStatusTodayAsync(branchId, allowed, cancellationToken);
+        return status with
+        {
+            CountHref = status.AdjustmentId is Guid id
+                ? $"/inventory/adjustments/{id}/count"
+                : null,
+        };
+    }
+
+    public async Task<LossCycleCountVarianceReportDto> GetCycleCountVarianceAsync(
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        Guid? branchId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (branchId is Guid bid)
+            await _branchAccess.EnsureBranchAccessAsync(bid, cancellationToken);
+        var (from, to) = ReportsDateHelper.ResolveRangeUtc(fromUtc, toUtc, DateTime.UtcNow);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+        var rows = await _repo.ListCycleCountVarianceAsync(from, to, branchId, allowed, cancellationToken);
+        return new LossCycleCountVarianceReportDto(from, to, branchId, rows);
     }
 
     private static decimal NormalizeThreshold(decimal? threshold)

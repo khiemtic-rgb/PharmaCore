@@ -11,6 +11,7 @@ namespace KitPlatform.Infrastructure.Success;
 internal sealed class LossPreventionRepository
 {
     public const decimal DefaultCashVarianceThreshold = 10_000m;
+    public const string CycleCountReasonPrefix = "[cycle_count]";
 
     private readonly IDbConnectionFactory _db;
     private readonly ITenantContext _tenant;
@@ -399,6 +400,286 @@ internal sealed class LossPreventionRepository
         return (items, total);
     }
 
+    public async Task<(string WarehouseName, Guid BranchId, string BranchName)?> GetWarehouseMetaAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken)
+    {
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var row = await conn.QuerySingleOrDefaultAsync<WarehouseMetaRow>(
+            """
+            SELECT w.warehouse_name AS WarehouseName, w.branch_id AS BranchId, b.branch_name AS BranchName
+            FROM warehouses w
+            INNER JOIN branches b ON b.id = w.branch_id AND b.tenant_id = w.tenant_id
+            WHERE w.tenant_id = @TenantId AND w.id = @WarehouseId AND w.deleted_at IS NULL
+            """,
+            new { TenantId, WarehouseId = warehouseId });
+        return row is null ? null : (row.WarehouseName, row.BranchId, row.BranchName);
+    }
+
+    public async Task<IReadOnlyList<LossCycleCountSuggestionDto>> ListCycleCountSuggestionsAsync(
+        Guid warehouseId,
+        Guid[]? allowedWarehouseIds,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (allowedWarehouseIds is { Length: > 0 } && !allowedWarehouseIds.Contains(warehouseId))
+            return Array.Empty<LossCycleCountSuggestionDto>();
+
+        var (dayStart, _) = VietnamBusinessCalendar.TodayRangeUtc(DateTime.UtcNow);
+        var weekStart = dayStart.AddDays(-7);
+        var takeHot = Math.Max(5, (limit + 1) / 2);
+        var takeMin = Math.Max(3, limit / 3);
+        var takeRandom = limit;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var hot = (await conn.QueryAsync<(Guid ProductId, string Sku, string ProductName, decimal OnHand, decimal? MinStock)>(
+            """
+            SELECT
+                p.id AS ProductId,
+                p.product_code AS Sku,
+                p.product_name AS ProductName,
+                COALESCE(stock.qty, 0) AS OnHand,
+                p.min_stock_qty AS MinStock
+            FROM products p
+            INNER JOIN (
+                SELECT i.product_id, SUM(i.quantity) AS sold_qty
+                FROM sales_order_items i
+                INNER JOIN sales_orders o ON o.id = i.sales_order_id
+                WHERE o.tenant_id = @TenantId
+                  AND o.warehouse_id = @WarehouseId
+                  AND o.status = @Completed
+                  AND o.order_date >= @WeekStart AND o.order_date < @DayEnd
+                GROUP BY i.product_id
+            ) s ON s.product_id = p.id
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(SUM(b.quantity_available), 0) AS qty
+                FROM inventory_batches b
+                WHERE b.tenant_id = p.tenant_id AND b.product_id = p.id AND b.warehouse_id = @WarehouseId
+            ) stock ON TRUE
+            WHERE p.tenant_id = @TenantId AND p.deleted_at IS NULL AND p.status = 1
+            ORDER BY s.sold_qty DESC
+            LIMIT @TakeHot
+            """,
+            new
+            {
+                TenantId,
+                WarehouseId = warehouseId,
+                Completed = SalesOrderStatuses.Completed,
+                WeekStart = weekStart,
+                DayEnd = DateTime.UtcNow,
+                TakeHot = takeHot,
+            })).ToList();
+
+        var min = (await conn.QueryAsync<(Guid ProductId, string Sku, string ProductName, decimal OnHand, decimal? MinStock)>(
+            """
+            SELECT
+                p.id AS ProductId,
+                p.product_code AS Sku,
+                p.product_name AS ProductName,
+                COALESCE(SUM(b.quantity_available), 0) AS OnHand,
+                p.min_stock_qty AS MinStock
+            FROM products p
+            LEFT JOIN inventory_batches b
+              ON b.product_id = p.id AND b.warehouse_id = @WarehouseId AND b.tenant_id = p.tenant_id
+            WHERE p.tenant_id = @TenantId AND p.deleted_at IS NULL AND p.status = 1
+              AND COALESCE(p.min_stock_qty, 0) > 0
+            GROUP BY p.id, p.product_code, p.product_name, p.min_stock_qty
+            HAVING COALESCE(SUM(b.quantity_available), 0) <= COALESCE(p.min_stock_qty, 0)
+            ORDER BY COALESCE(SUM(b.quantity_available), 0) ASC
+            LIMIT @TakeMin
+            """,
+            new { TenantId, WarehouseId = warehouseId, TakeMin = takeMin })).ToList();
+
+        var random = (await conn.QueryAsync<(Guid ProductId, string Sku, string ProductName, decimal OnHand, decimal? MinStock)>(
+            """
+            SELECT
+                p.id AS ProductId,
+                p.product_code AS Sku,
+                p.product_name AS ProductName,
+                COALESCE(stock.qty, 0) AS OnHand,
+                p.min_stock_qty AS MinStock
+            FROM products p
+            INNER JOIN LATERAL (
+                SELECT COALESCE(SUM(b.quantity_available), 0) AS qty
+                FROM inventory_batches b
+                WHERE b.tenant_id = p.tenant_id AND b.product_id = p.id AND b.warehouse_id = @WarehouseId
+            ) stock ON stock.qty > 0
+            WHERE p.tenant_id = @TenantId AND p.deleted_at IS NULL AND p.status = 1
+            ORDER BY random()
+            LIMIT @TakeRandom
+            """,
+            new { TenantId, WarehouseId = warehouseId, TakeRandom = takeRandom })).ToList();
+
+        var map = new Dictionary<Guid, LossCycleCountSuggestionDto>();
+        void Add(IEnumerable<(Guid ProductId, string Sku, string ProductName, decimal OnHand, decimal? MinStock)> rows, string source)
+        {
+            foreach (var r in rows)
+            {
+                if (map.Count >= limit) break;
+                if (map.ContainsKey(r.ProductId)) continue;
+                map[r.ProductId] = new LossCycleCountSuggestionDto(
+                    r.ProductId, r.Sku, r.ProductName, source, r.OnHand, r.MinStock);
+            }
+        }
+
+        Add(hot, "hot7d");
+        Add(min, "min_stock");
+        Add(random, "random");
+        return map.Values.ToList();
+    }
+
+    public async Task<LossCycleCountStatusDto> GetCycleCountStatusTodayAsync(
+        Guid? branchId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var businessDate = VietnamBusinessCalendar.Today(DateTime.UtcNow);
+        var (dayStart, dayEnd) = VietnamBusinessCalendar.TodayRangeUtc(DateTime.UtcNow);
+        var branchFilter = branchId is not null ? "AND w.branch_id = @BranchId" : string.Empty;
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND a.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var active = await conn.QuerySingleOrDefaultAsync<(Guid Id, string Number)?>(
+            $"""
+            SELECT a.id AS Id, a.adjustment_number AS Number
+            FROM inventory_adjustments a
+            INNER JOIN warehouses w ON w.id = a.warehouse_id AND w.tenant_id = a.tenant_id
+            WHERE a.tenant_id = @TenantId
+              AND a.status = @Counting
+              AND a.reason ILIKE @ReasonPrefix
+              {branchFilter}
+              {warehouseFilter}
+            ORDER BY a.created_at DESC
+            LIMIT 1
+            """,
+            new
+            {
+                TenantId,
+                Counting = AdjustmentStatuses.Counting,
+                ReasonPrefix = CycleCountReasonPrefix + "%",
+                BranchId = branchId,
+                AllowedWarehouseIds = allowedWarehouseIds,
+            });
+
+        if (active is { } open)
+        {
+            return new LossCycleCountStatusDto(
+                businessDate, "in_progress", open.Id, open.Number, null, 0);
+        }
+
+        var approved = await conn.QuerySingleOrDefaultAsync<(Guid Id, string Number, int VarianceSkuCount)?>(
+            $"""
+            SELECT
+                a.id AS Id,
+                a.adjustment_number AS Number,
+                COUNT(*) FILTER (WHERE ABS(i.difference_quantity) > 0)::int AS VarianceSkuCount
+            FROM inventory_adjustments a
+            INNER JOIN warehouses w ON w.id = a.warehouse_id AND w.tenant_id = a.tenant_id
+            LEFT JOIN inventory_adjustment_items i ON i.adjustment_id = a.id
+            WHERE a.tenant_id = @TenantId
+              AND a.status = @Approved
+              AND a.reason ILIKE @ReasonPrefix
+              AND a.approved_at >= @DayStart AND a.approved_at < @DayEnd
+              {branchFilter}
+              {warehouseFilter}
+            GROUP BY a.id, a.adjustment_number
+            ORDER BY a.approved_at DESC
+            LIMIT 1
+            """,
+            new
+            {
+                TenantId,
+                Approved = AdjustmentStatuses.Approved,
+                ReasonPrefix = CycleCountReasonPrefix + "%",
+                DayStart = dayStart,
+                DayEnd = dayEnd,
+                BranchId = branchId,
+                AllowedWarehouseIds = allowedWarehouseIds,
+            });
+
+        if (approved is null)
+            return new LossCycleCountStatusDto(businessDate, "not_done", null, null, null, 0);
+
+        var row = approved.Value;
+        var status = row.VarianceSkuCount > 0 ? "has_variance" : "done";
+        return new LossCycleCountStatusDto(businessDate, status, row.Id, row.Number, null, row.VarianceSkuCount);
+    }
+
+    public async Task<IReadOnlyList<LossCycleCountVarianceRowDto>> ListCycleCountVarianceAsync(
+        DateTime fromUtc,
+        DateTime toUtc,
+        Guid? branchId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var branchFilter = branchId is not null ? "AND w.branch_id = @BranchId" : string.Empty;
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND a.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.QueryAsync<(
+            DateTime ApprovedAt,
+            Guid ProductId,
+            string Sku,
+            string ProductName,
+            Guid AdjustmentId,
+            string AdjustmentNumber,
+            decimal SystemQuantity,
+            decimal ActualQuantity,
+            decimal DifferenceQuantity)>(
+            $"""
+            SELECT
+                a.approved_at AS ApprovedAt,
+                p.id AS ProductId,
+                p.product_code AS Sku,
+                p.product_name AS ProductName,
+                a.id AS AdjustmentId,
+                a.adjustment_number AS AdjustmentNumber,
+                SUM(i.system_quantity) AS SystemQuantity,
+                SUM(i.actual_quantity) AS ActualQuantity,
+                SUM(i.difference_quantity) AS DifferenceQuantity
+            FROM inventory_adjustments a
+            INNER JOIN warehouses w ON w.id = a.warehouse_id AND w.tenant_id = a.tenant_id
+            INNER JOIN inventory_adjustment_items i ON i.adjustment_id = a.id
+            INNER JOIN inventory_batches b ON b.id = i.batch_id
+            INNER JOIN products p ON p.id = b.product_id AND p.tenant_id = a.tenant_id
+            WHERE a.tenant_id = @TenantId
+              AND a.status = @Approved
+              AND a.reason ILIKE @ReasonPrefix
+              AND a.approved_at >= @FromUtc AND a.approved_at < @ToUtc
+              AND ABS(i.difference_quantity) > 0
+              {branchFilter}
+              {warehouseFilter}
+            GROUP BY a.approved_at, p.id, p.product_code, p.product_name, a.id, a.adjustment_number
+            ORDER BY a.approved_at DESC, ABS(SUM(i.difference_quantity)) DESC
+            """,
+            new
+            {
+                TenantId,
+                Approved = AdjustmentStatuses.Approved,
+                ReasonPrefix = CycleCountReasonPrefix + "%",
+                FromUtc = fromUtc,
+                ToUtc = toUtc,
+                BranchId = branchId,
+                AllowedWarehouseIds = allowedWarehouseIds,
+            });
+
+        return rows.Select(r => new LossCycleCountVarianceRowDto(
+            VietnamBusinessCalendar.Today(r.ApprovedAt),
+            r.ProductId,
+            r.Sku,
+            r.ProductName,
+            r.AdjustmentId,
+            r.AdjustmentNumber,
+            r.SystemQuantity,
+            r.ActualQuantity,
+            r.DifferenceQuantity,
+            $"/inventory/adjustments/{r.AdjustmentId}/count")).ToList();
+    }
+
     private static LossAuditFeedItemDto MapAuditFeedItem(AuditFeedRow r)
     {
         var docHref = r.EventType switch
@@ -485,5 +766,12 @@ internal sealed class LossPreventionRepository
         public string? BranchName { get; init; }
         public string Action { get; init; } = "";
         public string? PayloadJson { get; init; }
+    }
+
+    private sealed class WarehouseMetaRow
+    {
+        public string WarehouseName { get; init; } = "";
+        public Guid BranchId { get; init; }
+        public string BranchName { get; init; } = "";
     }
 }

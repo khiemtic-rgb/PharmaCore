@@ -8,6 +8,9 @@ export interface OwnerCockpitRiskStrip {
   cashVarianceAlertCount: number;
   maxAbsCashVarianceToday: number;
   topAlertShiftNumber?: string | null;
+  cycleCountStatusToday?: string;
+  cycleCountAdjustmentId?: string | null;
+  cycleCountAdjustmentNumber?: string | null;
 }
 
 export interface OwnerCockpit {
@@ -469,7 +472,153 @@ export async function fetchOwnerCockpit(params?: {
             | string
             | null
             | undefined,
+          cycleCountStatusToday: String(
+            risk.cycleCountStatusToday ?? risk.CycleCountStatusToday ?? 'not_done',
+          ),
+          cycleCountAdjustmentId: (risk.cycleCountAdjustmentId ?? risk.CycleCountAdjustmentId) as
+            | string
+            | null
+            | undefined,
+          cycleCountAdjustmentNumber: (risk.cycleCountAdjustmentNumber ??
+            risk.CycleCountAdjustmentNumber) as string | null | undefined,
         }
       : null,
+  };
+}
+
+export interface LossCycleCountSuggestion {
+  productId: string;
+  sku: string;
+  productName: string;
+  source: string;
+  onHandQty?: number | null;
+  minStock?: number | null;
+}
+
+export interface LossCycleCountSuggestions {
+  warehouseId: string;
+  warehouseName: string;
+  branchId: string;
+  branchName: string;
+  items: LossCycleCountSuggestion[];
+}
+
+export interface LossCycleCountSession {
+  adjustmentId: string;
+  adjustmentNumber: string;
+  warehouseId: string;
+  warehouseName: string;
+  reason: string;
+  countHref: string;
+  suggestions: LossCycleCountSuggestion[];
+}
+
+export interface LossCycleCountStatus {
+  businessDate: string;
+  status: string;
+  adjustmentId?: string | null;
+  adjustmentNumber?: string | null;
+  countHref?: string | null;
+  varianceSkuCount: number;
+}
+
+export interface LossCycleCountVarianceRow {
+  businessDate: string;
+  productId: string;
+  sku: string;
+  productName: string;
+  adjustmentId: string;
+  adjustmentNumber: string;
+  systemQuantity: number;
+  actualQuantity: number;
+  differenceQuantity: number;
+  countHref: string;
+}
+
+export async function fetchLossCycleSuggestions(params: {
+  warehouseId: string;
+  branchId?: string;
+  limit?: number;
+}): Promise<LossCycleCountSuggestions> {
+  const { data } = await http.get<UnknownRow>('/success/loss/cycle-count/suggestions', {
+    params,
+  });
+  const row = data as UnknownRow;
+  return {
+    warehouseId: String(row.warehouseId ?? row.WarehouseId ?? ''),
+    warehouseName: String(row.warehouseName ?? row.WarehouseName ?? ''),
+    branchId: String(row.branchId ?? row.BranchId ?? ''),
+    branchName: String(row.branchName ?? row.BranchName ?? ''),
+    items: ((row.items ?? row.Items ?? []) as UnknownRow[]).map((r) => ({
+      productId: String(r.productId ?? r.ProductId ?? ''),
+      sku: String(r.sku ?? r.Sku ?? ''),
+      productName: String(r.productName ?? r.ProductName ?? ''),
+      source: String(r.source ?? r.Source ?? ''),
+      onHandQty: (r.onHandQty ?? r.OnHandQty) as number | null | undefined,
+      minStock: (r.minStock ?? r.MinStock) as number | null | undefined,
+    })),
+  };
+}
+
+export async function createLossCycleSession(payload: {
+  warehouseId: string;
+  limit?: number;
+  note?: string;
+}): Promise<LossCycleCountSession> {
+  const { data } = await http.post<UnknownRow>('/success/loss/cycle-count/sessions', payload);
+  const row = data as UnknownRow;
+  return {
+    adjustmentId: String(row.adjustmentId ?? row.AdjustmentId ?? ''),
+    adjustmentNumber: String(row.adjustmentNumber ?? row.AdjustmentNumber ?? ''),
+    warehouseId: String(row.warehouseId ?? row.WarehouseId ?? ''),
+    warehouseName: String(row.warehouseName ?? row.WarehouseName ?? ''),
+    reason: String(row.reason ?? row.Reason ?? ''),
+    countHref: String(row.countHref ?? row.CountHref ?? ''),
+    suggestions: ((row.suggestions ?? row.Suggestions ?? []) as UnknownRow[]).map((r) => ({
+      productId: String(r.productId ?? r.ProductId ?? ''),
+      sku: String(r.sku ?? r.Sku ?? ''),
+      productName: String(r.productName ?? r.ProductName ?? ''),
+      source: String(r.source ?? r.Source ?? ''),
+      onHandQty: (r.onHandQty ?? r.OnHandQty) as number | null | undefined,
+      minStock: (r.minStock ?? r.MinStock) as number | null | undefined,
+    })),
+  };
+}
+
+export async function fetchLossCycleStatus(branchId?: string): Promise<LossCycleCountStatus> {
+  const { data } = await http.get<UnknownRow>('/success/loss/cycle-count/status', {
+    params: branchId ? { branchId } : undefined,
+  });
+  const row = data as UnknownRow;
+  return {
+    businessDate: String(row.businessDate ?? row.BusinessDate ?? ''),
+    status: String(row.status ?? row.Status ?? 'not_done'),
+    adjustmentId: (row.adjustmentId ?? row.AdjustmentId) as string | null | undefined,
+    adjustmentNumber: (row.adjustmentNumber ?? row.AdjustmentNumber) as string | null | undefined,
+    countHref: (row.countHref ?? row.CountHref) as string | null | undefined,
+    varianceSkuCount: num(row.varianceSkuCount ?? row.VarianceSkuCount),
+  };
+}
+
+export async function fetchLossCycleVariance(params?: {
+  from?: string;
+  to?: string;
+  branchId?: string;
+}): Promise<{ items: LossCycleCountVarianceRow[] }> {
+  const { data } = await http.get<UnknownRow>('/success/loss/cycle-count/variance', { params });
+  const row = data as UnknownRow;
+  return {
+    items: ((row.items ?? row.Items ?? []) as UnknownRow[]).map((r) => ({
+      businessDate: String(r.businessDate ?? r.BusinessDate ?? ''),
+      productId: String(r.productId ?? r.ProductId ?? ''),
+      sku: String(r.sku ?? r.Sku ?? ''),
+      productName: String(r.productName ?? r.ProductName ?? ''),
+      adjustmentId: String(r.adjustmentId ?? r.AdjustmentId ?? ''),
+      adjustmentNumber: String(r.adjustmentNumber ?? r.AdjustmentNumber ?? ''),
+      systemQuantity: num(r.systemQuantity ?? r.SystemQuantity),
+      actualQuantity: num(r.actualQuantity ?? r.ActualQuantity),
+      differenceQuantity: num(r.differenceQuantity ?? r.DifferenceQuantity),
+      countHref: String(r.countHref ?? r.CountHref ?? ''),
+    })),
   };
 }
