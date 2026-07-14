@@ -27,6 +27,28 @@
     "totalCustomers": "Tổng khách",
     "last7Days": "7 ngày gần nhất",
     "latestKapScore": "Điểm KAP gần nhất",
-    "noScore": "—"
+    "noScore": "—",
+    "shiftChecklist": "Checklist mở/đóng ca"
+  },
+  "checklist": {
+    "title": "Checklist mở / đóng ca",
+    "subtitle": "Ngày làm việc (VN): {{date}}",
+    "tip": "Tick các mục vận hành theo ca — không thay sổ quỹ/ca bán (sales shift).",
+    "branch": "Chi nhánh",
+    "openTitle": "Mở ca",
+    "closeTitle": "Đóng ca",
+    "start": "Bắt đầu checklist",
+    "continue": "Tiếp tục",
+    "complete": "Hoàn thành checklist",
+    "completeSuccess": "Đã hoàn thành checklist ca",
+    "completedHint": "Checklist ca này đã hoàn thành.",
+    "backCockpit": "← Cockpit chủ NT",
+    "loadFailed": "Không tải được checklist ca",
+    "actionFailed": "Thao tác checklist thất bại",
+    "status": {
+      "missing": "Chưa làm",
+      "inProgress": "Đang làm",
+      "completed": "Xong"
+    }
   }
 }

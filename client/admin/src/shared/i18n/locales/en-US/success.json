@@ -27,6 +27,28 @@
     "totalCustomers": "Total customers",
     "last7Days": "Last 7 days",
     "latestKapScore": "Latest KAP score",
-    "noScore": "—"
+    "noScore": "—",
+    "shiftChecklist": "Open/close shift checklist"
+  },
+  "checklist": {
+    "title": "Open / close shift checklist",
+    "subtitle": "Business day (VN): {{date}}",
+    "tip": "Tick operational items per shift — separate from cash register sales shifts.",
+    "branch": "Branch",
+    "openTitle": "Open shift",
+    "closeTitle": "Close shift",
+    "start": "Start checklist",
+    "continue": "Continue",
+    "complete": "Complete checklist",
+    "completeSuccess": "Shift checklist completed",
+    "completedHint": "This shift checklist is done.",
+    "backCockpit": "← Owner cockpit",
+    "loadFailed": "Could not load shift checklist",
+    "actionFailed": "Checklist action failed",
+    "status": {
+      "missing": "Not started",
+      "inProgress": "In progress",
+      "completed": "Done"
+    }
   }
 }

@@ -1,7 +1,7 @@
 # Success P2 — Epic: Checklist mở/đóng ca
 
 **Mã:** NVX-PRD-03-EP02 · **Capability:** Process Excellence (#2)  
-**Phase:** P2 · **Trạng thái:** Ready (sau Owner Cockpit + deploy Clinic P0)  
+**Phase:** P2 · **Trạng thái:** Implemented (lab) · 2026-07-14  
 **Neo:** [pharmacy-success-capability-map-v1.md](./pharmacy-success-capability-map-v1.md) · [Owner Cockpit EP01](./success-p2-owner-cockpit-epic-v1.md)  
 **Điều kiện mở:** Clinic P0 trên prod + Owner Cockpit lab ✅
 
@@ -27,10 +27,10 @@ Mỗi ca bán, chủ/quản lý hoặc thu ngân xác nhận **một checklist m
 
 ## Deliverables
 
-1. Epic AC + schema mig (checklist template + run instances)  
-2. API: list templates, start/complete run, today status by branch  
-3. Admin UI: trang `/success/shift-checklist` (hoặc dưới Settings ops)  
-4. Smoke local + 1 tuần hypercare với 1 NT pilot  
+1. ✅ Mig `132_success_shift_checklist.sql` (template + run + items)  
+2. ✅ API: `GET …/today`, `POST …/runs`, `PUT …/items/{id}`, `POST …/complete`  
+3. ✅ Admin `/success/shift-checklist` + deep-link từ Owner Cockpit (gate `reports`)  
+4. ✅ Smoke: `scripts/smoke-success-shift-checklist-local.ps1` · hypercare NT pilot còn Open  
 
 ## KPI 90 ngày
 

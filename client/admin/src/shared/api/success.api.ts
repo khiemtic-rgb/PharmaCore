@@ -65,6 +65,121 @@ function normalizeOverview(row: UnknownRow): DashboardOverview {
   };
 }
 
+export type ShiftChecklistKind = 'open' | 'close';
+
+export interface ShiftChecklistKindStatus {
+  kind: ShiftChecklistKind;
+  status: string;
+  runId?: string | null;
+  checkedCount: number;
+  totalCount: number;
+  requiredMissingCount: number;
+  completedAt?: string | null;
+}
+
+export interface ShiftChecklistToday {
+  businessDate: string;
+  branchId?: string | null;
+  branches: { id: string; name: string; code?: string | null }[];
+  open: ShiftChecklistKindStatus;
+  close: ShiftChecklistKindStatus;
+}
+
+export interface ShiftChecklistRunItem {
+  id: string;
+  label: string;
+  isRequired: boolean;
+  isChecked: boolean;
+  checkedAt?: string | null;
+}
+
+export interface ShiftChecklistRun {
+  id: string;
+  branchId: string;
+  branchName: string;
+  kind: ShiftChecklistKind;
+  businessDate: string;
+  status: string;
+  startedAt: string;
+  completedAt?: string | null;
+  items: ShiftChecklistRunItem[];
+}
+
+function normalizeKindStatus(row: UnknownRow, fallback: ShiftChecklistKind): ShiftChecklistKindStatus {
+  const kind = String(row.kind ?? row.Kind ?? fallback).toLowerCase() as ShiftChecklistKind;
+  return {
+    kind: kind === 'close' ? 'close' : 'open',
+    status: String(row.status ?? row.Status ?? 'missing'),
+    runId: (row.runId ?? row.RunId) as string | null | undefined,
+    checkedCount: num(row.checkedCount ?? row.CheckedCount),
+    totalCount: num(row.totalCount ?? row.TotalCount),
+    requiredMissingCount: num(row.requiredMissingCount ?? row.RequiredMissingCount),
+    completedAt: (row.completedAt ?? row.CompletedAt) as string | null | undefined,
+  };
+}
+
+function normalizeRun(row: UnknownRow): ShiftChecklistRun {
+  const itemsRaw = (row.items ?? row.Items ?? []) as UnknownRow[];
+  const kind = String(row.kind ?? row.Kind ?? 'open').toLowerCase() as ShiftChecklistKind;
+  return {
+    id: String(row.id ?? row.Id ?? ''),
+    branchId: String(row.branchId ?? row.BranchId ?? ''),
+    branchName: String(row.branchName ?? row.BranchName ?? ''),
+    kind: kind === 'close' ? 'close' : 'open',
+    businessDate: String(row.businessDate ?? row.BusinessDate ?? ''),
+    status: String(row.status ?? row.Status ?? ''),
+    startedAt: String(row.startedAt ?? row.StartedAt ?? ''),
+    completedAt: (row.completedAt ?? row.CompletedAt) as string | null | undefined,
+    items: itemsRaw.map((item) => ({
+      id: String(item.id ?? item.Id ?? ''),
+      label: String(item.label ?? item.Label ?? ''),
+      isRequired: Boolean(item.isRequired ?? item.IsRequired),
+      isChecked: Boolean(item.isChecked ?? item.IsChecked),
+      checkedAt: (item.checkedAt ?? item.CheckedAt) as string | null | undefined,
+    })),
+  };
+}
+
+export async function fetchShiftChecklistToday(branchId?: string): Promise<ShiftChecklistToday> {
+  const { data } = await http.get<UnknownRow>('/success/shift-checklist/today', {
+    params: branchId ? { branchId } : undefined,
+  });
+  const row = data as UnknownRow;
+  const branches = ((row.branches ?? row.Branches ?? []) as UnknownRow[]).map((b) => ({
+    id: String(b.id ?? b.Id ?? ''),
+    name: String(b.name ?? b.Name ?? ''),
+    code: (b.code ?? b.Code) as string | null | undefined,
+  }));
+  return {
+    businessDate: String(row.businessDate ?? row.BusinessDate ?? ''),
+    branchId: (row.branchId ?? row.BranchId) as string | null | undefined,
+    branches,
+    open: normalizeKindStatus((row.open ?? row.Open ?? {}) as UnknownRow, 'open'),
+    close: normalizeKindStatus((row.close ?? row.Close ?? {}) as UnknownRow, 'close'),
+  };
+}
+
+export async function startShiftChecklistRun(branchId: string, kind: ShiftChecklistKind): Promise<ShiftChecklistRun> {
+  const { data } = await http.post<UnknownRow>('/success/shift-checklist/runs', { branchId, kind });
+  return normalizeRun(data as UnknownRow);
+}
+
+export async function setShiftChecklistItem(
+  runId: string,
+  itemId: string,
+  checked: boolean,
+): Promise<ShiftChecklistRun> {
+  const { data } = await http.put<UnknownRow>(`/success/shift-checklist/runs/${runId}/items/${itemId}`, {
+    checked,
+  });
+  return normalizeRun(data as UnknownRow);
+}
+
+export async function completeShiftChecklistRun(runId: string): Promise<ShiftChecklistRun> {
+  const { data } = await http.post<UnknownRow>(`/success/shift-checklist/runs/${runId}/complete`);
+  return normalizeRun(data as UnknownRow);
+}
+
 export async function fetchOwnerCockpit(params?: {
   expiryDays?: number;
   lowStockThreshold?: number;

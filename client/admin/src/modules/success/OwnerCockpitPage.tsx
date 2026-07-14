@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button, Col, Row, Spin, Typography, message } from 'antd';
 import {
   CalendarOutlined,
+  CheckCircleOutlined,
   FundOutlined,
   InboxOutlined,
   ReloadOutlined,
@@ -94,6 +95,14 @@ export function OwnerCockpitPage() {
       </div>
 
       <Alert type="info" showIcon style={{ marginTop: 16 }} message={t('tip')} />
+
+      <div style={{ marginTop: 16 }}>
+        <Link to="/success/shift-checklist" className="dashboard-action">
+          <CheckCircleOutlined />
+          <span>{t('kpi.shiftChecklist')}</span>
+          <RightOutlined />
+        </Link>
+      </div>
 
       <Typography.Title level={5} style={{ marginTop: 24 }}>
         {t('sections.sales')}

@@ -29,6 +29,9 @@ const DashboardPage = lazy(() =>
 const OwnerCockpitPage = lazy(() =>
   import('@/modules/success/OwnerCockpitPage').then((m) => ({ default: m.OwnerCockpitPage })),
 );
+const ShiftChecklistPage = lazy(() =>
+  import('@/modules/success/ShiftChecklistPage').then((m) => ({ default: m.ShiftChecklistPage })),
+);
 const CatalogLayout = lazy(() =>
   import('@/modules/catalog/CatalogLayout').then((m) => ({ default: m.CatalogLayout })),
 );
@@ -358,6 +361,14 @@ export function AppRouter() {
                 element={
                   <SuspenseRoute>
                     <OwnerCockpitPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="success/shift-checklist"
+                element={
+                  <SuspenseRoute>
+                    <ShiftChecklistPage />
                   </SuspenseRoute>
                 }
               />
