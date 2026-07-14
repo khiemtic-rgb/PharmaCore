@@ -26,6 +26,9 @@ const LoginPage = lazy(() =>
 const DashboardPage = lazy(() =>
   import('@/modules/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
+const OwnerCockpitPage = lazy(() =>
+  import('@/modules/success/OwnerCockpitPage').then((m) => ({ default: m.OwnerCockpitPage })),
+);
 const CatalogLayout = lazy(() =>
   import('@/modules/catalog/CatalogLayout').then((m) => ({ default: m.CatalogLayout })),
 );
@@ -347,6 +350,14 @@ export function AppRouter() {
                 element={
                   <SuspenseRoute>
                     <DashboardPage />
+                  </SuspenseRoute>
+                }
+              />
+              <Route
+                path="success/cockpit"
+                element={
+                  <SuspenseRoute>
+                    <OwnerCockpitPage />
                   </SuspenseRoute>
                 }
               />

@@ -26,4 +26,13 @@ internal static class VietnamBusinessCalendar
         var vn = utcNow.Add(Offset);
         return DateOnly.FromDateTime(vn);
     }
+
+    /// <summary>Current VN calendar month as UTC half-open interval.</summary>
+    public static (DateTime StartUtc, DateTime EndUtc) MonthToDateRangeUtc(DateTime utcNow)
+    {
+        var vn = utcNow.Add(Offset);
+        var startVn = new DateTime(vn.Year, vn.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
+        var endVn = startVn.AddMonths(1);
+        return (startVn - Offset, endVn - Offset);
+    }
 }

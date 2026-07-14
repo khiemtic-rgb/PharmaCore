@@ -1,0 +1,32 @@
+{
+  "title": "Cockpit chủ NT",
+  "subtitle": "Sức khỏe cửa hàng — doanh thu, tồn rủi ro, khách hàng (Success P2)",
+  "refresh": "Làm mới",
+  "loadFailed": "Không tải được cockpit",
+  "tip": "Một màn tóm tắt cho chủ nhà thuốc. Chi tiết xem Báo cáo / kho / CRM.",
+  "backDashboard": "← Về tổng quan vận hành",
+  "sections": {
+    "sales": "Doanh số",
+    "inventory": "Tồn & rủi ro",
+    "customers": "Khách hàng",
+    "assessment": "Đánh giá KAP"
+  },
+  "kpi": {
+    "todayRevenue": "Doanh thu hôm nay",
+    "weekRevenue": "Doanh thu 7 ngày",
+    "monthRevenue": "Doanh thu tháng này",
+    "todayOrders": "Đơn hôm nay",
+    "weekOrders": "{{count}} đơn / 7 ngày",
+    "monthOrders": "{{count}} đơn / tháng",
+    "nearExpirySku": "SKU cận HSD",
+    "nearExpiryValue": "Giá trị ~ {{value}} (≤ {{days}} ngày)",
+    "lowStockProducts": "SP dưới tồn tối thiểu",
+    "lowStockBatches": "Lô tồn thấp",
+    "newCustomers": "Khách mới",
+    "returningCustomers": "Khách quay lại",
+    "totalCustomers": "Tổng khách",
+    "last7Days": "7 ngày gần nhất",
+    "latestKapScore": "Điểm KAP gần nhất",
+    "noScore": "—"
+  }
+}

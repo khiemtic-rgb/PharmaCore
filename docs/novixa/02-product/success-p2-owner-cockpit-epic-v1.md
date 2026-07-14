@@ -1,7 +1,7 @@
 # Success P2 — Epic: Owner Cockpit (KPI chủ NT)
 
 **Mã:** NVX-PRD-03-EP01 · **Capability:** Business Performance (#4)  
-**Phase:** P2 · **Trạng thái:** Ready to build  
+**Phase:** P2 · **Trạng thái:** Implemented (lab) · 2026-07-14  
 **Neo:** [pharmacy-success-capability-map-v1.md](./pharmacy-success-capability-map-v1.md) · Reports Wave 1  
 **Điều kiện mở:** Clinic P0 lab (CL-GO-01) ✅ — 2026-07-14
 
@@ -28,10 +28,10 @@ Một màn **Chủ nhà thuốc** (Admin) thấy sức khỏe cửa hàng trong 
 
 ## Deliverables
 
-1. Route Admin vd. `/success/cockpit` hoặc mở rộng `/` khi vertical=pharmacy  
-2. API tổng hợp mỏng `GET /api/success/owner-cockpit?branchId=` (hoặc compose FE từ API hiện có)  
-3. Gate module: `reports` (+ `sales`); optional `assessment`  
-4. Smoke script local + 1 screenshot UAT
+1. ✅ Route Admin `/success/cockpit` + nav module `success` (gate `reports`) + quick action Dashboard  
+2. ✅ `GET /api/success/owner-cockpit` (overview + sales/inventory/customer extras + KAP optional)  
+3. ✅ Gate: `DashboardPolicies.Read` / platform `reports`; KAP tile khi `assessment`  
+4. ✅ Smoke: `scripts/smoke-success-owner-cockpit-local.ps1` · screenshot UAT còn Open
 
 ## KPI 90 ngày (pilot)
 

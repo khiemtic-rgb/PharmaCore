@@ -16,6 +16,7 @@ export const PRODUCT_FEATURE_PLATFORM_GATES: Partial<Record<ProductFeatureKey, P
 export const ADMIN_MODULE_PLATFORM_CODES: Partial<
   Record<
     | 'dashboard'
+    | 'success'
     | 'catalog'
     | 'inventory'
     | 'procurement'
@@ -31,6 +32,7 @@ export const ADMIN_MODULE_PLATFORM_CODES: Partial<
     string
   >
 > = {
+  success: 'reports',
   sales: 'sales',
   rx: 'e_rx',
   connect: 'novixa_connect',

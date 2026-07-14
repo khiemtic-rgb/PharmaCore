@@ -6,6 +6,7 @@
   },
   "quickActions": {
     "title": "Quick actions",
+    "ownerCockpit": "Owner cockpit",
     "pos": "POS",
     "posStaffHint": "Staff POS: open pos.novixa.vn",
     "procurement": "Procurement",

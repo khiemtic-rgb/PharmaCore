@@ -7,6 +7,7 @@ import {
   BarChartOutlined,
   DashboardOutlined,
   FileProtectOutlined,
+  FundOutlined,
   MedicineBoxOutlined,
   ShoppingOutlined,
   TeamOutlined,
@@ -19,6 +20,7 @@ import { ADMIN_MODULE_PLATFORM_CODES } from '@/shared/platform/platform-feature-
 
 export type ModuleKey =
   | 'dashboard'
+  | 'success'
   | 'catalog'
   | 'inventory'
   | 'procurement'
@@ -47,6 +49,7 @@ export const TEMP_HIDDEN_MODULE_KEYS: readonly ModuleKey[] = ['rx'];
 export const HEADER_MODULE_KEYS: ModuleKey[] = (
   [
     'dashboard',
+    'success',
     'sales',
     'clinic',
     'rx',
@@ -81,6 +84,15 @@ const CLINIC_ONLY: readonly AdminVertical[] = ['clinic'];
 /** Sidebar cấp 1 — thứ tự theo luồng vận hành nhà thuốc */
 export const moduleRegistry: ModuleMenuItem[] = [
   { key: 'dashboard', label: 'dashboard', path: '/', icon: <DashboardOutlined />, enabled: true },
+  {
+    key: 'success',
+    label: 'success',
+    path: '/success/cockpit',
+    icon: <FundOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.success,
+    verticals: PHARMACY_ONLY,
+  },
   {
     key: 'sales',
     label: 'sales',

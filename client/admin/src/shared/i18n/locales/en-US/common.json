@@ -57,6 +57,7 @@
   },
   "modules": {
     "dashboard": "Overview",
+    "success": "Owner cockpit",
     "sales": "Sales",
     "rx": "Doctor Rx",
     "connect": "Connect",

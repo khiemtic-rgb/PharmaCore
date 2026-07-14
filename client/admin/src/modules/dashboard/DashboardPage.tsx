@@ -11,6 +11,7 @@ import {
   MessageOutlined,
   ReloadOutlined,
   RightOutlined,
+  RiseOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
   ShopOutlined,
@@ -197,6 +198,13 @@ function PharmacyDashboardPage() {
 
   const quickActions = useMemo(() => {
     const items: Array<{ key: string; label: string; to: string; icon: ReactNode; primary?: boolean }> = [];
+    items.unshift({
+      key: 'owner-cockpit',
+      label: t('quickActions.ownerCockpit'),
+      to: '/success/cockpit',
+      icon: <RiseOutlined />,
+      primary: false,
+    });
     if (canSales) {
       items.push({
         key: 'pos',

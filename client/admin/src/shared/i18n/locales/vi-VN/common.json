@@ -57,6 +57,7 @@
   },
   "modules": {
     "dashboard": "Tổng quan",
+    "success": "Cockpit chủ NT",
     "sales": "Bán hàng",
     "rx": "Đơn thuốc",
     "connect": "Connect",

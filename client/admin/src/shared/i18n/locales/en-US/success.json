@@ -1,0 +1,32 @@
+{
+  "title": "Owner cockpit",
+  "subtitle": "Store health — sales, risk stock, customers (Success P2)",
+  "refresh": "Refresh",
+  "loadFailed": "Could not load cockpit",
+  "tip": "One snapshot for the pharmacy owner. Drill into reports / inventory / CRM for detail.",
+  "backDashboard": "← Back to operations dashboard",
+  "sections": {
+    "sales": "Sales",
+    "inventory": "Inventory risk",
+    "customers": "Customers",
+    "assessment": "KAP assessment"
+  },
+  "kpi": {
+    "todayRevenue": "Revenue today",
+    "weekRevenue": "Revenue last 7 days",
+    "monthRevenue": "Revenue this month",
+    "todayOrders": "Orders today",
+    "weekOrders": "{{count}} orders / 7 days",
+    "monthOrders": "{{count}} orders / month",
+    "nearExpirySku": "Near-expiry SKUs",
+    "nearExpiryValue": "Value ~ {{value}} (≤ {{days}} days)",
+    "lowStockProducts": "Products below min stock",
+    "lowStockBatches": "Low-stock batches",
+    "newCustomers": "New customers",
+    "returningCustomers": "Returning customers",
+    "totalCustomers": "Total customers",
+    "last7Days": "Last 7 days",
+    "latestKapScore": "Latest KAP score",
+    "noScore": "—"
+  }
+}

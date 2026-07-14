@@ -6,6 +6,7 @@
   },
   "quickActions": {
     "title": "Thao tác nhanh",
+    "ownerCockpit": "Cockpit chủ NT",
     "pos": "Quầy bán (POS)",
     "posStaffHint": "Nhân viên bán hàng: mở pos.novixa.vn",
     "procurement": "Mua hàng",
