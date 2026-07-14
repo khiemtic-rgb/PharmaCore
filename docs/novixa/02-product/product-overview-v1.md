@@ -2,7 +2,7 @@
 
 **Mã:** NVX-PRD-01 · **Tier:** T1/T2 · **Trạng thái:** Draft · **Version:** 1.0
 
-**Liên quan:** [pharmacy-success-capability-map-v1.md](./pharmacy-success-capability-map-v1.md) (NVX-PRD-03 — Pharmacy Success / capability → module → phase) · [KIT-BP-ASBUILT](../03-solution/kitplatform-enterprise-blueprint-asbuilt-v2.1.md)
+**Liên quan:** [pharmacy-success-capability-map-v1.md](./pharmacy-success-capability-map-v1.md) (NVX-PRD-03) · [success-p2-owner-cockpit-epic-v1.md](./success-p2-owner-cockpit-epic-v1.md) (P2 epic) · [KIT-BP-ASBUILT](../03-solution/kitplatform-enterprise-blueprint-asbuilt-v2.1.md)
 
 ---
 
