@@ -1,61 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-14T07:26:46.711Z",
+  "generatedAt": "2026-07-14T16:47:50.487Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 32,
-    "todayPageViews": 109,
-    "todayRequests": 281,
-    "last24hVisitors": 112,
-    "last24hPageViews": 227,
-    "last24hRequests": 529
+    "todayVisitors": 54,
+    "todayPageViews": 142,
+    "todayRequests": 432,
+    "last24hVisitors": 110,
+    "last24hPageViews": 214,
+    "last24hRequests": 550
   },
   "hourly": [
-    {
-      "time": "2026-07-13T08:00:00Z",
-      "visitors": 6,
-      "requests": 35
-    },
-    {
-      "time": "2026-07-13T09:00:00Z",
-      "visitors": 7,
-      "requests": 19
-    },
-    {
-      "time": "2026-07-13T10:00:00Z",
-      "visitors": 3,
-      "requests": 4
-    },
-    {
-      "time": "2026-07-13T11:00:00Z",
-      "visitors": 7,
-      "requests": 29
-    },
-    {
-      "time": "2026-07-13T12:00:00Z",
-      "visitors": 4,
-      "requests": 11
-    },
-    {
-      "time": "2026-07-13T13:00:00Z",
-      "visitors": 4,
-      "requests": 6
-    },
-    {
-      "time": "2026-07-13T14:00:00Z",
-      "visitors": 2,
-      "requests": 5
-    },
-    {
-      "time": "2026-07-13T15:00:00Z",
-      "visitors": 4,
-      "requests": 13
-    },
-    {
-      "time": "2026-07-13T16:00:00Z",
-      "visitors": 4,
-      "requests": 8
-    },
     {
       "time": "2026-07-13T17:00:00Z",
       "visitors": 5,
@@ -123,8 +78,48 @@
     },
     {
       "time": "2026-07-14T07:00:00Z",
+      "visitors": 7,
+      "requests": 11
+    },
+    {
+      "time": "2026-07-14T08:00:00Z",
+      "visitors": 5,
+      "requests": 12
+    },
+    {
+      "time": "2026-07-14T09:00:00Z",
+      "visitors": 3,
+      "requests": 46
+    },
+    {
+      "time": "2026-07-14T10:00:00Z",
+      "visitors": 5,
+      "requests": 24
+    },
+    {
+      "time": "2026-07-14T11:00:00Z",
+      "visitors": 11,
+      "requests": 13
+    },
+    {
+      "time": "2026-07-14T12:00:00Z",
       "visitors": 4,
-      "requests": 8
+      "requests": 5
+    },
+    {
+      "time": "2026-07-14T13:00:00Z",
+      "visitors": 3,
+      "requests": 14
+    },
+    {
+      "time": "2026-07-14T14:00:00Z",
+      "visitors": 5,
+      "requests": 27
+    },
+    {
+      "time": "2026-07-14T16:00:00Z",
+      "visitors": 5,
+      "requests": 7
     }
   ],
   "daily": [
@@ -166,35 +161,35 @@
     },
     {
       "date": "2026-07-14",
-      "visitors": 32,
-      "pageViews": 109,
-      "requests": 281
+      "visitors": 54,
+      "pageViews": 142,
+      "requests": 432
     }
   ],
   "topPages": [
     {
       "path": "/",
-      "views": 71
+      "views": 66
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 37
+      "views": 48
     },
     {
-      "path": "/api/stats",
-      "views": 29
+      "path": "/vi/",
+      "views": 27
     },
     {
       "path": "/vi/tin-tuc/crm-cho-nha-thuoc-bat-dau-tu-dau-lieu-khach-hang/",
       "views": 26
     },
     {
-      "path": "/vi/",
-      "views": 24
-    },
-    {
       "path": "/robots.txt",
       "views": 23
+    },
+    {
+      "path": "/api/stats",
+      "views": 16
     },
     {
       "path": "/sitemap-index.xml",
@@ -202,34 +197,34 @@
     },
     {
       "path": "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
-      "views": 9
+      "views": 10
     },
     {
-      "path": "/favicon.svg",
+      "path": "/images/logo.png",
       "views": 8
     },
     {
-      "path": "/___proxy_subdomain_whm/login",
+      "path": "/_astro/index.v9Iv8YTa.css",
+      "views": 8
+    },
+    {
+      "path": "/_astro/BaseLayout.CB-KDw-C.css",
+      "views": 7
+    },
+    {
+      "path": "/vi/tin-tuc/",
+      "views": 7
+    },
+    {
+      "path": "/v2/_catalog",
       "views": 6
     },
     {
-      "path": "/.env",
+      "path": "/graphql",
       "views": 6
     },
     {
-      "path": "/.DS_Store",
-      "views": 6
-    },
-    {
-      "path": "/.git/config",
-      "views": 6
-    },
-    {
-      "path": "/wp-includes/css/buttons.css",
-      "views": 6
-    },
-    {
-      "path": "/info.php",
+      "path": "/server",
       "views": 6
     }
   ]
