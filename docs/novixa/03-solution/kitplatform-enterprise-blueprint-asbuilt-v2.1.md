@@ -3,7 +3,7 @@
 **Mã:** KIT-BP-ASBUILT · **Version:** 2.1.1 · **Trạng thái:** Active  
 **Ngày đồng bộ:** 2026-07-14 · **Scope:** Mirror kiến trúc **đã xây** trên repo KitPlatform  
 **Hub:** DOC-010 (Technical Standard) · **Verify:** `scripts/check-kit-bp-asbuilt.ps1`  
-**Liên quan:** [platform-kernel-and-solution-packs-v1.md](./platform-kernel-and-solution-packs-v1.md) (KIT-PLT-01) · [solution-architecture-v1.md](./solution-architecture-v1.md) · [domain-map-v1.md](../domains/domain-map-v1.md)
+**Liên quan:** [platform-kernel-and-solution-packs-v1.md](./platform-kernel-and-solution-packs-v1.md) (KIT-PLT-01) · [solution-architecture-v1.md](./solution-architecture-v1.md) · [domain-map-v1.md](../domains/domain-map-v1.md) · [pharmacy-success-capability-map-v1.md](../02-product/pharmacy-success-capability-map-v1.md) (NVX-PRD-03 — GTM capability → module)
 
 > Đây là **single source of truth kỹ thuật as-built** cho AI/agent và contributor.  
 > Không mô tả tầm nhìn HospitalOS/Blazor/EF trừ khi ghi rõ `status: roadmap`.  
