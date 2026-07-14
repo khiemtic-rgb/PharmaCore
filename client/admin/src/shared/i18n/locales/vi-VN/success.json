@@ -40,11 +40,13 @@
     "thresholdHint": "Ngưỡng cảnh báo {{value}}"
   },
   "loss": {
-    "title": "Đối chiếu quỹ ca (Loss AC2)",
+    "title": "Rủi ro / thất thoát",
+    "pageSubtitle": "AC2 lệch quỹ ca · AC4 báo cáo theo nhân viên (compose as-built)",
     "subtitle": "Ngày VN: {{date}} — đọc từ sales_shifts, không bảng tiền mới",
     "tip": "Cảnh báo khi |lệch| > {{threshold}} (closing − expected). Tiền đếm = closing_cash.",
+    "reportsTip": "Gán NV theo cột sẵn có (seller / người duyệt) — xem ghi chú hệ thống khi tải.",
     "backCockpit": "← Cockpit chủ NT",
-    "loadFailed": "Không tải được lệch quỹ",
+    "loadFailed": "Không tải được báo cáo thất thoát",
     "closedCount": "Ca đã đóng",
     "openCount": "Ca đang mở",
     "alertCount": "Cảnh báo",
@@ -52,13 +54,33 @@
     "alert": "Lệch",
     "open": "Đang mở",
     "linkShifts": "Mở báo cáo / đóng ca bán →",
+    "tabs": {
+      "cash": "Lệch quỹ ca",
+      "byEmployee": "Theo nhân viên"
+    },
+    "branchAll": "Tất cả chi nhánh",
+    "applyFilter": "Áp dụng",
+    "reports": {
+      "cancellations": "Hủy hóa đơn (draft) theo NV",
+      "discounts": "Giảm giá POS theo NV",
+      "adjustments": "Điều chỉnh tồn (đã duyệt) theo NV"
+    },
     "col": {
       "shift": "Ca",
       "branch": "Chi nhánh",
       "warehouse": "Kho/quầy",
       "expected": "Quỹ kỳ vọng",
       "closing": "Tiền đếm",
-      "variance": "Lệch"
+      "variance": "Lệch",
+      "employee": "Nhân viên",
+      "cancelCount": "Số lần hủy",
+      "cancelValue": "Giá trị hủy",
+      "orderCount": "Số đơn",
+      "orderDiscount": "Giảm đơn",
+      "lineDiscount": "Giảm dòng",
+      "totalDiscount": "Tổng giảm POS",
+      "adjustCount": "Số phiếu",
+      "absVariance": "|Lệch| (giá vốn)"
     }
   },
   "checklist": {

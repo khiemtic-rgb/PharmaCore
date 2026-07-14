@@ -1,11 +1,17 @@
 using KitPlatform.Application.Abstractions;
 using KitPlatform.Application.Success;
 using KitPlatform.Infrastructure.Dashboard;
+using KitPlatform.Infrastructure.Reports;
 
 namespace KitPlatform.Infrastructure.Success;
 
 internal sealed class LossPreventionService : ILossPreventionService
 {
+    private const string AttributionNotes =
+        "Hủy HĐ: chỉ draft→cancelled; gán theo employee_id lúc tạo (không có cancelled_by). " +
+        "Giảm giá: POS order+line trên đơn Completed; gán seller employee_id (không gồm loyalty/voucher). " +
+        "Điều chỉnh tồn: approved adjustments; gán theo approved_by→employee; giá trị = |ΔSL|×unit_cost.";
+
     private readonly LossPreventionRepository _repo;
     private readonly IBranchAccessService _branchAccess;
 
@@ -48,6 +54,25 @@ internal sealed class LossPreventionService : ILossPreventionService
             today.AlertCount,
             today.MaxAbsVariance,
             top?.ShiftNumber);
+    }
+
+    public async Task<LossEmployeeReportsDto> GetEmployeeReportsAsync(
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        Guid? branchId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (branchId is Guid bid)
+            await _branchAccess.EnsureBranchAccessAsync(bid, cancellationToken);
+
+        var (from, to) = ReportsDateHelper.ResolveRangeUtc(fromUtc, toUtc, DateTime.UtcNow);
+        var (_, allowed) = await _branchAccess.ResolveWarehouseQueryAsync(null, cancellationToken);
+
+        var cancellations = await _repo.ListCancellationsByEmployeeAsync(from, to, branchId, allowed, cancellationToken);
+        var discounts = await _repo.ListDiscountsByEmployeeAsync(from, to, branchId, allowed, cancellationToken);
+        var adjustments = await _repo.ListAdjustmentsByEmployeeAsync(from, to, branchId, allowed, cancellationToken);
+
+        return new LossEmployeeReportsDto(from, to, branchId, AttributionNotes, cancellations, discounts, adjustments);
     }
 
     private static decimal NormalizeThreshold(decimal? threshold)

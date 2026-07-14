@@ -218,6 +218,87 @@ export async function completeShiftChecklistRun(runId: string): Promise<ShiftChe
   return normalizeRun(data as UnknownRow);
 }
 
+export interface LossEmployeeCancelRow {
+  employeeId?: string | null;
+  employeeName: string;
+  cancelCount: number;
+  cancelValue: number;
+}
+
+export interface LossEmployeeDiscountRow {
+  employeeId?: string | null;
+  employeeName: string;
+  orderCount: number;
+  orderDiscountAmount: number;
+  lineDiscountAmount: number;
+  totalPosDiscount: number;
+}
+
+export interface LossEmployeeAdjustmentRow {
+  employeeId?: string | null;
+  employeeName: string;
+  adjustmentCount: number;
+  absVarianceValue: number;
+}
+
+export interface LossEmployeeReports {
+  fromUtc: string;
+  toUtc: string;
+  branchId?: string | null;
+  attributionNotes: string;
+  cancellations: LossEmployeeCancelRow[];
+  discounts: LossEmployeeDiscountRow[];
+  adjustments: LossEmployeeAdjustmentRow[];
+}
+
+export async function fetchLossEmployeeReports(params?: {
+  from?: string;
+  to?: string;
+  branchId?: string;
+}): Promise<LossEmployeeReports> {
+  const { data } = await http.get<UnknownRow>('/success/loss/reports/by-employee', {
+    params: {
+      from: params?.from,
+      to: params?.to,
+      branchId: params?.branchId,
+    },
+  });
+  const row = data as UnknownRow;
+  const mapCancel = (items: UnknownRow[]): LossEmployeeCancelRow[] =>
+    items.map((r) => ({
+      employeeId: (r.employeeId ?? r.EmployeeId) as string | null | undefined,
+      employeeName: String(r.employeeName ?? r.EmployeeName ?? ''),
+      cancelCount: num(r.cancelCount ?? r.CancelCount),
+      cancelValue: num(r.cancelValue ?? r.CancelValue),
+    }));
+  const mapDiscount = (items: UnknownRow[]): LossEmployeeDiscountRow[] =>
+    items.map((r) => ({
+      employeeId: (r.employeeId ?? r.EmployeeId) as string | null | undefined,
+      employeeName: String(r.employeeName ?? r.EmployeeName ?? ''),
+      orderCount: num(r.orderCount ?? r.OrderCount),
+      orderDiscountAmount: num(r.orderDiscountAmount ?? r.OrderDiscountAmount),
+      lineDiscountAmount: num(r.lineDiscountAmount ?? r.LineDiscountAmount),
+      totalPosDiscount: num(r.totalPosDiscount ?? r.TotalPosDiscount),
+    }));
+  const mapAdjust = (items: UnknownRow[]): LossEmployeeAdjustmentRow[] =>
+    items.map((r) => ({
+      employeeId: (r.employeeId ?? r.EmployeeId) as string | null | undefined,
+      employeeName: String(r.employeeName ?? r.EmployeeName ?? ''),
+      adjustmentCount: num(r.adjustmentCount ?? r.AdjustmentCount),
+      absVarianceValue: num(r.absVarianceValue ?? r.AbsVarianceValue),
+    }));
+
+  return {
+    fromUtc: String(row.fromUtc ?? row.FromUtc ?? ''),
+    toUtc: String(row.toUtc ?? row.ToUtc ?? ''),
+    branchId: (row.branchId ?? row.BranchId) as string | null | undefined,
+    attributionNotes: String(row.attributionNotes ?? row.AttributionNotes ?? ''),
+    cancellations: mapCancel((row.cancellations ?? row.Cancellations ?? []) as UnknownRow[]),
+    discounts: mapDiscount((row.discounts ?? row.Discounts ?? []) as UnknownRow[]),
+    adjustments: mapAdjust((row.adjustments ?? row.Adjustments ?? []) as UnknownRow[]),
+  };
+}
+
 export async function fetchLossCashVarianceToday(threshold?: number): Promise<LossCashVarianceToday> {
   const { data } = await http.get<UnknownRow>('/success/loss/cash-variance', {
     params: threshold != null ? { threshold } : undefined,

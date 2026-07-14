@@ -35,3 +35,36 @@ public sealed record OwnerCockpitRiskStripDto(
     int CashVarianceAlertCount,
     decimal MaxAbsCashVarianceToday,
     string? TopAlertShiftNumber);
+
+/// <summary>
+/// AC4 — three by-employee reports. Attribution uses as-built proxies only
+/// (no cancelled_by / discount_applied_by columns).
+/// </summary>
+public sealed record LossEmployeeReportsDto(
+    DateTime FromUtc,
+    DateTime ToUtc,
+    Guid? BranchId,
+    string AttributionNotes,
+    IReadOnlyList<LossEmployeeCancelRowDto> Cancellations,
+    IReadOnlyList<LossEmployeeDiscountRowDto> Discounts,
+    IReadOnlyList<LossEmployeeAdjustmentRowDto> Adjustments);
+
+public sealed record LossEmployeeCancelRowDto(
+    Guid? EmployeeId,
+    string EmployeeName,
+    int CancelCount,
+    decimal CancelValue);
+
+public sealed record LossEmployeeDiscountRowDto(
+    Guid? EmployeeId,
+    string EmployeeName,
+    int OrderCount,
+    decimal OrderDiscountAmount,
+    decimal LineDiscountAmount,
+    decimal TotalPosDiscount);
+
+public sealed record LossEmployeeAdjustmentRowDto(
+    Guid? EmployeeId,
+    string EmployeeName,
+    int AdjustmentCount,
+    decimal AbsVarianceValue);

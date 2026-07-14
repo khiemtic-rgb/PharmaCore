@@ -3,6 +3,7 @@ using KitPlatform.Application.Abstractions;
 using KitPlatform.Application.Success;
 using KitPlatform.Infrastructure.Dashboard;
 using KitPlatform.Infrastructure.Data;
+using KitPlatform.Packs.Pharmacy.Inventory;
 using KitPlatform.Packs.Pharmacy.Sales;
 
 namespace KitPlatform.Infrastructure.Success;
@@ -110,5 +111,145 @@ internal sealed class LossPreventionRepository
                 r.OpenedAt,
                 r.ClosedAt);
         }).ToList();
+    }
+
+    public async Task<IReadOnlyList<LossEmployeeCancelRowDto>> ListCancellationsByEmployeeAsync(
+        DateTime fromUtc,
+        DateTime toUtc,
+        Guid? branchId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var filters = BuildSalesScopeFilters(branchId, allowedWarehouseIds);
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.QueryAsync<LossEmployeeCancelRowDto>(
+            $"""
+            SELECT
+                o.employee_id AS EmployeeId,
+                COALESCE(e.full_name, '(Không gắn NV)') AS EmployeeName,
+                COUNT(*)::int AS CancelCount,
+                COALESCE(SUM(o.total_amount), 0) AS CancelValue
+            FROM sales_orders o
+            LEFT JOIN employees e ON e.id = o.employee_id AND e.tenant_id = o.tenant_id
+            INNER JOIN warehouses w ON w.id = o.warehouse_id AND w.tenant_id = o.tenant_id
+            WHERE o.tenant_id = @TenantId
+              AND o.status = @Cancelled
+              AND o.updated_at >= @FromUtc AND o.updated_at < @ToUtc
+              {filters}
+            GROUP BY o.employee_id, e.full_name
+            ORDER BY CancelValue DESC, CancelCount DESC
+            """,
+            new
+            {
+                TenantId,
+                FromUtc = fromUtc,
+                ToUtc = toUtc,
+                Cancelled = SalesOrderStatuses.Cancelled,
+                BranchId = branchId,
+                AllowedWarehouseIds = allowedWarehouseIds,
+            });
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<LossEmployeeDiscountRowDto>> ListDiscountsByEmployeeAsync(
+        DateTime fromUtc,
+        DateTime toUtc,
+        Guid? branchId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var filters = BuildSalesScopeFilters(branchId, allowedWarehouseIds);
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.QueryAsync<LossEmployeeDiscountRowDto>(
+            $"""
+            SELECT
+                o.employee_id AS EmployeeId,
+                COALESCE(e.full_name, '(Không gắn NV)') AS EmployeeName,
+                COUNT(*)::int AS OrderCount,
+                COALESCE(SUM(o.discount_amount), 0) AS OrderDiscountAmount,
+                COALESCE(SUM(line.line_discount), 0) AS LineDiscountAmount,
+                COALESCE(SUM(o.discount_amount), 0) + COALESCE(SUM(line.line_discount), 0) AS TotalPosDiscount
+            FROM sales_orders o
+            LEFT JOIN LATERAL (
+                SELECT COALESCE(SUM(i.discount_amount), 0) AS line_discount
+                FROM sales_order_items i
+                WHERE i.sales_order_id = o.id
+            ) line ON TRUE
+            LEFT JOIN employees e ON e.id = o.employee_id AND e.tenant_id = o.tenant_id
+            INNER JOIN warehouses w ON w.id = o.warehouse_id AND w.tenant_id = o.tenant_id
+            WHERE o.tenant_id = @TenantId
+              AND o.status = @Completed
+              AND o.order_date >= @FromUtc AND o.order_date < @ToUtc
+              AND (COALESCE(o.discount_amount, 0) > 0 OR COALESCE(line.line_discount, 0) > 0)
+              {filters}
+            GROUP BY o.employee_id, e.full_name
+            ORDER BY TotalPosDiscount DESC, OrderCount DESC
+            """,
+            new
+            {
+                TenantId,
+                FromUtc = fromUtc,
+                ToUtc = toUtc,
+                Completed = SalesOrderStatuses.Completed,
+                BranchId = branchId,
+                AllowedWarehouseIds = allowedWarehouseIds,
+            });
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<LossEmployeeAdjustmentRowDto>> ListAdjustmentsByEmployeeAsync(
+        DateTime fromUtc,
+        DateTime toUtc,
+        Guid? branchId,
+        Guid[]? allowedWarehouseIds,
+        CancellationToken cancellationToken)
+    {
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND a.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        var branchFilter = branchId is not null ? "AND w.branch_id = @BranchId" : string.Empty;
+
+        await using var conn = await _db.CreateOpenConnectionAsync(cancellationToken);
+        var rows = await conn.QueryAsync<LossEmployeeAdjustmentRowDto>(
+            $"""
+            SELECT
+                u.employee_id AS EmployeeId,
+                COALESCE(e.full_name, u.username, '(Không gắn NV)') AS EmployeeName,
+                COUNT(DISTINCT a.id)::int AS AdjustmentCount,
+                COALESCE(SUM(ABS(i.difference_quantity) * COALESCE(b.unit_cost, 0)), 0) AS AbsVarianceValue
+            FROM inventory_adjustments a
+            INNER JOIN inventory_adjustment_items i ON i.adjustment_id = a.id
+            INNER JOIN inventory_batches b ON b.id = i.batch_id
+            INNER JOIN users u ON u.id = a.approved_by
+            LEFT JOIN employees e ON e.id = u.employee_id AND e.tenant_id = a.tenant_id
+            INNER JOIN warehouses w ON w.id = a.warehouse_id AND w.tenant_id = a.tenant_id
+            WHERE a.tenant_id = @TenantId
+              AND a.status = @Approved
+              AND a.approved_by IS NOT NULL
+              AND a.approved_at >= @FromUtc AND a.approved_at < @ToUtc
+              {branchFilter}
+              {warehouseFilter}
+            GROUP BY u.employee_id, COALESCE(e.full_name, u.username, '(Không gắn NV)')
+            ORDER BY AbsVarianceValue DESC, AdjustmentCount DESC
+            """,
+            new
+            {
+                TenantId,
+                FromUtc = fromUtc,
+                ToUtc = toUtc,
+                Approved = AdjustmentStatuses.Approved,
+                BranchId = branchId,
+                AllowedWarehouseIds = allowedWarehouseIds,
+            });
+        return rows.AsList();
+    }
+
+    private static string BuildSalesScopeFilters(Guid? branchId, Guid[]? allowedWarehouseIds)
+    {
+        var branchFilter = branchId is not null ? "AND w.branch_id = @BranchId" : string.Empty;
+        var warehouseFilter = allowedWarehouseIds is { Length: > 0 }
+            ? "AND o.warehouse_id = ANY(@AllowedWarehouseIds)"
+            : string.Empty;
+        return $"{branchFilter} {warehouseFilter}";
     }
 }

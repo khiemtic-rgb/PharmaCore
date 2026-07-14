@@ -9,4 +9,10 @@ public interface ILossPreventionService
     Task<OwnerCockpitRiskStripDto> GetRiskStripAsync(
         decimal? cashVarianceThreshold = null,
         CancellationToken cancellationToken = default);
+
+    Task<LossEmployeeReportsDto> GetEmployeeReportsAsync(
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        Guid? branchId = null,
+        CancellationToken cancellationToken = default);
 }

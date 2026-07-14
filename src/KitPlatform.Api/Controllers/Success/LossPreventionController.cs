@@ -25,4 +25,27 @@ public sealed class LossPreventionController : ControllerBase
         [FromQuery] decimal? threshold = null,
         CancellationToken cancellationToken = default) =>
         Ok(await _loss.GetCashVarianceTodayAsync(threshold, cancellationToken));
+
+    /// <summary>
+    /// AC4 — cancellations / POS discounts / approved stock adjustments grouped by employee (as-built proxies).
+    /// Default range: VN month-to-date (same helper as Reports).
+    /// </summary>
+    [HttpGet("reports/by-employee")]
+    [Authorize(Policy = DashboardPolicies.Read)]
+    [ProducesResponseType(typeof(LossEmployeeReportsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<LossEmployeeReportsDto>> GetEmployeeReports(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] Guid? branchId = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Ok(await _loss.GetEmployeeReportsAsync(from, to, branchId, cancellationToken));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+    }
 }

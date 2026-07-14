@@ -56,7 +56,7 @@ Catalog cảnh báo mở rộng (DT ca thấp bất thường, tồn âm, xuất
 | 1 | `audit_logs`; timestamps/actor trên sales & inventory; Soft deletes | **Loss feed** lọc event types + actor + deep-link chứng từ; đảm bảo đủ event: tạo/sửa/hủy HĐ, discount, return, internal issue, stock adjust (bổ sung write audit nếu thiếu) |
 | 2 | `sales_shifts` mở/đóng ca (POS Admin + Staff); báo cáo ca | ✅ AC2 lab: compose `GET /api/success/loss/cash-variance` + Cockpit `riskStrip` (threshold mặc định 10 000); không bảng tiền mới |
 | 3 | Inventory count / adjustments (`inventory_adjustments`, màn kho) | **Cycle count session**: chọn 10–20 SKU (hot / random / FEFO), chốt lệch ngày, report theo SKU |
-| 4 | Reports Wave 1; sales/return/adjust data theo user có phần | **3 report Loss** cố định: hủy · giảm giá · adjust theo `employee`/`user` + date range + branch |
+| 4 | Reports Wave 1; sales/return/adjust data theo user có phần | ✅ AC4 lab: `GET /api/success/loss/reports/by-employee` — hủy draft (`employee_id`+`updated_at`) · giảm giá POS order+line (`employee_id`) · adjust approved (`approved_by`→NV, \|Δ\|×cost). Không cột actor mới |
 | 5 | RBAC kernel; workflow `pos_discount_override`; PO approve | **Gate matrix**: hủy HĐ, sửa/giảm giá (đã có mầm), xuất nội bộ — thiếu policy/WF thì thêm mỏng; **không** redesign RBAC toàn nền |
 
 **Tái sử dụng Success:**
@@ -102,10 +102,12 @@ Catalog cảnh báo mở rộng (DT ca thấp bất thường, tồn âm, xuất
 
 ### AC4 — Báo cáo theo nhân viên
 
-- [ ] Hủy hóa đơn theo NV (count + giá trị)  
-- [ ] Giảm giá theo NV (count + tổng tiền giảm)  
-- [ ] Điều chỉnh tồn theo NV (count + giá trị tuyệt đối lệch nếu tính được)  
-- [ ] Filter: từ ngày–đến ngày, branch; export CSV optional  
+- [x] Hủy hóa đơn (draft→cancelled) theo NV — proxy `employee_id`, thời điểm `updated_at`  
+- [x] Giảm giá POS (order + line) theo NV trên đơn Completed — không gồm loyalty/voucher  
+- [x] Điều chỉnh tồn approved theo NV duyệt — giá trị \|ΔSL\|×`unit_cost`  
+- [x] Filter: from/to (mặc định tháng VN), branchId; UI tab trên `/success/loss`  
+- [ ] Export CSV optional  
+- [ ] Deploy VPS / UAT screenshot còn Open  
 
 ### AC5 — Phân quyền & phê duyệt
 
