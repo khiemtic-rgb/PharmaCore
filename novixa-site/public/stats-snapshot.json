@@ -1,41 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-14T16:47:50.487Z",
+  "generatedAt": "2026-07-14T21:35:41.852Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 54,
-    "todayPageViews": 142,
-    "todayRequests": 432,
-    "last24hVisitors": 110,
-    "last24hPageViews": 214,
-    "last24hRequests": 550
+    "todayVisitors": 0,
+    "todayPageViews": 0,
+    "todayRequests": 0,
+    "last24hVisitors": 101,
+    "last24hPageViews": 205,
+    "last24hRequests": 527
   },
   "hourly": [
-    {
-      "time": "2026-07-13T17:00:00Z",
-      "visitors": 5,
-      "requests": 7
-    },
-    {
-      "time": "2026-07-13T18:00:00Z",
-      "visitors": 4,
-      "requests": 5
-    },
-    {
-      "time": "2026-07-13T19:00:00Z",
-      "visitors": 1,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-13T20:00:00Z",
-      "visitors": 4,
-      "requests": 32
-    },
-    {
-      "time": "2026-07-13T21:00:00Z",
-      "visitors": 7,
-      "requests": 7
-    },
     {
       "time": "2026-07-13T23:00:00Z",
       "visitors": 42,
@@ -120,15 +95,34 @@
       "time": "2026-07-14T16:00:00Z",
       "visitors": 5,
       "requests": 7
+    },
+    {
+      "time": "2026-07-14T17:00:00Z",
+      "visitors": 3,
+      "requests": 16
+    },
+    {
+      "time": "2026-07-14T18:00:00Z",
+      "visitors": 3,
+      "requests": 4
+    },
+    {
+      "time": "2026-07-14T19:00:00Z",
+      "visitors": 4,
+      "requests": 5
+    },
+    {
+      "time": "2026-07-14T20:00:00Z",
+      "visitors": 3,
+      "requests": 4
+    },
+    {
+      "time": "2026-07-14T21:00:00Z",
+      "visitors": 1,
+      "requests": 1
     }
   ],
   "daily": [
-    {
-      "date": "2026-07-08",
-      "visitors": 141,
-      "pageViews": 148,
-      "requests": 293
-    },
     {
       "date": "2026-07-09",
       "visitors": 134,
@@ -161,31 +155,31 @@
     },
     {
       "date": "2026-07-14",
-      "visitors": 54,
-      "pageViews": 142,
-      "requests": 432
+      "visitors": 61,
+      "pageViews": 161,
+      "requests": 462
     }
   ],
   "topPages": [
     {
       "path": "/",
-      "views": 66
+      "views": 59
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 48
-    },
-    {
-      "path": "/vi/",
-      "views": 27
+      "views": 46
     },
     {
       "path": "/vi/tin-tuc/crm-cho-nha-thuoc-bat-dau-tu-dau-lieu-khach-hang/",
       "views": 26
     },
     {
+      "path": "/vi/",
+      "views": 25
+    },
+    {
       "path": "/robots.txt",
-      "views": 23
+      "views": 22
     },
     {
       "path": "/api/stats",
@@ -193,30 +187,30 @@
     },
     {
       "path": "/sitemap-index.xml",
-      "views": 13
+      "views": 15
     },
     {
       "path": "/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js",
-      "views": 10
-    },
-    {
-      "path": "/images/logo.png",
-      "views": 8
-    },
-    {
-      "path": "/_astro/index.v9Iv8YTa.css",
-      "views": 8
-    },
-    {
-      "path": "/_astro/BaseLayout.CB-KDw-C.css",
-      "views": 7
+      "views": 9
     },
     {
       "path": "/vi/tin-tuc/",
+      "views": 8
+    },
+    {
+      "path": "/images/logo.png",
       "views": 7
     },
     {
-      "path": "/v2/_catalog",
+      "path": "/_astro/index.v9Iv8YTa.css",
+      "views": 7
+    },
+    {
+      "path": "/api/gql",
+      "views": 6
+    },
+    {
+      "path": "/.git/config",
       "views": 6
     },
     {
@@ -224,7 +218,7 @@
       "views": 6
     },
     {
-      "path": "/server",
+      "path": "/ecp/Current/exporttool/microsoft.exchange.ediscovery.exporttool.application",
       "views": 6
     }
   ]
