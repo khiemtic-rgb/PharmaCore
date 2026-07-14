@@ -31,7 +31,7 @@ Assessment (KAP) → Xác định vấn đề → Act (People|Process|Customer|B
 |---|------------|--------------------------|------------------------|-------|
 | **0** | **Assessment & Diagnose** | `assessment`, `pharmacy_survey`; KAP leads/PDF; partner portal | Business Score quý; SWOT/roadmap theo dõi; ngành benchmark; re-measure 90d đóng vòng trong product | **P1** (đang) → Scorecard **P2** |
 | **1** | **People Success** | `users`/`employees`+RBAC (kernel); doanh số từ `sales`; ca POS (báo cáo ca) | Hồ sơ chứng chỉ; đổi ca/chấm công; đào tạo/quiz; hoa hồng/xhạng; nghỉ việc; eNPS | Hiệu suất từ sales **P2**; HRIS/học **P3–P4** |
-| **2** | **Process Excellence** | Workflow PO approve / discount override; inventory count; audit_logs | SOP thư viện; checklist mở/đóng ca–tuần; audit tuân thủ; incident (sai sót/khiếu nại/mất hàng) | Checklist ca + SOP mỏng **P2**; QMS/incident **P3** |
+| **2** | **Process Excellence** | Workflow PO approve / discount override; inventory count; audit_logs; checklist ca (EP02) | SOP thư viện; **Loss Prevention** (thấy lệch tiền/hàng + gate); incident QMS đầy đủ | Checklist ca **P2** ✅; [Loss v0 EP03](./success-p2-03-loss-prevention-epic-v1.md) **P2**; QMS/incident **P3** |
 | **3** | **Customer Success** | `loyalty`, `customer_app`, CRM admin; medication reminder; O2O; survey lead | CS sau bán đóng vòng; referral có chương trình; churn score; CSAT định kỳ ngoài KAP NT | Giữ & siết dùng **P1**; referral/CSAT/churn **P2–P3** |
 | **4** | **Business Performance** | Dashboard; Reports Wave 1; FEFO/tồn/cận date; receivables/AP cơ bản | Owner cockpit 1 màn; lợi nhuận/P&L; forecast; phân tích rủi ro; DO theo NV/nhóm thuốc sâu | Cockpit KPI **P1–P2**; tài chính/forecast **P3** (sau Clinic go-live) |
 | **5** | **Continuous Improvement** | KAP narrative/AI hooks; assessment loop | Score Q1→Q4; roadmap progress; coaching; Learning path; đối chiếu peer | Score+roadmap **P2–P3**; Coaching/Learning **P4** |
@@ -46,7 +46,7 @@ Assessment (KAP) → Xác định vấn đề → Act (People|Process|Customer|B
 | Phase | Trọng tâm Success | Ship / không ship |
 |-------|-------------------|-------------------|
 | **P1** | POS + kho + CRM + Dashboard + Assessment | Đúng hướng hiện tại; siết adoption + KAP loop |
-| **P2** | People *performance* + SOP/Checklist mỏng + KPI owner + Scorecard v0 | **EP01** [Owner Cockpit](./success-p2-owner-cockpit-epic-v1.md) (lab ✅). **EP02** [Checklist ca](./success-p2-02-shift-checklist-epic-v1.md) (lab ✅). **Không** HRIS full / QMS full |
+| **P2** | People *performance* + SOP/Checklist mỏng + KPI owner + Scorecard v0 + Loss mỏng | **EP01** [Owner Cockpit](./success-p2-owner-cockpit-epic-v1.md) (lab ✅). **EP02** [Checklist ca](./success-p2-02-shift-checklist-epic-v1.md) (lab ✅). **EP03** [Loss Prevention v0](./success-p2-03-loss-prevention-epic-v1.md) (Ready). **Không** HRIS full / QMS full |
 | **P3** | AI Copilot rule-based + Business Insight + Benchmark nhẹ | **Không** P&L/coaching nặng trước data ổn |
 | **P4** | Coaching + Learning + Continuous Improvement sâu + Partner mở rộng | Sau P2–P3 đã đo được tiến bộ quý |
 

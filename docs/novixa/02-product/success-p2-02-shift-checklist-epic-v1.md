@@ -38,6 +38,7 @@ Mỗi ca bán, chủ/quản lý hoặc thu ngân xác nhận **một checklist m
 
 ## Ngoài scope → sau
 
+- **EP03** [Loss Prevention v0](./success-p2-03-loss-prevention-epic-v1.md) — lệch quỹ / cycle count / audit Loss (không gộp schema checklist)  
 - Scorecard quý / SWOT  
-- Incident (sai sót / mất hàng) — P3  
+- Incident QMS (sai sót / mất hàng) — P3  
 - Người bán performance / hoa hồng — People track  

@@ -2,7 +2,7 @@
 
 **Mã:** NVX-PRD-01 · **Tier:** T1/T2 · **Trạng thái:** Draft · **Version:** 1.0
 
-**Liên quan:** [pharmacy-success-capability-map-v1.md](./pharmacy-success-capability-map-v1.md) (NVX-PRD-03) · [success-p2-owner-cockpit-epic-v1.md](./success-p2-owner-cockpit-epic-v1.md) (P2 epic) · [KIT-BP-ASBUILT](../03-solution/kitplatform-enterprise-blueprint-asbuilt-v2.1.md)
+**Liên quan:** [pharmacy-success-capability-map-v1.md](./pharmacy-success-capability-map-v1.md) (NVX-PRD-03) · [EP01 Cockpit](./success-p2-owner-cockpit-epic-v1.md) · [EP02 Checklist ca](./success-p2-02-shift-checklist-epic-v1.md) · [EP03 Loss Prevention](./success-p2-03-loss-prevention-epic-v1.md) · [KIT-BP-ASBUILT](../03-solution/kitplatform-enterprise-blueprint-asbuilt-v2.1.md)
 
 ---
 
