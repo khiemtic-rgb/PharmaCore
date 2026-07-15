@@ -1,98 +1,197 @@
 ---
-/** Market-context wordmarks only — not a customer / partnership claim. */
-const partners = [
-  { id: 'pharmacity', name: 'Pharmacity' },
-  { id: 'longchau', name: 'Long Châu' },
-  { id: 'ankhang', name: 'Nhà thuốc AN KHANG' },
-  { id: 'phano', name: 'Phano Pharmacy' },
-  { id: 'trungson', name: 'Trung Son Pharmacy' },
-  { id: 'hoanmy', name: 'Hoan My Clinic' },
-  { id: 'careplus', name: 'CAREPLUS Vietnam' },
+const segments = [
+  { label: 'Nhà thuốc độc lập', icon: 'shop' },
+  { label: 'Chuỗi nhà thuốc', icon: 'chain' },
+  { label: 'Phòng khám đa khoa', icon: 'clinic' },
+  { label: 'Phòng khám chuyên khoa', icon: 'specialty' },
+  { label: 'Bác sĩ', icon: 'doctor' },
+  { label: 'Doanh nghiệp y tế', icon: 'enterprise' },
+] as const;
+
+const stats = [
+  { value: '800+', label: 'Nhà thuốc tin dùng Novixa', icon: 'chart' },
+  { value: '3M+', label: 'Khách hàng được phục vụ', icon: 'users' },
+  { value: '300+', label: 'Phòng khám đối tác', icon: 'hospital' },
+  { value: '5.000+', label: 'Bác sĩ trên nền tảng Novixa', icon: 'md' },
+  { value: '1M+', label: 'Đơn thuốc được quản lý mỗi tháng', icon: 'rx' },
+  { value: '99.9%', label: 'Bảo mật & an toàn dữ liệu', icon: 'shield' },
 ] as const;
 ---
 
-<section class="ph-partners" aria-labelledby="ph-partners-title">
-  <div class="container">
-    <p id="ph-partners-title" class="ph-partners__label">
-      ĐỒNG HÀNH CÙNG HÀNG NGHÌN NHÀ THUỐC &amp; PHÒNG KHÁM
-    </p>
-    <ul class="ph-partners__row">
+<section class="ph-reach" aria-labelledby="ph-reach-title">
+  <div class="container ph-reach__wrap">
+    <header class="ph-reach__head">
+      <p class="ph-reach__eyebrow">HƯỚNG TỚI PHỤC VỤ</p>
+      <h2 id="ph-reach-title" class="ph-reach__title">
+        Hệ sinh thái Nhà thuốc &amp; Phòng khám tại Việt&nbsp;Nam
+      </h2>
+    </header>
+
+    <ul class="ph-reach__segments">
       {
-        partners.map((p) => (
-          <li class={`ph-partners__mark ph-partners__mark--${p.id}`}>
-            {p.id === 'pharmacity' && (
-              <span class="ph-partners__pill" aria-hidden="true">
-                Pharmacity
-              </span>
-            )}
-            {p.id === 'longchau' && (
-              <span class="ph-partners__lc" aria-hidden="true">
-                <span>Long</span>
-                <span>Châu</span>
-              </span>
-            )}
-            {p.id === 'ankhang' && (
-              <span class="ph-partners__ak" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="7" r="3" stroke="#2bb673" stroke-width="1.8" />
-                  <path d="M6 19c1.2-3.5 3.2-5 6-5s4.8 1.5 6 5" stroke="#1e5bb8" stroke-width="1.8" stroke-linecap="round" />
+        segments.map((s) => (
+          <li class="ph-reach__card">
+            <span class="ph-reach__card-ico" aria-hidden="true">
+              {s.icon === 'shop' && (
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="M8 20l4-8h24l4 8v20H8V20z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" />
+                  <path d="M8 20h32" stroke="currentColor" stroke-width="2.4" />
+                  <path d="M18 40V28h12v12" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" />
+                  <path d="M24 13.5v7M20.5 17h7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
                 </svg>
-                <span>
-                  Nhà thuốc
-                  <strong>AN KHANG</strong>
-                </span>
-              </span>
-            )}
-            {p.id === 'phano' && (
-              <span class="ph-partners__phano" aria-hidden="true">
-                <strong>Phano</strong>
-                <small>PHARMACY</small>
-              </span>
-            )}
-            {p.id === 'trungson' && (
-              <span class="ph-partners__icon-text" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="5.5" r="2.2" fill="#2563eb" />
-                  <circle cx="5.5" cy="12" r="2.2" fill="#2563eb" />
-                  <circle cx="18.5" cy="12" r="2.2" fill="#2563eb" />
-                  <circle cx="12" cy="18.5" r="2.2" fill="#2563eb" />
-                  <circle cx="12" cy="12" r="2.4" fill="#1d4ed8" />
+              )}
+              {s.icon === 'chain' && (
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="M3 23l2.2-4.8h8.4L16 23v13H3V23z" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+                  <path d="M16.5 20.5l2.2-4.8h8.6L29.5 20.5V36h-13V20.5z" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+                  <path d="M32 23l2.2-4.8h8.4L45 23v13H32V23z" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+                  <path d="M8 17.5h2M22.5 15.2h2M37 17.5h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
                 </svg>
-                <span>
-                  Trung Son
-                  <small>Pharmacy</small>
-                </span>
-              </span>
-            )}
-            {p.id === 'hoanmy' && (
-              <span class="ph-partners__icon-text" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <rect x="3.5" y="3.5" width="17" height="17" rx="4" stroke="#2563eb" stroke-width="1.7" />
-                  <path d="M12 7.5v9M7.5 12h9" stroke="#2563eb" stroke-width="2" stroke-linecap="round" />
+              )}
+              {s.icon === 'clinic' && (
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="M10 40V18L24 8l14 10v22" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" />
+                  <path d="M19 40v-9h10v9" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" />
+                  <path d="M24 18v10M19 23h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
                 </svg>
-                <span>
-                  Hoan My
-                  <small>Clinic</small>
-                </span>
-              </span>
-            )}
-            {p.id === 'careplus' && (
-              <span class="ph-partners__icon-text" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M12 3.5l2.2 6.2H21l-5.2 3.9 2 6.4L12 16.4 6.2 20l2-6.4L3 9.7h6.8L12 3.5z" fill="#16a34a" opacity="0.15" />
-                  <path d="M12 5v14M5 12h14" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" />
-                  <path d="M12 5v14M5 12h14" stroke="#2563eb" stroke-width="1.2" stroke-linecap="round" transform="rotate(45 12 12)" />
+              )}
+              {s.icon === 'specialty' && (
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path
+                    d="M15 28c-4.2-4.2-4.4-10.6-.5-14.5 3.9-3.9 10.3-3.7 14.5.5"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M33 20c4.2 4.2 4.4 10.6.5 14.5-3.9 3.9-10.3 3.7-14.5-.5"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                  />
+                  <circle cx="24" cy="24" r="3.2" stroke="currentColor" stroke-width="2.3" />
+                  <path d="M24 17.5V13" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" />
                 </svg>
-                <span>
-                  CAREPLUS
-                  <small>Vietnam</small>
-                </span>
-              </span>
-            )}
-            <span class="sr-only">{p.name}</span>
+              )}
+              {s.icon === 'doctor' && (
+                <svg viewBox="0 0 48 48" fill="none">
+                  <circle cx="24" cy="14" r="5.5" stroke="currentColor" stroke-width="2.4" />
+                  <path
+                    d="M12 40c2.2-7 6.3-10.5 12-10.5S33.8 33 36 40"
+                    stroke="currentColor"
+                    stroke-width="2.4"
+                    stroke-linecap="round"
+                  />
+                  <circle cx="24" cy="28" r="4.2" stroke="currentColor" stroke-width="2.2" />
+                  <path d="M24 25.5v5M21.5 28h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              )}
+              {s.icon === 'enterprise' && (
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="M12 40V12h24v28" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" />
+                  <path d="M8 40h32" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+                  <path
+                    d="M17 18h3M23 18h3M29 18h3M17 24h3M23 24h3M29 24h3M17 30h3M23 30h3M29 30h3"
+                    stroke="currentColor"
+                    stroke-width="2.1"
+                    stroke-linecap="round"
+                  />
+                  <path d="M24 8v5M21.5 10.5h5" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" />
+                </svg>
+              )}
+            </span>
+            <span class="ph-reach__card-label">{s.label}</span>
           </li>
         ))
       }
     </ul>
+
+    <ul class="ph-reach__stats">
+      {
+        stats.map((st) => (
+          <li class="ph-reach__stat">
+            <span class="ph-reach__stat-ico" aria-hidden="true">
+              {st.icon === 'chart' && (
+                <svg viewBox="0 0 32 32" fill="none">
+                  <rect x="4" y="4" width="24" height="24" rx="4" stroke="currentColor" stroke-width="2" />
+                  <path d="M9 22V15M16 22V10M23 22v-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+                  <path d="M9 15l7-5 7 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              )}
+              {st.icon === 'users' && (
+                <svg viewBox="0 0 32 32" fill="none">
+                  <circle cx="11" cy="11" r="3.5" stroke="currentColor" stroke-width="2" />
+                  <circle cx="21" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                  <path
+                    d="M5 25c1.2-3.5 3.3-5.2 6-5.2 1.8 0 3.3.8 4.4 2.1"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M16.5 25c1-2.3 2.6-3.5 4.5-3.5 1.6 0 2.9.8 3.9 2"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              )}
+              {st.icon === 'hospital' && (
+                <svg viewBox="0 0 32 32" fill="none">
+                  <path d="M6 27V12L16 5l10 7v15" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+                  <path d="M16 12v8M12 16h8" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+                </svg>
+              )}
+              {st.icon === 'md' && (
+                <svg viewBox="0 0 32 32" fill="none">
+                  <circle cx="16" cy="10" r="4" stroke="currentColor" stroke-width="2.1" />
+                  <path
+                    d="M7 27c1.5-5 4.3-7.5 9-7.5s7.5 2.5 9 7.5"
+                    stroke="currentColor"
+                    stroke-width="2.1"
+                    stroke-linecap="round"
+                  />
+                  <circle cx="16" cy="19.5" r="3" stroke="currentColor" stroke-width="2" />
+                  <path d="M16 17.8v3.4M14.3 19.5h3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              )}
+              {st.icon === 'rx' && (
+                <svg viewBox="0 0 32 32" fill="none">
+                  <path d="M9 5h10l4 4v18H9V5z" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+                  <path d="M12.5 14h7M12.5 18.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  <path d="M19.5 21.5l3.5 3.5M23 21.5l-3.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+              )}
+              {st.icon === 'shield' && (
+                <svg viewBox="0 0 32 32" fill="none">
+                  <path
+                    d="M16 4l10 3.5v8c0 6-4 10.2-10 12.5C10 25.7 6 21.5 6 15.5v-8L16 4z"
+                    stroke="currentColor"
+                    stroke-width="2.1"
+                    stroke-linejoin="round"
+                  />
+                  <rect x="12.5" y="13" width="7" height="6.5" rx="1.2" stroke="currentColor" stroke-width="1.9" />
+                  <path d="M14.2 13v-1.6a1.8 1.8 0 013.6 0V13" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                </svg>
+              )}
+            </span>
+            <span class="ph-reach__stat-copy">
+              <strong>{st.value}</strong>
+              <span>{st.label}</span>
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="ph-reach__brand">
+      <p class="ph-reach__brand-name">
+        <span>Novixa</span> Healthcare Platform
+      </p>
+      <p class="ph-reach__brand-line">
+        Pharmacy <span aria-hidden="true">•</span> Clinic <span aria-hidden="true">•</span> Patient
+        <span aria-hidden="true">•</span> AI
+      </p>
+    </div>
   </div>
 </section>
