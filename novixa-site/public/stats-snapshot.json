@@ -1,61 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-16T07:48:39.913Z",
+  "generatedAt": "2026-07-16T16:51:42.080Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 84,
-    "todayPageViews": 106,
-    "todayRequests": 211,
-    "last24hVisitors": 154,
-    "last24hPageViews": 217,
-    "last24hRequests": 487
+    "todayVisitors": 106,
+    "todayPageViews": 129,
+    "todayRequests": 313,
+    "last24hVisitors": 125,
+    "last24hPageViews": 139,
+    "last24hRequests": 352
   },
   "hourly": [
-    {
-      "time": "2026-07-15T08:00:00Z",
-      "visitors": 12,
-      "requests": 59
-    },
-    {
-      "time": "2026-07-15T09:00:00Z",
-      "visitors": 28,
-      "requests": 36
-    },
-    {
-      "time": "2026-07-15T10:00:00Z",
-      "visitors": 12,
-      "requests": 16
-    },
-    {
-      "time": "2026-07-15T11:00:00Z",
-      "visitors": 3,
-      "requests": 3
-    },
-    {
-      "time": "2026-07-15T12:00:00Z",
-      "visitors": 3,
-      "requests": 3
-    },
-    {
-      "time": "2026-07-15T13:00:00Z",
-      "visitors": 6,
-      "requests": 20
-    },
-    {
-      "time": "2026-07-15T14:00:00Z",
-      "visitors": 2,
-      "requests": 6
-    },
-    {
-      "time": "2026-07-15T15:00:00Z",
-      "visitors": 4,
-      "requests": 51
-    },
-    {
-      "time": "2026-07-15T16:00:00Z",
-      "visitors": 6,
-      "requests": 42
-    },
     {
       "time": "2026-07-15T17:00:00Z",
       "visitors": 4,
@@ -128,8 +83,53 @@
     },
     {
       "time": "2026-07-16T07:00:00Z",
-      "visitors": 4,
+      "visitors": 6,
+      "requests": 6
+    },
+    {
+      "time": "2026-07-16T08:00:00Z",
+      "visitors": 7,
+      "requests": 7
+    },
+    {
+      "time": "2026-07-16T09:00:00Z",
+      "visitors": 2,
+      "requests": 13
+    },
+    {
+      "time": "2026-07-16T10:00:00Z",
+      "visitors": 1,
+      "requests": 10
+    },
+    {
+      "time": "2026-07-16T11:00:00Z",
+      "visitors": 2,
+      "requests": 2
+    },
+    {
+      "time": "2026-07-16T12:00:00Z",
+      "visitors": 5,
+      "requests": 6
+    },
+    {
+      "time": "2026-07-16T13:00:00Z",
+      "visitors": 3,
+      "requests": 16
+    },
+    {
+      "time": "2026-07-16T14:00:00Z",
+      "visitors": 3,
       "requests": 4
+    },
+    {
+      "time": "2026-07-16T15:00:00Z",
+      "visitors": 1,
+      "requests": 5
+    },
+    {
+      "time": "2026-07-16T16:00:00Z",
+      "visitors": 7,
+      "requests": 36
     }
   ],
   "daily": [
@@ -171,27 +171,27 @@
     },
     {
       "date": "2026-07-16",
-      "visitors": 84,
-      "pageViews": 106,
-      "requests": 211
+      "visitors": 106,
+      "pageViews": 129,
+      "requests": 313
     }
   ],
   "topPages": [
     {
       "path": "/vi/",
-      "views": 118
+      "views": 84
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 98
+      "views": 54
     },
     {
       "path": "/",
-      "views": 37
+      "views": 24
     },
     {
       "path": "/robots.txt",
-      "views": 24
+      "views": 23
     },
     {
       "path": "/vi",
@@ -202,14 +202,6 @@
       "views": 16
     },
     {
-      "path": "/vi/lien-he/",
-      "views": 13
-    },
-    {
-      "path": "/_astro/BaseLayout.DTXchRW1.css",
-      "views": 13
-    },
-    {
       "path": "/api/stats",
       "views": 13
     },
@@ -218,24 +210,32 @@
       "views": 11
     },
     {
-      "path": "/images/logo.png",
+      "path": "/vi/lien-he/",
       "views": 10
     },
     {
-      "path": "/favicon.svg",
-      "views": 9
-    },
-    {
-      "path": "/vi/tin-tuc/mo-rong-chuoi-nha-thuoc-checklist-he-thong/",
-      "views": 8
-    },
-    {
-      "path": "/vi/tin-tuc/bao-cao-doanh-thu-real-time-doc-so-lieu-dung/",
+      "path": "/images/tin-tuc/cac-kpi-quan-trong-khi-quan-ly-nha-thuoc.png",
       "views": 7
     },
     {
       "path": "/images/tin-tuc/chu-nha-thuoc-nen-lam-gi-moi-ngay.png",
       "views": 6
+    },
+    {
+      "path": "/vi/thong-ke/",
+      "views": 6
+    },
+    {
+      "path": "/_astro/BaseLayout.DTXchRW1.css",
+      "views": 5
+    },
+    {
+      "path": "/_astro/index.DcoAHZV3.css",
+      "views": 5
+    },
+    {
+      "path": "/_astro/thong-ke.astro_astro_type_script_index_0_lang.Ci291ITp.js",
+      "views": 4
     }
   ]
 }
