@@ -12,10 +12,9 @@ const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Text models tried in order if the preferred one fails. */
 const TEXT_MODEL_FALLBACKS = [
-  'gemini-2.0-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
   'gemini-flash-latest',
+  'gemini-2.0-flash',
+  'gemini-2.5-flash',
 ];
 
 /** Image models: Nano Banana / Gemini image → Imagen predict. */
@@ -51,8 +50,8 @@ export function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isRateLimited(error) {
-  return /failed \(429\)/.test(error?.message ?? '');
+function isTransientGeminiError(error) {
+  return /failed \((429|503)\)/.test(error?.message ?? '');
 }
 
 async function geminiRequestOnce(urlPath, body) {
@@ -76,7 +75,7 @@ async function geminiRequestOnce(urlPath, body) {
   return res.json();
 }
 
-/** Retry 429 (free-tier RPM) before giving up on a model. */
+/** Retry 429/503 (quota / overload) before giving up on a model. */
 async function geminiRequest(urlPath, body) {
   let lastError;
   for (let attempt = 1; attempt <= RATE_LIMIT_RETRIES; attempt++) {
@@ -84,9 +83,10 @@ async function geminiRequest(urlPath, body) {
       return await geminiRequestOnce(urlPath, body);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      if (!isRateLimited(lastError) || attempt === RATE_LIMIT_RETRIES) throw lastError;
+      if (!isTransientGeminiError(lastError) || attempt === RATE_LIMIT_RETRIES) throw lastError;
       const wait = RATE_LIMIT_BASE_MS * attempt;
-      console.warn(`  · Rate limit 429 — chờ ${Math.round(wait / 1000)}s rồi thử lại (${attempt}/${RATE_LIMIT_RETRIES})`);
+      const code = (lastError.message.match(/failed \((\d+)\)/) || [])[1] || '?';
+      console.warn(`  · Gemini ${code} — chờ ${Math.round(wait / 1000)}s rồi thử lại (${attempt}/${RATE_LIMIT_RETRIES})`);
       await sleep(wait);
     }
   }
