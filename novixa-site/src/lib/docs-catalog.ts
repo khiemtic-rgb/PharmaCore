@@ -111,7 +111,7 @@ export const DOCS_CATALOG: DocItem[] = [
     categoryId: 'van-hanh-nha-thuoc',
     file: '/docs/cam-nang-van-hanh-nha-thuoc.pdf',
     pages: 2,
-    access: 'free',
+    access: 'member',
     accent: 'purple',
     isNew: true,
     order: 3,
@@ -125,7 +125,7 @@ export const DOCS_CATALOG: DocItem[] = [
     categoryId: 'quan-ly-kho',
     file: '/docs/cam-nang-quan-ly-kho-hang-hoa.pdf',
     pages: 2,
-    access: 'free',
+    access: 'member',
     accent: 'orange',
     isNew: true,
     order: 4,
@@ -139,7 +139,7 @@ export const DOCS_CATALOG: DocItem[] = [
     categoryId: 'khach-hang-crm',
     file: '/docs/cam-nang-cham-soc-giu-chan-khach-hang.pdf',
     pages: 2,
-    access: 'free',
+    access: 'member',
     accent: 'red',
     isNew: true,
     order: 5,
@@ -167,7 +167,7 @@ export const DOCS_CATALOG: DocItem[] = [
     categoryId: 'danh-gia-nha-thuoc',
     file: '/docs/cam-nang-danh-gia-phat-trien.pdf',
     pages: 3,
-    access: 'member',
+    access: 'customer',
     accent: 'indigo',
     isNew: true,
     order: 7,
@@ -195,12 +195,19 @@ export const DOCS_CATALOG: DocItem[] = [
     categoryId: 'van-hanh-nha-thuoc',
     file: '/docs/bo-checklist-van-hanh-nha-thuoc.pdf',
     pages: 2,
-    access: 'free',
+    access: 'customer',
     accent: 'amber',
     isNew: true,
     order: 9,
   },
 ];
+
+/** Tab lọc theo tầng: free ≤2, member ≤6, customer ≤9 */
+export const ACCESS_FILTER_MAX_ORDER: Record<DocAccess, number> = {
+  free: 2,
+  member: 6,
+  customer: 9,
+};
 
 export const ACCESS_LABELS: Record<DocAccess, string> = {
   free: 'Miễn phí',
