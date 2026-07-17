@@ -1,0 +1,139 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import { t } from '../../../i18n';
+import { getDocBySlug, getDocCategory } from '../../../lib/docs-catalog';
+import '../../../styles/global.css';
+
+const m = t('vi');
+const d = m.docs;
+const slug = Astro.url.searchParams.get('doc');
+const doc = getDocBySlug(slug);
+const category = doc ? getDocCategory(doc.categoryId) : undefined;
+---
+
+<BaseLayout
+  title={d.thanksTitle}
+  description={d.thanksIntro}
+  canonicalPath="/vi/tai-lieu/cam-on/"
+  noIndex={true}
+>
+  <Header slot="header" />
+  <section class="section docs-thanks">
+    <div class="container docs-thanks__inner">
+      <p class="docs-eyebrow">Tài liệu</p>
+      <h1 class="section-title">{d.thanksTitle}</h1>
+
+      {
+        doc ? (
+          <>
+            <p class="section-intro">{d.thanksIntro}</p>
+            <article class="docs-thanks__card">
+              {category && <span class="docs-card__cat">{category.title}</span>}
+              <h2 class="docs-card__title">{doc.title}</h2>
+              <p class="docs-card__desc">{doc.description}</p>
+              <div class="docs-thanks__actions">
+                <a class="btn btn-primary" href={doc.file} download>
+                  {d.downloadNow}
+                </a>
+                <a class="btn btn-ghost" href={`/vi/tai-lieu/#${doc.categoryId}`}>
+                  {d.backToList}
+                </a>
+              </div>
+            </article>
+          </>
+        ) : (
+          <>
+            <p class="section-intro">{d.thanksMissing}</p>
+            <a class="btn btn-primary" href="/vi/tai-lieu/">
+              {d.backToList}
+            </a>
+          </>
+        )
+      }
+
+      <p class="docs-thanks__cta">
+        <a href="/vi/lien-he/#contact-form">{d.contactCta} →</a>
+      </p>
+    </div>
+  </section>
+  <Footer slot="footer" />
+</BaseLayout>
+
+<style>
+  .docs-thanks__inner {
+    max-width: 36rem;
+  }
+
+  .docs-eyebrow {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-primary-dark);
+  }
+
+  .docs-thanks__card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: linear-gradient(180deg, #fff 0%, #f7fbf9 100%);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .docs-card__cat {
+    align-self: flex-start;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    background: var(--color-green-soft);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  .docs-card__title {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--color-navy);
+  }
+
+  .docs-card__desc {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.95rem;
+  }
+
+  .docs-badge {
+    align-self: flex-start;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    border: 1px dashed var(--color-border);
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+  }
+
+  .docs-thanks__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.5rem;
+  }
+
+  .docs-thanks__cta {
+    margin-top: 2rem;
+    font-weight: 600;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-navy);
+  }
+</style>

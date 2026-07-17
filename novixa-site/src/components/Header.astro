@@ -165,6 +165,7 @@ const products = [
 
       <a href={`${base}/#solutions`}>{n.solutions}</a>
       <a href={`${base}/#enterprise`}>{n.enterprise}</a>
+      <a href={`${base}/tai-lieu/`} class:list={{ active: path.startsWith(`${base}/tai-lieu`) }}>{n.docs}</a>
       <a href={`${base}/tin-tuc/`} class:list={{ active: path.startsWith(`${base}/tin-tuc`) }}>{n.resources}</a>
       <a href={`${base}/ve-chung-toi/`} class:list={{ active: path.startsWith(`${base}/ve-chung-toi`) }}>{n.company}</a>
     </nav>

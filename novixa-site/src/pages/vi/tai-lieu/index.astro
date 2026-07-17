@@ -1,0 +1,381 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import Header from '../../../components/Header.astro';
+import Footer from '../../../components/Footer.astro';
+import { t } from '../../../i18n';
+import { DOC_CATEGORIES, getDocsByCategory } from '../../../lib/docs-catalog';
+import { absoluteUrl } from '../../../lib/site';
+import '../../../styles/global.css';
+
+const m = t('vi');
+const d = m.docs;
+const email = m.contact.emailAddress;
+
+const sections = DOC_CATEGORIES.map((cat) => ({
+  ...cat,
+  docs: getDocsByCategory(cat.id),
+}));
+---
+
+<BaseLayout title={d.title} description={d.intro} canonicalPath="/vi/tai-lieu/">
+  <Header slot="header" />
+  <section class="section docs-page">
+    <div class="container">
+      <header class="docs-hero">
+        <p class="docs-eyebrow">Tài nguyên</p>
+        <h1 class="section-title">{d.title}</h1>
+        <p class="section-intro">{d.intro}</p>
+      </header>
+
+      <nav class="docs-toc" aria-label="Mục tài liệu">
+        <ol class="docs-toc__list">
+          {
+            sections.map((cat, i) => (
+              <li>
+                <a href={`#${cat.id}`}>
+                  <span class="docs-toc__num">{i + 1}</span>
+                  {cat.title}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+
+      <div class="docs-sections">
+        {
+          sections.map((cat, i) => (
+            <section class="docs-section" id={cat.id}>
+              <header class="docs-section__head">
+                <p class="docs-section__num">
+                  {i + 1}. {cat.title}
+                </p>
+                <p class="docs-section__desc">{cat.description}</p>
+              </header>
+              <ul class="docs-grid">
+                {cat.docs.map((doc) => (
+                  <li class="docs-card">
+                    <h3 class="docs-card__title">{doc.title}</h3>
+                    <p class="docs-card__desc">{doc.description}</p>
+                    <button
+                      type="button"
+                      class="btn btn-primary"
+                      data-doc-open
+                      data-slug={doc.slug}
+                      data-title={doc.title}
+                    >
+                      {d.downloadCta}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        }
+      </div>
+
+      <p class="docs-privacy">{d.note}</p>
+    </div>
+  </section>
+
+  <div class="docs-modal" data-docs-modal hidden>
+    <div class="docs-modal__backdrop" data-docs-close tabindex="-1"></div>
+    <div
+      class="docs-modal__panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="docs-form-title"
+    >
+      <button type="button" class="docs-modal__x" data-docs-close aria-label={d.cancel}>×</button>
+      <h2 id="docs-form-title" class="docs-modal__title">{d.formTitle}</h2>
+      <p class="docs-modal__lead" data-docs-lead>{d.formLead}</p>
+
+      <form class="docs-form" method="POST" data-docs-form>
+        <input type="hidden" name="_subject" value="Tải tài liệu từ novixa.vn" data-docs-subject />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_next" value="" data-docs-next />
+        <input type="hidden" name="document" value="" data-docs-slug />
+        <input type="hidden" name="document_title" value="" data-docs-title />
+        <input type="text" name="_honey" class="docs-honey" tabindex="-1" autocomplete="off" />
+
+        <label for="docs-pharmacy">{d.pharmacy} *</label>
+        <input id="docs-pharmacy" name="pharmacy" type="text" required autocomplete="organization" />
+
+        <label for="docs-phone">{d.phone} *</label>
+        <input
+          id="docs-phone"
+          name="phone"
+          type="tel"
+          required
+          autocomplete="tel"
+          inputmode="tel"
+        />
+
+        <label for="docs-email">{d.email} *</label>
+        <input id="docs-email" name="email" type="email" required autocomplete="email" />
+
+        <div class="docs-form__actions">
+          <button class="btn btn-primary" type="submit">{d.submit}</button>
+          <button class="btn btn-ghost" type="button" data-docs-close>{d.cancel}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <Footer slot="footer" />
+</BaseLayout>
+
+<script define:vars={{ email, thanksBase: absoluteUrl('/vi/tai-lieu/cam-on/') }}>
+  const modal = document.querySelector('[data-docs-modal]');
+  const form = document.querySelector('[data-docs-form]');
+  const lead = document.querySelector('[data-docs-lead]');
+  const subject = document.querySelector('[data-docs-subject]');
+  const next = document.querySelector('[data-docs-next]');
+  const slugInput = document.querySelector('[data-docs-slug]');
+  const titleInput = document.querySelector('[data-docs-title]');
+
+  form?.setAttribute('action', `https://formsubmit.co/${encodeURIComponent(email)}`);
+
+  const openModal = (slug, title) => {
+    slugInput.value = slug;
+    titleInput.value = title;
+    subject.value = `Tải tài liệu — ${title}`;
+    next.value = `${thanksBase}?doc=${encodeURIComponent(slug)}`;
+    if (lead) lead.textContent = `Tài liệu: ${title}. Điền thông tin để mở link tải.`;
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    document.getElementById('docs-pharmacy')?.focus();
+  };
+
+  const closeModal = () => {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  document.querySelectorAll('[data-doc-open]').forEach((btn) => {
+    btn.addEventListener('click', () => openModal(btn.dataset.slug, btn.dataset.title));
+  });
+
+  document.querySelectorAll('[data-docs-close]').forEach((el) => {
+    el.addEventListener('click', closeModal);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
+</script>
+
+<style>
+  .docs-hero {
+    max-width: 40rem;
+    margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+  }
+
+  .docs-eyebrow {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-primary-dark);
+  }
+
+  .docs-toc {
+    margin-bottom: clamp(2rem, 4vw, 3rem);
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: #f7fbf9;
+  }
+
+  .docs-toc__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  }
+
+  .docs-toc__list a {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    color: var(--color-navy);
+    font-weight: 600;
+    font-size: 0.92rem;
+    text-decoration: none;
+  }
+
+  .docs-toc__list a:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+  }
+
+  .docs-toc__num {
+    color: var(--color-primary-dark);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .docs-sections {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 5vw, 3.75rem);
+  }
+
+  .docs-section__head {
+    margin-bottom: 1.1rem;
+    max-width: 40rem;
+  }
+
+  .docs-section__num {
+    margin: 0 0 0.35rem;
+    font-size: clamp(1.2rem, 2.4vw, 1.45rem);
+    font-weight: 800;
+    color: var(--color-navy);
+    line-height: 1.3;
+  }
+
+  .docs-section__desc {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.95rem;
+  }
+
+  .docs-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16.5rem), 1fr));
+  }
+
+  .docs-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.35rem 1.4rem 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: linear-gradient(180deg, #fff 0%, #f7fbf9 100%);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .docs-card__title {
+    margin: 0;
+    font-size: 1.1rem;
+    line-height: 1.35;
+    color: var(--color-navy);
+  }
+
+  .docs-card__desc {
+    margin: 0;
+    flex: 1;
+    font-size: 0.95rem;
+    color: var(--color-muted);
+  }
+
+  .docs-card .btn {
+    align-self: flex-start;
+    margin-top: 0.25rem;
+  }
+
+  .docs-privacy {
+    margin: 2.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    max-width: 40rem;
+  }
+
+  .docs-modal[hidden] {
+    display: none !important;
+  }
+
+  .docs-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+  }
+
+  .docs-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(11, 31, 51, 0.45);
+  }
+
+  .docs-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 26rem);
+    padding: 1.5rem 1.4rem 1.35rem;
+    border-radius: var(--radius-card);
+    background: #fff;
+    box-shadow: var(--shadow);
+  }
+
+  .docs-modal__x {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.75rem;
+    border: 0;
+    background: transparent;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+
+  .docs-modal__title {
+    margin: 0 1.5rem 0.4rem 0;
+    font-size: 1.25rem;
+  }
+
+  .docs-modal__lead {
+    margin: 0 0 1.1rem;
+    font-size: 0.92rem;
+    color: var(--color-muted);
+  }
+
+  .docs-form label {
+    display: block;
+    margin: 0.75rem 0 0.3rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .docs-form input[type='text'],
+  .docs-form input[type='tel'],
+  .docs-form input[type='email'] {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    font: inherit;
+  }
+
+  .docs-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1.15rem;
+  }
+
+  .docs-honey {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    height: 0;
+    width: 0;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-navy);
+  }
+</style>
