@@ -37,7 +37,7 @@ const category = doc ? getDocCategory(doc.categoryId) : undefined;
                 <a class="btn btn-primary" href={doc.file} download>
                   {d.downloadNow}
                 </a>
-                <a class="btn btn-ghost" href={`/vi/tai-lieu/#${doc.categoryId}`}>
+                <a class="btn btn-ghost" href={`/vi/tai-lieu/#${doc.slug}`}>
                   {d.backToList}
                 </a>
               </div>

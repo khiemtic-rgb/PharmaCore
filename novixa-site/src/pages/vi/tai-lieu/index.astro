@@ -1,95 +1,321 @@
 ---
+/**
+ * Landing thư viện tài liệu — layout sidebar + lưới thẻ theo mockup.
+ * Không dùng Header/Footer site (shell riêng); trang khác giữ nguyên.
+ */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
-import Header from '../../../components/Header.astro';
-import Footer from '../../../components/Footer.astro';
 import { t } from '../../../i18n';
-import { DOC_CATEGORIES, getDocsByCategory } from '../../../lib/docs-catalog';
+import {
+  ACCESS_LABELS,
+  getDocsSorted,
+  type DocAccess,
+  type DocItem,
+} from '../../../lib/docs-catalog';
+import { benefitIcon, cardIcon, navIcon } from '../../../lib/docs-icons';
 import { absoluteUrl } from '../../../lib/site';
 import '../../../styles/global.css';
+import '../../../styles/docs-library.css';
 
 const m = t('vi');
 const d = m.docs;
 const email = m.contact.emailAddress;
+const docs = getDocsSorted();
+const docCount = docs.length;
 
-const sections = DOC_CATEGORIES.map((cat) => ({
-  ...cat,
-  docs: getDocsByCategory(cat.id),
-}));
+const accessClass: Record<DocAccess, string> = {
+  free: 'is-free',
+  member: 'is-member',
+  customer: 'is-customer',
+};
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+const navItems = [
+  { id: 'all', label: d.allDocs },
+  ...docs.map((doc) => ({ id: doc.slug, label: doc.navLabel })),
+];
+
+const benefits = [
+  { title: d.benefit1Title, desc: d.benefit1Desc, icon: 'shield' },
+  { title: d.benefit2Title, desc: d.benefit2Desc, icon: 'book' },
+  { title: d.benefit3Title, desc: d.benefit3Desc, icon: 'download' },
+  { title: d.benefit4Title, desc: d.benefit4Desc, icon: 'heart' },
+] as const;
 ---
 
 <BaseLayout title={d.title} description={d.intro} canonicalPath="/vi/tai-lieu/">
-  <Header slot="header" />
-  <section class="section docs-page">
-    <div class="container">
-      <header class="docs-hero">
-        <p class="docs-eyebrow">Tài nguyên</p>
-        <h1 class="section-title">{d.title}</h1>
-        <p class="section-intro">{d.intro}</p>
-      </header>
+  <div class="lib" data-docs-lib>
+    <button
+      type="button"
+      class="lib-menu-btn"
+      data-sidebar-toggle
+      aria-expanded="false"
+      aria-controls="lib-sidebar"
+    >
+      <span class="lib-menu-btn__bars" aria-hidden="true"></span>
+      <span class="visually-hidden">{d.menuOpen}</span>
+    </button>
+    <div class="lib-overlay" data-sidebar-overlay hidden></div>
 
-      <nav class="docs-toc" aria-label="Mục tài liệu">
-        <ol class="docs-toc__list">
-          {
-            sections.map((cat, i) => (
-              <li>
-                <a href={`#${cat.id}`}>
-                  <span class="docs-toc__num">{i + 1}</span>
-                  {cat.title}
-                </a>
-              </li>
-            ))
-          }
-        </ol>
-      </nav>
+    <aside class="lib-sidebar" id="lib-sidebar" data-sidebar>
+      <a href="/vi/" class="lib-brand">
+        <img src="/images/logo.png" alt="" width="36" height="36" decoding="async" />
+        <span>
+          <strong>NOVIXA</strong>
+          <small>{d.tagline}</small>
+        </span>
+      </a>
 
-      <div class="docs-sections">
+      <p class="lib-nav-label">{d.navTitle}</p>
+      <nav class="lib-nav" aria-label={d.navTitle}>
         {
-          sections.map((cat, i) => (
-            <section class="docs-section" id={cat.id}>
-              <header class="docs-section__head">
-                <p class="docs-section__num">
-                  {i + 1}. {cat.title}
-                </p>
-                <p class="docs-section__desc">{cat.description}</p>
-              </header>
-              <ul class="docs-grid">
-                {cat.docs.map((doc) => (
-                  <li class="docs-card">
-                    <h3 class="docs-card__title">{doc.title}</h3>
-                    <p class="docs-card__desc">{doc.description}</p>
-                    <button
-                      type="button"
-                      class="btn btn-primary"
-                      data-doc-open
-                      data-slug={doc.slug}
-                      data-title={doc.title}
-                    >
-                      {d.downloadCta}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+          navItems.map((item, i) => (
+            <button
+              type="button"
+              class:list={['lib-nav__item', { active: i === 0 }]}
+              data-nav-filter={item.id}
+            >
+              <span class="lib-nav__ico" aria-hidden="true" set:html={navIcon(i)} />
+              {item.label}
+            </button>
           ))
         }
+      </nav>
+
+      <div class="lib-subscribe">
+        <h2>{d.subscribeTitle}</h2>
+        <p>{d.subscribeLead}</p>
+        <form
+          class="lib-subscribe__form"
+          method="POST"
+          action={`https://formsubmit.co/${encodeURIComponent(email)}`}
+        >
+          <input type="hidden" name="_subject" value="Đăng ký nhận tài liệu — novixa.vn" />
+          <input type="hidden" name="_captcha" value="false" />
+          <input type="hidden" name="_template" value="table" />
+          <input type="hidden" name="_next" value={absoluteUrl('/vi/tai-lieu/?subscribed=1')} />
+          <input type="text" name="_honey" class="lib-honey" tabindex="-1" autocomplete="off" />
+          <label class="visually-hidden" for="lib-sub-email">{d.subscribeEmail}</label>
+          <input
+            id="lib-sub-email"
+            name="email"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder={d.subscribeEmail}
+          />
+          <button type="submit">{d.subscribeCta}</button>
+        </form>
       </div>
 
-      <p class="docs-privacy">{d.note}</p>
+      <div class="lib-support">
+        <p class="lib-support__title">{d.supportTitle}</p>
+        <p class="lib-support__lead">{d.supportLead}</p>
+        <a href="/vi/lien-he/">{d.supportCta} →</a>
+      </div>
+    </aside>
+
+    <div class="lib-main">
+      <header class="lib-top">
+        <label class="lib-search">
+          <span class="visually-hidden">{d.searchPlaceholder}</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"></circle>
+            <path
+              d="M20 20l-3.5-3.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"></path>
+          </svg>
+          <input type="search" placeholder={d.searchPlaceholder} data-docs-search autocomplete="off" />
+        </label>
+        <div class="lib-top__actions">
+          <a href="/vi/ve-chung-toi/">{d.aboutLink}</a>
+          <a class="lib-btn-primary" href="/vi/lien-he/#contact-form">{d.trialCta}</a>
+          <a class="lib-login" href="https://app.novixa.vn" rel="noopener">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.75"></circle>
+              <path
+                d="M5 19c1.5-3 4-4.5 7-4.5S17.5 16 19 19"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"></path>
+            </svg>
+            {d.loginLink}
+          </a>
+        </div>
+      </header>
+
+      <section class="lib-hero">
+        <div class="lib-hero__copy">
+          <h1>{d.title}</h1>
+          <p>{d.intro}</p>
+        </div>
+        <div class="lib-hero__art" aria-hidden="true">
+          <svg class="lib-hero__svg" viewBox="0 0 320 220" fill="none">
+            <rect x="48" y="48" width="200" height="128" rx="10" fill="#1e3a5f"></rect>
+            <rect x="58" y="58" width="180" height="100" rx="4" fill="#e8f1ff"></rect>
+            <rect x="70" y="72" width="70" height="10" rx="2" fill="#2563eb"></rect>
+            <rect x="70" y="92" width="48" height="48" rx="6" fill="#bfdbfe"></rect>
+            <rect x="128" y="92" width="48" height="48" rx="6" fill="#93c5fd"></rect>
+            <rect x="186" y="92" width="40" height="20" rx="4" fill="#60a5fa"></rect>
+            <rect x="186" y="120" width="40" height="20" rx="4" fill="#3b82f6"></rect>
+            <rect x="120" y="176" width="56" height="8" rx="2" fill="#94a3b8"></rect>
+            <rect x="230" y="110" width="36" height="48" rx="3" fill="#2563eb"></rect>
+            <rect x="242" y="118" width="36" height="48" rx="3" fill="#1d4ed8"></rect>
+            <circle cx="268" cy="78" r="18" fill="#86efac"></circle>
+            <path d="M260 78c4-10 12-14 16-8 2 8-4 18-8 22-6-2-12-6-8-14z" fill="#16a34a"></path>
+          </svg>
+        </div>
+      </section>
+
+      <section class="lib-stats" aria-label="Thống kê thư viện">
+        <article class="lib-stat">
+          <span class="lib-stat__ico is-blue" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"
+              ><path
+                fill="currentColor"
+                d="M7 3h8l4 4v14H7V3zm8 1.5V8h3.5L15 4.5zM9 11h8v1.5H9V11zm0 3.5h8V16H9v-1.5zm0 3.5h5V19.5H9V18z"
+              ></path></svg
+            >
+          </span>
+          <div>
+            <strong>{docCount}+</strong>
+            <span>{d.statDocs}</span>
+          </div>
+        </article>
+        <article class="lib-stat">
+          <span class="lib-stat__ico is-green" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"
+              ><path
+                fill="currentColor"
+                d="M6 3h9l5 5v13H6V3zm9 1.5V9h4.5L15 4.5zM8 12h10v1.5H8V12zm0 3h10V16.5H8V15zm0 3h7V19.5H8V18z"
+              ></path></svg
+            >
+          </span>
+          <div>
+            <strong>20+</strong>
+            <span>{d.statForms}</span>
+          </div>
+        </article>
+        <article class="lib-stat">
+          <span class="lib-stat__ico is-orange" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"
+              ><path
+                fill="currentColor"
+                d="M9.5 16.5 5.75 12.75l1.4-1.4 2.35 2.35 5.6-5.6 1.4 1.4L9.5 16.5zM5 21V3h9l5 5v13H5zm9-12.5V4.5L18.5 9H14z"
+              ></path></svg
+            >
+          </span>
+          <div>
+            <strong>10+</strong>
+            <span>{d.statChecklists}</span>
+          </div>
+        </article>
+        <article class="lib-stat">
+          <span class="lib-stat__ico is-purple" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"
+              ><path
+                fill="currentColor"
+                d="M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5a5 5 0 01-8.9 3.1L6.7 17.5A7 7 0 0019 13c0-3.87-3.13-7-7-7z"
+              ></path></svg
+            >
+          </span>
+          <div>
+            <strong>{d.statUpdateValue}</strong>
+            <span>{d.statUpdateLabel}</span>
+          </div>
+        </article>
+      </section>
+
+      <div class="lib-toolbar">
+        <div class="lib-filters" role="tablist" aria-label="Lọc theo quyền truy cập">
+          <button type="button" class="lib-chip active" data-access-filter="all">{d.allDocs}</button>
+          <button type="button" class="lib-chip" data-access-filter="free">{d.filterFree}</button>
+          <button type="button" class="lib-chip" data-access-filter="member">{d.filterMember}</button>
+          <button type="button" class="lib-chip" data-access-filter="customer">{d.filterCustomer}</button>
+        </div>
+        <label class="lib-sort">
+          <span class="visually-hidden">{d.sortNewest}</span>
+          <select data-docs-sort>
+            <option value="newest">{d.sortNewest}</option>
+            <option value="az">A → Z</option>
+          </select>
+        </label>
+      </div>
+
+      <ul class="lib-grid" data-docs-grid>
+        {
+          docs.map((doc: DocItem) => (
+            <li
+              class="lib-card"
+              data-doc-card
+              data-slug={doc.slug}
+              data-access={doc.access}
+              data-title={doc.title}
+              data-desc={doc.description}
+              data-order={doc.order}
+            >
+              {doc.isNew && <span class="lib-card__badge">{d.newBadge}</span>}
+              <div class="lib-card__head">
+                <span class="lib-card__num">{pad(doc.order)}</span>
+                <span class={`lib-card__ico accent-${doc.accent}`} aria-hidden="true" set:html={cardIcon()} />
+              </div>
+              <h2 class="lib-card__title">{doc.title}</h2>
+              <p class="lib-card__desc">{doc.description}</p>
+              <div class="lib-card__foot">
+                <span class="lib-card__pdf">
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M7 2h8l5 5v15H7V2zm8 1.5V8h4.5L15 3.5zM9 12h8v1.2H9V12zm0 2.5h8V15.7H9v-1.2zm0 2.5h5V18.2H9V17z"
+                    ></path>
+                  </svg>
+                  PDF · {doc.pages} {d.pagesLabel}
+                </span>
+                <span class={`lib-card__access ${accessClass[doc.access]}`}>{ACCESS_LABELS[doc.access]}</span>
+              </div>
+              <button
+                type="button"
+                class="lib-card__cta"
+                data-doc-open
+                data-slug={doc.slug}
+                data-title={doc.title}
+              >
+                {d.downloadCta}
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="lib-empty" data-docs-empty hidden>{d.emptyFilter}</p>
+
+      <section class="lib-benefits" aria-label="Lợi ích">
+        {
+          benefits.map((b) => (
+            <article class="lib-benefit">
+              <span class="lib-benefit__ico" aria-hidden="true" set:html={benefitIcon(b.icon)} />
+              <div>
+                <h3>{b.title}</h3>
+                <p>{b.desc}</p>
+              </div>
+            </article>
+          ))
+        }
+      </section>
+
+      <p class="lib-privacy">{d.note}</p>
     </div>
-  </section>
+  </div>
 
   <div class="docs-modal" data-docs-modal hidden>
     <div class="docs-modal__backdrop" data-docs-close tabindex="-1"></div>
-    <div
-      class="docs-modal__panel"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="docs-form-title"
-    >
+    <div class="docs-modal__panel" role="dialog" aria-modal="true" aria-labelledby="docs-form-title">
       <button type="button" class="docs-modal__x" data-docs-close aria-label={d.cancel}>×</button>
       <h2 id="docs-form-title" class="docs-modal__title">{d.formTitle}</h2>
       <p class="docs-modal__lead" data-docs-lead>{d.formLead}</p>
-
       <form class="docs-form" method="POST" data-docs-form>
         <input type="hidden" name="_subject" value="Tải tài liệu từ novixa.vn" data-docs-subject />
         <input type="hidden" name="_captcha" value="false" />
@@ -97,33 +323,20 @@ const sections = DOC_CATEGORIES.map((cat) => ({
         <input type="hidden" name="_next" value="" data-docs-next />
         <input type="hidden" name="document" value="" data-docs-slug />
         <input type="hidden" name="document_title" value="" data-docs-title />
-        <input type="text" name="_honey" class="docs-honey" tabindex="-1" autocomplete="off" />
-
+        <input type="text" name="_honey" class="lib-honey" tabindex="-1" autocomplete="off" />
         <label for="docs-pharmacy">{d.pharmacy} *</label>
         <input id="docs-pharmacy" name="pharmacy" type="text" required autocomplete="organization" />
-
         <label for="docs-phone">{d.phone} *</label>
-        <input
-          id="docs-phone"
-          name="phone"
-          type="tel"
-          required
-          autocomplete="tel"
-          inputmode="tel"
-        />
-
+        <input id="docs-phone" name="phone" type="tel" required autocomplete="tel" inputmode="tel" />
         <label for="docs-email">{d.email} *</label>
         <input id="docs-email" name="email" type="email" required autocomplete="email" />
-
         <div class="docs-form__actions">
-          <button class="btn btn-primary" type="submit">{d.submit}</button>
-          <button class="btn btn-ghost" type="button" data-docs-close>{d.cancel}</button>
+          <button class="lib-btn-primary" type="submit">{d.submit}</button>
+          <button class="lib-btn-ghost" type="button" data-docs-close>{d.cancel}</button>
         </div>
       </form>
     </div>
   </div>
-
-  <Footer slot="footer" />
 </BaseLayout>
 
 <script define:vars={{ email, thanksBase: absoluteUrl('/vi/tai-lieu/cam-on/') }}>
@@ -134,15 +347,24 @@ const sections = DOC_CATEGORIES.map((cat) => ({
   const next = document.querySelector('[data-docs-next]');
   const slugInput = document.querySelector('[data-docs-slug]');
   const titleInput = document.querySelector('[data-docs-title]');
+  const grid = document.querySelector('[data-docs-grid]');
+  const empty = document.querySelector('[data-docs-empty]');
+  const search = document.querySelector('[data-docs-search]');
+  const sort = document.querySelector('[data-docs-sort]');
+  const overlay = document.querySelector('[data-sidebar-overlay]');
+  const toggle = document.querySelector('[data-sidebar-toggle]');
 
-  form?.setAttribute('action', `https://formsubmit.co/${encodeURIComponent(email)}`);
+  let navFilter = 'all';
+  let accessFilter = 'all';
+
+  form?.setAttribute('action', 'https://formsubmit.co/' + encodeURIComponent(email));
 
   const openModal = (slug, title) => {
     slugInput.value = slug;
     titleInput.value = title;
-    subject.value = `Tải tài liệu — ${title}`;
-    next.value = `${thanksBase}?doc=${encodeURIComponent(slug)}`;
-    if (lead) lead.textContent = `Tài liệu: ${title}. Điền thông tin để mở link tải.`;
+    subject.value = 'Tải tài liệu — ' + title;
+    next.value = thanksBase + '?doc=' + encodeURIComponent(slug);
+    if (lead) lead.textContent = 'Tài liệu: ' + title + '. Điền thông tin để mở link tải.';
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
     document.getElementById('docs-pharmacy')?.focus();
@@ -153,229 +375,102 @@ const sections = DOC_CATEGORIES.map((cat) => ({
     document.body.style.overflow = '';
   };
 
+  const setSidebarOpen = (open) => {
+    document.documentElement.classList.toggle('lib-sidebar-open', open);
+    toggle?.setAttribute('aria-expanded', String(open));
+    if (overlay) overlay.hidden = !open;
+  };
+
+  const applyFilters = () => {
+    const q = (search?.value || '').trim().toLowerCase();
+    const cards = [...document.querySelectorAll('[data-doc-card]')];
+    let visible = 0;
+
+    cards.forEach((card) => {
+      const slug = card.dataset.slug;
+      const access = card.dataset.access;
+      const hay = (card.dataset.title + ' ' + card.dataset.desc).toLowerCase();
+      const matchNav = navFilter === 'all' || slug === navFilter;
+      const matchAccess = accessFilter === 'all' || access === accessFilter;
+      const matchSearch = !q || hay.includes(q);
+      const show = matchNav && matchAccess && matchSearch;
+      card.hidden = !show;
+      if (show) visible += 1;
+    });
+
+    if (sort?.value === 'az') {
+      cards
+        .sort((a, b) => (a.dataset.title || '').localeCompare(b.dataset.title || '', 'vi'))
+        .forEach((c) => grid?.appendChild(c));
+    } else {
+      cards
+        .sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order))
+        .forEach((c) => grid?.appendChild(c));
+    }
+
+    if (empty) empty.hidden = visible > 0;
+  };
+
   document.querySelectorAll('[data-doc-open]').forEach((btn) => {
     btn.addEventListener('click', () => openModal(btn.dataset.slug, btn.dataset.title));
   });
-
   document.querySelectorAll('[data-docs-close]').forEach((el) => {
     el.addEventListener('click', closeModal);
   });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  document.querySelectorAll('[data-nav-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      navFilter = btn.dataset.navFilter || 'all';
+      document.querySelectorAll('[data-nav-filter]').forEach((b) => b.classList.toggle('active', b === btn));
+      setSidebarOpen(false);
+      applyFilters();
+    });
   });
+  document.querySelectorAll('[data-access-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      accessFilter = btn.dataset.accessFilter || 'all';
+      document.querySelectorAll('[data-access-filter]').forEach((b) => b.classList.toggle('active', b === btn));
+      applyFilters();
+    });
+  });
+
+  search?.addEventListener('input', applyFilters);
+  sort?.addEventListener('change', applyFilters);
+  toggle?.addEventListener('click', () => {
+    setSidebarOpen(!document.documentElement.classList.contains('lib-sidebar-open'));
+  });
+  overlay?.addEventListener('click', () => setSidebarOpen(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!modal.hidden) closeModal();
+      else setSidebarOpen(false);
+    }
+  });
+
+  const params = new URLSearchParams(location.search);
+  const hashSlug = location.hash.replace(/^#/, '');
+  const focusSlug = params.get('doc') || hashSlug;
+  if (focusSlug && focusSlug !== 'subscribed') {
+    document.querySelector('[data-nav-filter="' + focusSlug + '"]')?.click();
+  }
 </script>
 
-<style>
-  .docs-hero {
-    max-width: 40rem;
-    margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+<style is:global>
+  body:has(.lib) {
+    background: #f4f7fb;
   }
-
-  .docs-eyebrow {
-    margin: 0 0 0.5rem;
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-primary-dark);
-  }
-
-  .docs-toc {
-    margin-bottom: clamp(2rem, 4vw, 3rem);
-    padding: 1.1rem 1.2rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: #f7fbf9;
-  }
-
-  .docs-toc__list {
-    list-style: none;
-    margin: 0;
+  body:has(.lib) main {
     padding: 0;
-    display: grid;
-    gap: 0.45rem 1.25rem;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    max-width: none;
   }
-
-  .docs-toc__list a {
-    display: flex;
-    align-items: baseline;
-    gap: 0.45rem;
-    color: var(--color-navy);
-    font-weight: 600;
-    font-size: 0.92rem;
-    text-decoration: none;
-  }
-
-  .docs-toc__list a:hover {
-    color: var(--color-primary-dark);
-    text-decoration: underline;
-  }
-
-  .docs-toc__num {
-    color: var(--color-primary-dark);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .docs-sections {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(2.5rem, 5vw, 3.75rem);
-  }
-
-  .docs-section__head {
-    margin-bottom: 1.1rem;
-    max-width: 40rem;
-  }
-
-  .docs-section__num {
-    margin: 0 0 0.35rem;
-    font-size: clamp(1.2rem, 2.4vw, 1.45rem);
-    font-weight: 800;
-    color: var(--color-navy);
-    line-height: 1.3;
-  }
-
-  .docs-section__desc {
-    margin: 0;
-    color: var(--color-muted);
-    font-size: 0.95rem;
-  }
-
-  .docs-grid {
-    list-style: none;
-    margin: 0;
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     padding: 0;
-    display: grid;
-    gap: 1.25rem;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16.5rem), 1fr));
-  }
-
-  .docs-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.35rem 1.4rem 1.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    background: linear-gradient(180deg, #fff 0%, #f7fbf9 100%);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .docs-card__title {
-    margin: 0;
-    font-size: 1.1rem;
-    line-height: 1.35;
-    color: var(--color-navy);
-  }
-
-  .docs-card__desc {
-    margin: 0;
-    flex: 1;
-    font-size: 0.95rem;
-    color: var(--color-muted);
-  }
-
-  .docs-card .btn {
-    align-self: flex-start;
-    margin-top: 0.25rem;
-  }
-
-  .docs-privacy {
-    margin: 2.5rem 0 0;
-    font-size: 0.875rem;
-    color: var(--color-muted);
-    max-width: 40rem;
-  }
-
-  .docs-modal[hidden] {
-    display: none !important;
-  }
-
-  .docs-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 80;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-  }
-
-  .docs-modal__backdrop {
-    position: absolute;
-    inset: 0;
-    background: rgba(11, 31, 51, 0.45);
-  }
-
-  .docs-modal__panel {
-    position: relative;
-    z-index: 1;
-    width: min(100%, 26rem);
-    padding: 1.5rem 1.4rem 1.35rem;
-    border-radius: var(--radius-card);
-    background: #fff;
-    box-shadow: var(--shadow);
-  }
-
-  .docs-modal__x {
-    position: absolute;
-    top: 0.65rem;
-    right: 0.75rem;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
     border: 0;
-    background: transparent;
-    font-size: 1.5rem;
-    line-height: 1;
-    color: var(--color-muted);
-    cursor: pointer;
-  }
-
-  .docs-modal__title {
-    margin: 0 1.5rem 0.4rem 0;
-    font-size: 1.25rem;
-  }
-
-  .docs-modal__lead {
-    margin: 0 0 1.1rem;
-    font-size: 0.92rem;
-    color: var(--color-muted);
-  }
-
-  .docs-form label {
-    display: block;
-    margin: 0.75rem 0 0.3rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-  }
-
-  .docs-form input[type='text'],
-  .docs-form input[type='tel'],
-  .docs-form input[type='email'] {
-    width: 100%;
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    font: inherit;
-  }
-
-  .docs-form__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-    margin-top: 1.15rem;
-  }
-
-  .docs-honey {
-    position: absolute;
-    left: -9999px;
-    opacity: 0;
-    height: 0;
-    width: 0;
-  }
-
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-navy);
   }
 </style>
