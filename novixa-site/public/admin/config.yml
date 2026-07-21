@@ -34,7 +34,7 @@ collections:
     label_singular: Bài viết
     description: >
       Đăng / sửa bài trên novixa.vn. Sau khi Lưu, chờ Cloudflare build vài phút.
-      Ảnh đại diện: vào Media Library, tải PNG tên trùng slug (vd. ten-bai-viet.png), khuyến nghị 1200×630.
+      Tải ảnh ở trường "Ảnh hiển thị" (khuyến nghị 1200×630).
     folder: novixa-site/src/content/tin-tuc
     create: true
     delete: true
@@ -57,6 +57,14 @@ collections:
         name: description
         widget: text
         hint: 1–2 câu tóm tắt (meta description / danh sách tin).
+      - label: Ảnh hiển thị
+        name: image
+        widget: image
+        required: true
+        choose_url: false
+        media_folder: novixa-site/public/images/tin-tuc
+        public_folder: /images/tin-tuc
+        hint: Ảnh thumbnail + đầu bài. Khuyến nghị 1200×630 px (PNG hoặc JPG).
       - label: Ngày đăng
         name: pubDate
         widget: datetime

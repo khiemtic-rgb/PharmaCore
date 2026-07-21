@@ -1,5 +1,5 @@
 ---
-import { articleOgImagePath } from '../lib/articleSeo';
+import { resolveArticleImage } from '../lib/articleSeo';
 import { formatNewsDate, isNewsRecent } from '../lib/newsDate';
 import NewsNewBadge from './NewsNewBadge.astro';
 
@@ -9,12 +9,14 @@ interface Props {
   description: string;
   pubDate: Date;
   newLabel: string;
+  image?: string;
   showDescription?: boolean;
 }
 
-const { slug, title, description, pubDate, newLabel, showDescription = true } = Astro.props;
+const { slug, title, description, pubDate, newLabel, image: imageProp, showDescription = true } =
+  Astro.props;
 const href = `/vi/tin-tuc/${slug}/`;
-const image = articleOgImagePath(slug);
+const image = resolveArticleImage(slug, imageProp);
 ---
 
 <li class="news-list-item">

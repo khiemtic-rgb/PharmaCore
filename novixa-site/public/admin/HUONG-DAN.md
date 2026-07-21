@@ -27,12 +27,9 @@ Tài khoản GitHub phải được **invite Write** vào repo `khiemtic-rgb/Kit
 
 ## Ảnh đại diện
 
-1. Trong CMS mở **Media**.
-2. Upload file PNG/JPG.
-3. **Đặt tên file trùng slug bài** — ví dụ bài slug `dao-tao-nhan-su` thì ảnh là `dao-tao-nhan-su.png`.
-4. Khuyến nghị kích thước **1200 × 630** px.
+Trong form bài viết, dùng trường **Ảnh hiển thị** → Upload / chọn ảnh (khuyến nghị **1200 × 630** px).
 
-Slug thường là tiêu đề không dấu, nối bằng dấu `-` (CMS tự tạo khi lưu).
+Không cần đặt tên file trùng slug — CMS lưu đường dẫn vào bài.
 
 ## Sửa / xóa bài
 

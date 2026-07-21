@@ -1,6 +1,6 @@
 ---
 import { formatNewsDate } from '../lib/newsDate';
-import { articleOgImagePath } from '../lib/articleSeo';
+import { resolveArticleImage } from '../lib/articleSeo';
 
 const { posts = [] } = Astro.props;
 ---
@@ -18,7 +18,7 @@ const { posts = [] } = Astro.props;
           {posts.map((post) => (
             <article class="knowledge-card">
               <a class="knowledge-thumb" href={`/vi/tin-tuc/${post.id}/`} aria-hidden="true" tabindex="-1">
-                <img src={articleOgImagePath(post.id)} alt="" loading="lazy" decoding="async" />
+                <img src={resolveArticleImage(post.id, post.data.image)} alt="" loading="lazy" decoding="async" />
               </a>
               <p class="news-meta">{formatNewsDate(post.data.pubDate)}</p>
               <h3>

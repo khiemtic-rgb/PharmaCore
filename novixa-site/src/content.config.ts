@@ -8,6 +8,8 @@ const tinTuc = defineCollection({
     description: z.string(),
     pubDate: z.coerce.date(),
     lang: z.literal('vi').default('vi'),
+    /** Đường dẫn ảnh hiển thị (CMS), vd. /images/tin-tuc/ten-bai.png */
+    image: z.string().optional(),
   }),
 });
 

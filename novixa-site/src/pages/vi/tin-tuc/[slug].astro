@@ -6,7 +6,7 @@ import ArticleCta from '../../../components/ArticleCta.astro';
 import { getCollection, render } from 'astro:content';
 import { filterPublishedPosts } from '../../../lib/publishedNews';
 import { formatNewsDate } from '../../../lib/newsDate';
-import { articleOgImagePath, buildArticleJsonLd } from '../../../lib/articleSeo';
+import { resolveArticleImage, buildArticleJsonLd } from '../../../lib/articleSeo';
 import { t } from '../../../i18n';
 import '../../../styles/global.css';
 
@@ -23,7 +23,7 @@ export async function getStaticPaths() {
 const m = t('vi');
 const { post } = Astro.props;
 const { Content } = await render(post);
-const ogImage = articleOgImagePath(post.id);
+const ogImage = resolveArticleImage(post.id, post.data.image);
 const publishedTime = post.data.pubDate.toISOString();
 const jsonLd = buildArticleJsonLd(post);
 ---
