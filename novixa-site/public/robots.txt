@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
 Disallow: /vi/thong-ke/
 Disallow: /vi/health-check/
 Disallow: /vi/spa-health-check/

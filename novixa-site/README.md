@@ -53,6 +53,27 @@ novixa-site/
 
 ## Thêm tin tức
 
+### Cách 0 — CMS cho nhân viên (khuyến nghị)
+
+Giao diện web: **https://novixa.vn/admin/**
+
+1. Đăng nhập GitHub (tài khoản được **invite write** vào repo `KitPlatform`).
+2. Vào **Tin tức** → **New Tin tức** (hoặc sửa bài cũ).
+3. Điền tiêu đề, mô tả, ngày đăng, nội dung → **Publish / Lưu**.
+4. (Tuỳ chọn) **Media** → tải ảnh PNG đặt **đúng tên slug** (vd. `ten-bai.png`), khuyến nghị **1200×630**.
+5. Chờ Cloudflare build ~2–5 phút → bài lên [novixa.vn/vi/tin-tuc/](https://novixa.vn/vi/tin-tuc/).
+
+**Đăng nhập lần đầu (admin cấu hình 1 lần):**
+
+| Bước | Việc cần làm |
+|------|----------------|
+| 1 | GitHub → Settings → [Developer settings → OAuth Apps](https://github.com/settings/developers) → New OAuth App |
+| 2 | Homepage: `https://novixa.vn` · Callback: `https://novixa.vn/callback` |
+| 3 | Cloudflare Pages project → Variables: `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (encrypt), `ALLOWED_DOMAINS=novixa.vn` |
+| 4 | Retry deployment |
+
+Chưa có OAuth? Nhân viên vẫn vào `/admin/` → **Sign in with token** (tạo [PAT](https://github.com/settings/personal-access-tokens) quyền `Contents: Read and write` trên repo KitPlatform).
+
 ### Cách 1 — Tự động Gemini (viết bài + ảnh)
 
 Lịch biên tập: `scripts/lib/news-content-plan.mjs` — mỗi ngày 1 bài mới (từ 15/7/2026).
