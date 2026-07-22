@@ -1,15 +1,15 @@
 ---
-title: "Lộ trình phát triển 2026"
-description: "Các mốc Novixa dự kiến trong năm 2026."
+title: Lộ trình phát triển 2026
+description: Các mốc Novixa dự kiến trong năm 2026.
+category: quan-tri-nha-thuoc
 pubDate: 2026-06-18
 lang: vi
-category: tin-tuc-novixa
 ---
 
 Novixa công bố lộ trình tham khảo (có thể điều chỉnh theo phản hồi thực tế):
 
 | Giai đoạn | Nội dung |
-|-----------|----------|
+| --- | --- |
 | **Q2 2026** | Website giới thiệu novixa.vn, tin tức sản phẩm |
 | **Q3 2026** | Ổn định POS, tồn lô, demo có kiểm soát cho đối tác thử |
 | **Q4 2026** | Mở rộng mua hàng, GS1 / nhãn lô (theo nhu cầu) |
