@@ -1,51 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-21T19:52:49.263Z",
+  "generatedAt": "2026-07-22T03:49:06.048Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 0,
-    "todayPageViews": 0,
-    "todayRequests": 0,
-    "last24hVisitors": 276,
-    "last24hPageViews": 329,
-    "last24hRequests": 723
+    "todayVisitors": 23,
+    "todayPageViews": 34,
+    "todayRequests": 82,
+    "last24hVisitors": 181,
+    "last24hPageViews": 203,
+    "last24hRequests": 440
   },
   "hourly": [
-    {
-      "time": "2026-07-20T21:00:00Z",
-      "visitors": 3,
-      "requests": 4
-    },
-    {
-      "time": "2026-07-20T22:00:00Z",
-      "visitors": 6,
-      "requests": 44
-    },
-    {
-      "time": "2026-07-20T23:00:00Z",
-      "visitors": 2,
-      "requests": 2
-    },
-    {
-      "time": "2026-07-21T00:00:00Z",
-      "visitors": 1,
-      "requests": 1
-    },
-    {
-      "time": "2026-07-21T01:00:00Z",
-      "visitors": 14,
-      "requests": 62
-    },
-    {
-      "time": "2026-07-21T02:00:00Z",
-      "visitors": 107,
-      "requests": 183
-    },
-    {
-      "time": "2026-07-21T03:00:00Z",
-      "visitors": 57,
-      "requests": 95
-    },
     {
       "time": "2026-07-21T04:00:00Z",
       "visitors": 16,
@@ -123,8 +88,48 @@
     },
     {
       "time": "2026-07-21T19:00:00Z",
+      "visitors": 3,
+      "requests": 3
+    },
+    {
+      "time": "2026-07-21T20:00:00Z",
+      "visitors": 2,
+      "requests": 3
+    },
+    {
+      "time": "2026-07-21T21:00:00Z",
       "visitors": 1,
       "requests": 1
+    },
+    {
+      "time": "2026-07-21T22:00:00Z",
+      "visitors": 6,
+      "requests": 14
+    },
+    {
+      "time": "2026-07-21T23:00:00Z",
+      "visitors": 4,
+      "requests": 6
+    },
+    {
+      "time": "2026-07-22T00:00:00Z",
+      "visitors": 6,
+      "requests": 12
+    },
+    {
+      "time": "2026-07-22T01:00:00Z",
+      "visitors": 8,
+      "requests": 32
+    },
+    {
+      "time": "2026-07-22T02:00:00Z",
+      "visitors": 13,
+      "requests": 32
+    },
+    {
+      "time": "2026-07-22T03:00:00Z",
+      "visitors": 4,
+      "requests": 6
     }
   ],
   "daily": [
@@ -160,23 +165,29 @@
     },
     {
       "date": "2026-07-21",
-      "visitors": 270,
-      "pageViews": 309,
-      "requests": 673
+      "visitors": 277,
+      "pageViews": 318,
+      "requests": 699
+    },
+    {
+      "date": "2026-07-22",
+      "visitors": 23,
+      "pageViews": 34,
+      "requests": 82
     }
   ],
   "topPages": [
     {
       "path": "/vi/tin-tuc/vi-sao-dao-tao-nhan-su-la-khoan-dau-tu-sinh-loi-nhat/",
-      "views": 202
+      "views": 96
     },
     {
       "path": "/images/tin-tuc/vi-sao-dao-tao-nhan-su-la-khoan-dau-tu-sinh-loi-nhat.png",
-      "views": 98
+      "views": 51
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 71
+      "views": 38
     },
     {
       "path": "/",
@@ -184,47 +195,47 @@
     },
     {
       "path": "/robots.txt",
-      "views": 27
+      "views": 28
     },
     {
       "path": "/vi/",
-      "views": 24
-    },
-    {
-      "path": "/vi/tai-lieu/van-ban-phap-luat/",
-      "views": 13
-    },
-    {
-      "path": "/_astro/BaseLayout.DstE-6Da.css",
-      "views": 13
-    },
-    {
-      "path": "/images/logo.png",
-      "views": 12
+      "views": 22
     },
     {
       "path": "/sitemap-index.xml",
-      "views": 11
-    },
-    {
-      "path": "/favicon.svg",
-      "views": 9
-    },
-    {
-      "path": "/vi/tin-tuc/",
-      "views": 8
-    },
-    {
-      "path": "/.aws/credentials",
-      "views": 7
+      "views": 14
     },
     {
       "path": "/_astro/index.DcoAHZV3.css",
+      "views": 8
+    },
+    {
+      "path": "/_astro/BaseLayout.DstE-6Da.css",
+      "views": 8
+    },
+    {
+      "path": "/favicon.svg",
       "views": 7
     },
     {
+      "path": "/images/logo.png",
+      "views": 6
+    },
+    {
       "path": "/images/hero/home-devices.png",
-      "views": 7
+      "views": 6
+    },
+    {
+      "path": "/_astro/legal-docs.Qve5AKzn.css",
+      "views": 6
+    },
+    {
+      "path": "/wp-content/plugins/wp_lzcoyaf/wp_lzcoyaf.php",
+      "views": 5
+    },
+    {
+      "path": "/vi/tai-lieu/van-ban-phap-luat/",
+      "views": 5
     }
   ]
 }
