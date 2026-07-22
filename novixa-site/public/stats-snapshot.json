@@ -1,46 +1,16 @@
 {
   "ok": true,
-  "generatedAt": "2026-07-22T08:45:55.616Z",
+  "generatedAt": "2026-07-22T14:24:03.895Z",
   "timezone": "Asia/Ho_Chi_Minh",
   "summary": {
-    "todayVisitors": 200,
-    "todayPageViews": 183,
-    "todayRequests": 435,
-    "last24hVisitors": 258,
-    "last24hPageViews": 244,
-    "last24hRequests": 639
+    "todayVisitors": 239,
+    "todayPageViews": 266,
+    "todayRequests": 559,
+    "last24hVisitors": 260,
+    "last24hPageViews": 292,
+    "last24hRequests": 652
   },
   "hourly": [
-    {
-      "time": "2026-07-21T09:00:00Z",
-      "visitors": 7,
-      "requests": 7
-    },
-    {
-      "time": "2026-07-21T10:00:00Z",
-      "visitors": 6,
-      "requests": 7
-    },
-    {
-      "time": "2026-07-21T11:00:00Z",
-      "visitors": 7,
-      "requests": 7
-    },
-    {
-      "time": "2026-07-21T12:00:00Z",
-      "visitors": 4,
-      "requests": 5
-    },
-    {
-      "time": "2026-07-21T13:00:00Z",
-      "visitors": 20,
-      "requests": 62
-    },
-    {
-      "time": "2026-07-21T14:00:00Z",
-      "visitors": 10,
-      "requests": 24
-    },
     {
       "time": "2026-07-21T15:00:00Z",
       "visitors": 7,
@@ -128,8 +98,38 @@
     },
     {
       "time": "2026-07-22T08:00:00Z",
-      "visitors": 17,
-      "requests": 47
+      "visitors": 22,
+      "requests": 53
+    },
+    {
+      "time": "2026-07-22T09:00:00Z",
+      "visitors": 26,
+      "requests": 29
+    },
+    {
+      "time": "2026-07-22T10:00:00Z",
+      "visitors": 18,
+      "requests": 34
+    },
+    {
+      "time": "2026-07-22T11:00:00Z",
+      "visitors": 10,
+      "requests": 25
+    },
+    {
+      "time": "2026-07-22T12:00:00Z",
+      "visitors": 5,
+      "requests": 8
+    },
+    {
+      "time": "2026-07-22T13:00:00Z",
+      "visitors": 15,
+      "requests": 22
+    },
+    {
+      "time": "2026-07-22T14:00:00Z",
+      "visitors": 1,
+      "requests": 1
     }
   ],
   "daily": [
@@ -171,27 +171,27 @@
     },
     {
       "date": "2026-07-22",
-      "visitors": 200,
-      "pageViews": 183,
-      "requests": 435
+      "visitors": 239,
+      "pageViews": 266,
+      "requests": 559
     }
   ],
   "topPages": [
     {
       "path": "/vi/tin-tuc/nha-thuoc-cua-ban-dang-dao-tao-nhan-vien-hay-chi-dang-huong-dan/",
-      "views": 123
+      "views": 162
     },
     {
       "path": "/cdn-cgi/rum",
-      "views": 86
+      "views": 74
     },
     {
       "path": "/images/tin-tuc/nha-thuoc-ban-dang-dao-tao-nhan-vien-hay-huong-dan.png",
-      "views": 68
+      "views": 72
     },
     {
       "path": "/images/tin-tuc/vi-sao-dao-tao-nhan-su-la-khoan-dau-tu-sinh-loi-nhat.png",
-      "views": 51
+      "views": 37
     },
     {
       "path": "/",
@@ -199,42 +199,42 @@
     },
     {
       "path": "/robots.txt",
-      "views": 28
+      "views": 27
     },
     {
       "path": "/vi/",
-      "views": 18
-    },
-    {
-      "path": "/vi/tin-tuc/vi-sao-dao-tao-nhan-su-la-khoan-dau-tu-sinh-loi-nhat/",
-      "views": 16
+      "views": 25
     },
     {
       "path": "/sitemap-index.xml",
-      "views": 16
+      "views": 17
     },
     {
-      "path": "/_astro/BaseLayout.DstE-6Da.css",
-      "views": 14
+      "path": "/vi/tin-tuc/vi-sao-dao-tao-nhan-su-la-khoan-dau-tu-sinh-loi-nhat/",
+      "views": 15
     },
     {
       "path": "/favicon.svg",
-      "views": 10
+      "views": 12
     },
     {
-      "path": "/images/logo.png",
-      "views": 10
+      "path": "/_astro/BaseLayout.DstE-6Da.css",
+      "views": 12
     },
     {
       "path": "/_astro/index.DcoAHZV3.css",
       "views": 9
     },
     {
-      "path": "/images/tin-tuc/10-sai-lam-khien-nha-thuoc-mai-khong-phat-trien.png",
+      "path": "/images/logo.png",
       "views": 8
     },
     {
       "path": "/images/tin-tuc/5-chi-so-chu-nha-thuoc-can-xem-moi-sang.png",
+      "views": 7
+    },
+    {
+      "path": "/_astro/legal-docs.Qve5AKzn.css",
       "views": 7
     }
   ]
