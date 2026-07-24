@@ -627,23 +627,25 @@ export type LearningMailCreateResult = {
 };
 
 export async function fetchLearningMailThreads() {
-  const { data } = await http.get<LearningMailThreadListItem[]>('/api/learning/mail/threads');
+  const { data } = await http.get<LearningMailThreadListItem[]>('/learning/mail/threads');
   return data ?? [];
 }
 
 export async function fetchLearningMailUnreadCount() {
-  const { data } = await http.get<{ count?: number } | number>('/api/learning/mail/unread-count');
+  const { data } = await http.get<{ unreadCount?: number; count?: number } | number>(
+    '/learning/mail/unread-count',
+  );
   if (typeof data === 'number') return data;
-  return data?.count ?? 0;
+  return data?.unreadCount ?? data?.count ?? 0;
 }
 
 export async function fetchLearningMailThread(id: string) {
-  const { data } = await http.get<LearningMailThreadDetail>(`/api/learning/mail/threads/${id}`);
+  const { data } = await http.get<LearningMailThreadDetail>(`/learning/mail/threads/${id}`);
   return data;
 }
 
 export async function markLearningMailThreadRead(id: string) {
-  await http.post(`/api/learning/mail/threads/${id}/read`);
+  await http.post(`/learning/mail/threads/${id}/read`);
 }
 
 export async function createLearningMailThread(payload: {
@@ -653,11 +655,11 @@ export async function createLearningMailThread(payload: {
   relatedRecognitionId?: string | null;
   relatedFeedbackId?: string | null;
 }) {
-  const { data } = await http.post<LearningMailCreateResult>('/api/learning/mail/threads', payload);
+  const { data } = await http.post<LearningMailCreateResult>('/learning/mail/threads', payload);
   return data;
 }
 
 export async function replyLearningMailThread(threadId: string, body: string) {
-  await http.post(`/api/learning/mail/threads/${threadId}/reply`, { body });
+  await http.post(`/learning/mail/threads/${threadId}/messages`, { body });
 }
 
