@@ -536,11 +536,7 @@ export function AppRouter() {
                 />
                 <Route
                   path="mail"
-                  element={
-                    <LearningWriteGuard>
-                      <LearningMailPage />
-                    </LearningWriteGuard>
-                  }
+                  element={<LearningMailPage />}
                 />
               </Route>
               <Route path="learning/*" element={<Navigate to="/people" replace />} />
