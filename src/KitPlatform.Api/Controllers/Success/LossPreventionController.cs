@@ -19,7 +19,7 @@ public sealed class LossPreventionController : ControllerBase
     /// Does not invent counted_* columns; closing_cash is the counted amount.
     /// </summary>
     [HttpGet("cash-variance")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(LossCashVarianceTodayDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LossCashVarianceTodayDto>> GetCashVarianceToday(
         [FromQuery] decimal? threshold = null,
@@ -31,7 +31,7 @@ public sealed class LossPreventionController : ControllerBase
     /// Default range: VN month-to-date (same helper as Reports).
     /// </summary>
     [HttpGet("reports/by-employee")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(LossEmployeeReportsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LossEmployeeReportsDto>> GetEmployeeReports(
         [FromQuery] DateTime? from = null,
@@ -53,7 +53,7 @@ public sealed class LossPreventionController : ControllerBase
     /// AC1 — Loss audit feed from activity_log (dashboard.read). Filters: date, branch, eventType, userId.
     /// </summary>
     [HttpGet("audit-feed")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(LossAuditFeedDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LossAuditFeedDto>> GetAuditFeed(
         [FromQuery] DateTime? from = null,
@@ -82,7 +82,7 @@ public sealed class LossPreventionController : ControllerBase
 
     /// <summary>AC3 — suggest 10–20 SKUs (hot 7d / min stock / random) for cycle count.</summary>
     [HttpGet("cycle-count/suggestions")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(LossCycleCountSuggestionsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LossCycleCountSuggestionsDto>> GetCycleCountSuggestions(
         [FromQuery] Guid? warehouseId = null,
@@ -129,7 +129,7 @@ public sealed class LossPreventionController : ControllerBase
     }
 
     [HttpGet("cycle-count/status")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(LossCycleCountStatusDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LossCycleCountStatusDto>> GetCycleCountStatus(
         [FromQuery] Guid? branchId = null,
@@ -146,7 +146,7 @@ public sealed class LossPreventionController : ControllerBase
     }
 
     [HttpGet("cycle-count/variance")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(LossCycleCountVarianceReportDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<LossCycleCountVarianceReportDto>> GetCycleCountVariance(
         [FromQuery] DateTime? from = null,

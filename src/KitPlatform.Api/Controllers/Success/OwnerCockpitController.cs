@@ -16,7 +16,7 @@ public sealed class OwnerCockpitController : ControllerBase
 
     /// <summary>Pharmacy owner health snapshot (Success P2 cockpit).</summary>
     [HttpGet("owner-cockpit")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Owner)]
     [ProducesResponseType(typeof(OwnerCockpitDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<OwnerCockpitDto>> Get(
         [FromQuery] int expiryDays = 30,

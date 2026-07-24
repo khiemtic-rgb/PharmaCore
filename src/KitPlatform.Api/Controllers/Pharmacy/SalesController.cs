@@ -123,11 +123,13 @@ public sealed class SalesController : ControllerBase
         [FromQuery] string? customerSearch,
         [FromQuery] string? documentSearch,
         [FromQuery] short? status,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default) =>
         Ok(await _sales.GetOrdersAsync(
-            new SalesOrderListFilter(search, customerSearch, documentSearch, status, page, pageSize),
+            new SalesOrderListFilter(search, customerSearch, documentSearch, status, from, to, page, pageSize),
             cancellationToken));
 
     [HttpGet("orders/{id:guid}")]
@@ -139,7 +141,7 @@ public sealed class SalesController : ControllerBase
     }
 
     [HttpPost("orders")]
-    [Authorize(Policy = SalesPolicies.Write)]
+    [Authorize(Policy = SalesPolicies.Pos)]
     public async Task<ActionResult<SalesOrderDetailDto>> Create(
         [FromBody] CreateSaleRequest request,
         CancellationToken cancellationToken)
@@ -160,7 +162,7 @@ public sealed class SalesController : ControllerBase
     }
 
     [HttpPut("orders/{id:guid}")]
-    [Authorize(Policy = SalesPolicies.Write)]
+    [Authorize(Policy = SalesPolicies.Pos)]
     public async Task<ActionResult<SalesOrderDetailDto>> UpdateDraft(
         Guid id,
         [FromBody] UpdateDraftSaleRequest request,
@@ -182,7 +184,7 @@ public sealed class SalesController : ControllerBase
     }
 
     [HttpPost("orders/{id:guid}/complete")]
-    [Authorize(Policy = SalesPolicies.Write)]
+    [Authorize(Policy = SalesPolicies.Pos)]
     public async Task<ActionResult<SalesOrderDetailDto>> CompleteDraft(
         Guid id,
         [FromBody] CompleteDraftSaleRequest? request,

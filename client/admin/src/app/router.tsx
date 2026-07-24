@@ -35,6 +35,67 @@ const ShiftChecklistPage = lazy(() =>
 const LossCashVariancePage = lazy(() =>
   import('@/modules/success/LossCashVariancePage').then((m) => ({ default: m.LossCashVariancePage })),
 );
+const LearningLayout = lazy(() =>
+  import('@/modules/learning/LearningLayout').then((m) => ({ default: m.LearningLayout })),
+);
+const LearningWriteGuard = lazy(() =>
+  import('@/modules/learning/LearningWriteGuard').then((m) => ({ default: m.LearningWriteGuard })),
+);
+const LearningProgramsPage = lazy(() =>
+  import('@/modules/learning/LearningProgramsPage').then((m) => ({
+    default: m.default ?? m.LearningProgramsPage,
+  })),
+);
+const LearningProgramDetailPage = lazy(() =>
+  import('@/modules/learning/LearningProgramDetailPage').then((m) => ({
+    default: m.LearningProgramDetailPage,
+  })),
+);
+const LearningEnrollmentsPage = lazy(() =>
+  import('@/modules/learning/LearningEnrollmentsPage').then((m) => ({
+    default: m.LearningEnrollmentsPage,
+  })),
+);
+const LearningEvaluationsPage = lazy(() =>
+  import('@/modules/learning/LearningEvaluationsPage').then((m) => ({
+    default: m.LearningEvaluationsPage,
+  })),
+);
+const LearningRecognizePage = lazy(() =>
+  import('@/modules/learning/LearningRecognizePage').then((m) => ({
+    default: m.LearningRecognizePage,
+  })),
+);
+const LearningGrowPage = lazy(() =>
+  import('@/modules/learning/LearningGrowPage').then((m) => ({
+    default: m.LearningGrowPage,
+  })),
+);
+const LearningTakePage = lazy(() =>
+  import('@/modules/learning/LearningTakePage').then((m) => ({
+    default: m.LearningTakePage,
+  })),
+);
+const LearningTakeModulePage = lazy(() =>
+  import('@/modules/learning/LearningTakeModulePage').then((m) => ({
+    default: m.LearningTakeModulePage,
+  })),
+);
+const LearningModulePreviewPage = lazy(() =>
+  import('@/modules/learning/LearningModulePreviewPage').then((m) => ({
+    default: m.LearningModulePreviewPage,
+  })),
+);
+const LearningContentLevelsPage = lazy(() =>
+  import('@/modules/learning/LearningContentLevelsPage').then((m) => ({
+    default: m.LearningContentLevelsPage,
+  })),
+);
+const LearningMailPage = lazy(() =>
+  import('@/modules/learning/LearningMailPage').then((m) => ({
+    default: m.LearningMailPage,
+  })),
+);
 const CatalogLayout = lazy(() =>
   import('@/modules/catalog/CatalogLayout').then((m) => ({ default: m.CatalogLayout })),
 );
@@ -139,6 +200,34 @@ const ConnectLayout = lazy(() =>
 );
 const ConnectOverviewPage = lazy(() =>
   import('@/modules/connect/ConnectOverviewPage').then((m) => ({ default: m.ConnectOverviewPage })),
+);
+const FamilyOsOverviewPage = lazy(() =>
+  import('@/modules/family-os/FamilyOsOverviewPage').then((m) => ({
+    default: m.FamilyOsOverviewPage,
+  })),
+);
+const FamilyOsLayout = lazy(() =>
+  import('@/modules/family-os/FamilyOsLayout').then((m) => ({ default: m.FamilyOsLayout })),
+);
+const FamilyOsDayFlowPage = lazy(() =>
+  import('@/modules/family-os/FamilyOsDayFlowPage').then((m) => ({
+    default: m.FamilyOsDayFlowPage,
+  })),
+);
+const FamilyOsRoutinesPage = lazy(() =>
+  import('@/modules/family-os/FamilyOsRoutinesPage').then((m) => ({
+    default: m.FamilyOsRoutinesPage,
+  })),
+);
+const FamilyOsAgreementsPage = lazy(() =>
+  import('@/modules/family-os/FamilyOsAgreementsPage').then((m) => ({
+    default: m.FamilyOsAgreementsPage,
+  })),
+);
+const FamilyOsMembersPage = lazy(() =>
+  import('@/modules/family-os/FamilyOsMembersPage').then((m) => ({
+    default: m.FamilyOsMembersPage,
+  })),
 );
 const ConnectNetworkPage = lazy(() =>
   import('@/modules/connect/ConnectNetworkPage').then((m) => ({ default: m.ConnectNetworkPage })),
@@ -387,6 +476,70 @@ export function AppRouter() {
                 }
               />
               <Route
+                path="people"
+                element={
+                  <SuspenseRoute>
+                    <LearningLayout />
+                  </SuspenseRoute>
+                }
+              >
+                <Route index element={<LearningProgramsPage />} />
+                <Route path="learn" element={<LearningTakePage />} />
+                <Route path="learn/modules/:id" element={<LearningTakeModulePage />} />
+                <Route path="dashboard" element={<Navigate to="/people" replace />} />
+                <Route path="programs/:id" element={<LearningProgramDetailPage />} />
+                <Route path="modules/:id" element={<LearningModulePreviewPage />} />
+                <Route
+                  path="content"
+                  element={
+                    <LearningWriteGuard>
+                      <LearningContentLevelsPage />
+                    </LearningWriteGuard>
+                  }
+                />
+                <Route
+                  path="enrollments"
+                  element={
+                    <LearningWriteGuard>
+                      <LearningEnrollmentsPage />
+                    </LearningWriteGuard>
+                  }
+                />
+                <Route
+                  path="evaluations"
+                  element={
+                    <LearningWriteGuard>
+                      <LearningEvaluationsPage />
+                    </LearningWriteGuard>
+                  }
+                />
+                <Route
+                  path="recognize"
+                  element={
+                    <LearningWriteGuard>
+                      <LearningRecognizePage />
+                    </LearningWriteGuard>
+                  }
+                />
+                <Route
+                  path="grow"
+                  element={
+                    <LearningWriteGuard>
+                      <LearningGrowPage />
+                    </LearningWriteGuard>
+                  }
+                />
+                <Route
+                  path="mail"
+                  element={
+                    <LearningWriteGuard>
+                      <LearningMailPage />
+                    </LearningWriteGuard>
+                  }
+                />
+              </Route>
+              <Route path="learning/*" element={<Navigate to="/people" replace />} />
+              <Route
                 path="catalog"
                 element={
                   <SuspenseRoute>
@@ -562,6 +715,21 @@ export function AppRouter() {
                 <Route path="bookings" element={<ConnectBookingsPage />} />
                 <Route path="status" element={<ConnectStatusPage />} />
                 <Route path="partners" element={<ConnectPartnersPage />} />
+              </Route>
+              <Route
+                path="family-os"
+                element={
+                  <SuspenseRoute>
+                    <FamilyOsLayout />
+                  </SuspenseRoute>
+                }
+              >
+                <Route index element={<Navigate to="/family-os/overview" replace />} />
+                <Route path="overview" element={<FamilyOsOverviewPage />} />
+                <Route path="members" element={<FamilyOsMembersPage />} />
+                <Route path="day-flow" element={<FamilyOsDayFlowPage />} />
+                <Route path="routines" element={<FamilyOsRoutinesPage />} />
+                <Route path="agreements" element={<FamilyOsAgreementsPage />} />
               </Route>
               <Route
                 path="clinic"

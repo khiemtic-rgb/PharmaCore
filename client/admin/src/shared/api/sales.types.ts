@@ -116,6 +116,10 @@ export interface SalesOrderListFilters {
   customerSearch?: string;
   documentSearch?: string;
   status?: number;
+  /** ISO datetime — inclusive lower bound */
+  from?: string;
+  /** ISO datetime — exclusive upper bound */
+  to?: string;
   page?: number;
   pageSize?: number;
 }

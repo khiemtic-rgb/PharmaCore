@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Col, Row, Spin, Typography, message } from 'antd';
 import {
@@ -18,6 +18,7 @@ import { apiErrorMessage } from '@/shared/api/api-error';
 import { fetchOwnerCockpit, type OwnerCockpit } from '@/shared/api/success.api';
 import { formatDisplayMoney } from '@/shared/utils/money';
 import { useTenantPlatformStore } from '@/shared/platform/tenant-platform.store';
+import { useCanAccessOwnerCockpit, useHasPermission } from '@/shared/auth/usePermission';
 
 type TileProps = {
   title: string;
@@ -45,10 +46,13 @@ function Tile({ title, value, hint, to, icon, tone = 'default' }: TileProps) {
 export function OwnerCockpitPage() {
   const { t } = useTranslation('success');
   const isModuleEnabled = useTenantPlatformStore((s) => s.isModuleEnabled);
+  const canCockpit = useCanAccessOwnerCockpit();
+  const canChecklist = useHasPermission('success.checklist');
   const [data, setData] = useState<OwnerCockpit | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!canCockpit) return;
     setLoading(true);
     try {
       setData(await fetchOwnerCockpit());
@@ -57,11 +61,15 @@ export function OwnerCockpitPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [canCockpit, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  if (!canCockpit) {
+    return <Navigate to={canChecklist ? '/success/shift-checklist' : '/'} replace />;
+  }
 
   if (loading && !data) {
     return (

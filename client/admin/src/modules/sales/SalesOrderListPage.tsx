@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  DatePicker,
   Descriptions,
   Drawer,
   Popconfirm,
@@ -22,6 +23,7 @@ import {
   ReloadOutlined,
   RollbackOutlined,
 } from '@ant-design/icons';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
   cancelDraftSale,
   completeDraftSale,
@@ -42,7 +44,7 @@ import type {
   SalesReturnListItem,
 } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import { useHasPermission } from '@/shared/auth/usePermission';
+import { useCanSalesPos, useCanSalesRead } from '@/shared/auth/usePermission';
 import { useSaleStatusLabels } from '@/shared/i18n/use-sale-status-labels';
 import { useSalesEnums } from '@/shared/i18n/use-sales-enums';
 import {
@@ -75,14 +77,18 @@ function isCompletedSaleStatus(status: number): boolean {
   return status === 2 || status === 4;
 }
 
+function todayRange(): [Dayjs, Dayjs] {
+  return [dayjs().startOf('day'), dayjs().endOf('day')];
+}
+
 export function SalesOrderListPage() {
   const { t } = useTranslation('sales', { keyPrefix: 'orders' });
   const { orderDisplayStatus, saleStatusFilterOptions } = useSaleStatusLabels();
   const { returnStatusLabel } = useSalesEnums();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const canRead = useHasPermission('sales.read');
-  const canWrite = useHasPermission('sales.write');
+  const canRead = useCanSalesRead();
+  const canWrite = useCanSalesPos();
   const [items, setItems] = useState<SalesOrderListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -93,6 +99,7 @@ export function SalesOrderListPage() {
   const [appliedCustomer, setAppliedCustomer] = useState('');
   const [appliedDocument, setAppliedDocument] = useState('');
   const [statusFilter, setStatusFilter] = useState<number | typeof PARTIAL_RETURN_STATUS | undefined>();
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(() => todayRange());
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState<SalesOrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -115,14 +122,20 @@ export function SalesOrderListPage() {
     nextStatus: number | typeof PARTIAL_RETURN_STATUS | undefined = statusFilter,
     customerSearch: string = appliedCustomer,
     documentSearch: string = appliedDocument,
+    nextDateRange: [Dayjs, Dayjs] | null = dateRange,
   ) => {
     setLoading(true);
     try {
       const apiStatus = typeof nextStatus === 'number' ? nextStatus : undefined;
+      const hasLookup = Boolean(customerSearch.trim() || documentSearch.trim());
+      // Tra cứu mã HĐ / khách: bỏ giới hạn ngày để tìm đơn cũ.
+      const useDate = !hasLookup && nextDateRange != null;
       const result = await fetchSalesOrders({
         customerSearch: customerSearch.trim() || undefined,
         documentSearch: documentSearch.trim() || undefined,
         status: apiStatus,
+        from: useDate ? nextDateRange![0].startOf('day').toISOString() : undefined,
+        to: useDate ? nextDateRange![1].startOf('day').add(1, 'day').toISOString() : undefined,
         page: nextPage,
         pageSize: nextPageSize,
       });
@@ -139,7 +152,7 @@ export function SalesOrderListPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, appliedCustomer, appliedDocument, t]);
+  }, [statusFilter, appliedCustomer, appliedDocument, dateRange, t]);
 
   const applySearch = (values: { customer: string; document: string }) => {
     const customer = values.customer.trim();
@@ -151,8 +164,8 @@ export function SalesOrderListPage() {
   };
 
   const reloadList = useCallback(() => {
-    void load(page, pageSize, statusFilter, appliedCustomer, appliedDocument);
-  }, [load, page, pageSize, statusFilter, appliedCustomer, appliedDocument]);
+    void load(page, pageSize, statusFilter, appliedCustomer, appliedDocument, dateRange);
+  }, [load, page, pageSize, statusFilter, appliedCustomer, appliedDocument, dateRange]);
 
   useEffect(() => {
     void searchCustomers()
@@ -169,8 +182,8 @@ export function SalesOrderListPage() {
   }, [reloadList]);
 
   useEffect(() => {
-    void load(1, pageSize, statusFilter, appliedCustomer, appliedDocument);
-  }, [statusFilter, pageSize, appliedCustomer, appliedDocument, load]);
+    void load(1, pageSize, statusFilter, appliedCustomer, appliedDocument, dateRange);
+  }, [statusFilter, pageSize, appliedCustomer, appliedDocument, dateRange, load]);
 
   const customerSuggestions = useMemo(() => {
     const rows = [
@@ -199,6 +212,7 @@ export function SalesOrderListPage() {
     setAppliedCustomer('');
     setAppliedDocument('');
     setStatusFilter(undefined);
+    setDateRange(todayRange());
   };
 
   const loadOrderReturns = useCallback(async (orderId: string) => {
@@ -685,6 +699,20 @@ export function SalesOrderListPage() {
           value={statusFilter}
           onChange={(value) => setStatusFilter(value)}
           options={saleStatusFilterOptions.map(({ value, label }) => ({ value, label }))}
+        />
+        <DatePicker.RangePicker
+          allowClear
+          value={dateRange}
+          onChange={(value) => {
+            if (value?.[0] && value[1]) {
+              setDateRange([value[0].startOf('day'), value[1].endOf('day')]);
+            } else {
+              setDateRange(null);
+            }
+          }}
+          style={{ width: 260 }}
+          format="DD/MM/YYYY"
+          placeholder={[t('filters.dateFrom'), t('filters.dateTo')]}
         />
         <Button onClick={resetFilters}>{t('filters.clear')}</Button>
         <Button

@@ -449,6 +449,8 @@ export async function fetchSalesOrders(
   if (filters?.customerSearch?.trim()) params.customerSearch = filters.customerSearch.trim();
   if (filters?.documentSearch?.trim()) params.documentSearch = filters.documentSearch.trim();
   if (filters?.status != null) params.status = filters.status;
+  if (filters?.from) params.from = filters.from;
+  if (filters?.to) params.to = filters.to;
   if (filters?.page != null) params.page = filters.page;
   if (filters?.pageSize != null) params.pageSize = filters.pageSize;
 

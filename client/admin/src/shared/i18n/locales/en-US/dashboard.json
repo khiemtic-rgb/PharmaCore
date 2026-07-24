@@ -18,6 +18,10 @@
     "title": "Two Novixa workspaces",
     "description": "This site (admin.novixa.vn) is for management — catalog, inventory, receivables, reports. Counter staff use pos.novixa.vn with the same store code and login."
   },
+  "staffAnalytics": {
+    "hiddenTitle": "Store revenue is hidden",
+    "hiddenDescription": "STAFF/POS accounts do not see store-wide revenue. Use POS or open pos.novixa.vn. Owners/managers need Reports or Cockpit permission."
+  },
   "hero": {
     "weekRevenue": "7-day revenue",
     "weekRevenueHint": "Rolling 7 days (VN calendar)"

@@ -33,6 +33,7 @@ import { apiErrorMessage } from '@/shared/api/api-error';
 import { findReportByPath } from '@/modules/reports/reports-catalog';
 import { buildReportFilterDisplayEntries, filterHintsForReport } from '@/modules/reports/report-filter-ui';
 import { exportReportCsv, formatReportCell, printReportElement } from '@/modules/reports/report-export';
+import { useCanReportsExport } from '@/shared/auth/usePermission';
 
 const { RangePicker } = DatePicker;
 
@@ -61,6 +62,7 @@ export function ReportViewPage() {
   const { t, i18n } = useTranslation('reports', { keyPrefix: 'view' });
   const { t: tg } = useTranslation('reports', { keyPrefix: 'groupBy' });
   const location = useLocation();
+  const canExportReports = useCanReportsExport();
   const definition = useMemo(
     () => findReportByPath(location.pathname),
     [location.pathname, i18n.language],
@@ -324,9 +326,11 @@ export function ReportViewPage() {
                 </Button>
                 {result && (
                   <>
-                    <Button icon={<DownloadOutlined />} onClick={() => exportReportCsv(result)}>
-                      {t('exportCsv')}
-                    </Button>
+                    {canExportReports ? (
+                      <Button icon={<DownloadOutlined />} onClick={() => exportReportCsv(result)}>
+                        {t('exportCsv')}
+                      </Button>
+                    ) : null}
                     <Button
                       icon={<PrinterOutlined />}
                       onClick={() => printReportElement('report-print-area', definition.name)}

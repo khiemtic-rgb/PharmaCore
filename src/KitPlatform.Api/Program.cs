@@ -15,6 +15,8 @@ using KitPlatform.Packs.Pharmacy.Infrastructure;
 using KitPlatform.Packs.Clinic.Infrastructure;
 using KitPlatform.Packs.Survey.Infrastructure;
 using KitPlatform.Packs.Connect.Infrastructure;
+using KitPlatform.Packs.FamilyOs.Infrastructure;
+using KitPlatform.Packs.Care.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
@@ -84,6 +86,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authentication.IClaimsTransformation, DbPermissionsClaimsTransformation>();
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddCatalogAuthorization();
@@ -96,6 +101,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPrescriberPortalAuthorization();
     options.AddPartnerPortalAuthorization();
     options.AddDashboardAuthorization();
+    options.AddSuccessAuthorization();
     options.AddReportsAuthorization();
     options.AddIdentityAuthorization();
     options.AddClinicAuthorization();
@@ -105,6 +111,8 @@ builder.Services.AddPharmacyPack(builder.Configuration);
 builder.Services.AddConnectPack();
 builder.Services.AddClinicPack(builder.Configuration);
 builder.Services.AddSurveyPack(builder.Configuration);
+builder.Services.AddFamilyOsPack(builder.Configuration);
+builder.Services.AddCarePack();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -395,6 +403,47 @@ app.Use(async (context, next) =>
         context.Response.ContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
         {
             ".pdf" => "application/pdf",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            _ => "application/octet-stream",
+        };
+        await context.Response.SendFileAsync(filePath);
+        return;
+    }
+
+    if (path.StartsWithSegments("/uploads/family-os", out var familyOsRemaining))
+    {
+        var segments = familyOsRemaining.Value.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 2
+            || !Guid.TryParseExact(segments[0], "N", out var folderTenantId))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        var claimTenant = context.User.FindFirst("tenant_id")?.Value;
+        if (!Guid.TryParse(claimTenant, out var userTenantId) || userTenantId != folderTenantId)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        var filePath = Path.Combine(uploadsRoot, "family-os", segments[0], segments[^1]);
+        if (!System.IO.File.Exists(filePath))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        context.Response.ContentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
             ".png" => "image/png",
             ".webp" => "image/webp",
             ".jpg" or ".jpeg" => "image/jpeg",

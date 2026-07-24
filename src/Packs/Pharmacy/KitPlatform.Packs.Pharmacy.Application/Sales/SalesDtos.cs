@@ -261,6 +261,10 @@ public sealed record SalesOrderListFilter(
     string? CustomerSearch = null,
     string? DocumentSearch = null,
     short? Status = null,
+    /// <summary>Inclusive lower bound. Null = không lọc ngày.</summary>
+    DateTime? From = null,
+    /// <summary>Exclusive upper bound. Null = không lọc ngày.</summary>
+    DateTime? To = null,
     int Page = 1,
     int PageSize = 50);
 

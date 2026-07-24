@@ -15,7 +15,7 @@ public sealed class ShiftChecklistController : ControllerBase
     public ShiftChecklistController(IShiftChecklistService service) => _service = service;
 
     [HttpGet("today")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Checklist)]
     [ProducesResponseType(typeof(ShiftChecklistTodayDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ShiftChecklistTodayDto>> GetToday(
         [FromQuery] Guid? branchId,
@@ -23,7 +23,7 @@ public sealed class ShiftChecklistController : ControllerBase
         Ok(await _service.GetTodayAsync(branchId, cancellationToken));
 
     [HttpPost("runs")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Checklist)]
     [ProducesResponseType(typeof(ShiftChecklistRunDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ShiftChecklistRunDto>> Start(
         [FromBody] StartShiftChecklistRequest request,
@@ -44,7 +44,7 @@ public sealed class ShiftChecklistController : ControllerBase
     }
 
     [HttpPut("runs/{runId:guid}/items/{itemId:guid}")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Checklist)]
     [ProducesResponseType(typeof(ShiftChecklistRunDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ShiftChecklistRunDto>> SetItem(
         Guid runId,
@@ -67,7 +67,7 @@ public sealed class ShiftChecklistController : ControllerBase
     }
 
     [HttpPost("runs/{runId:guid}/complete")]
-    [Authorize(Policy = DashboardPolicies.Read)]
+    [Authorize(Policy = SuccessPolicies.Checklist)]
     [ProducesResponseType(typeof(ShiftChecklistRunDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ShiftChecklistRunDto>> Complete(
         Guid runId,

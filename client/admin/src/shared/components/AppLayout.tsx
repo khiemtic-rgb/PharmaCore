@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
 
@@ -36,12 +36,29 @@ import {
 } from '@/shared/components/module-subnav.context';
 
 import { useAuthStore } from '@/shared/auth/auth.store';
+import {
+  useCanAccessOwnerCockpit,
+  useCanAccessSuccessModule,
+  useCanCatalogRead,
+  useCanClinicRead,
+  useCanConnectRead,
+  useCanCustomerModule,
+  useCanInventoryRead,
+  useCanLearningRead,
+  useCanProcurementRead,
+  useCanReceivables,
+  useCanReportsRead,
+  useCanRxRead,
+  useCanSalesRead,
+  useCanSystemRead,
+} from '@/shared/auth/usePermission';
 import { useKapAdminAccess } from '@/shared/hooks/useKapAdminAccess';
 
 import { logoutApi } from '@/shared/api/auth.api';
 
 import { AdminLanguageSelect } from '@/shared/i18n/LanguageSelect';
 import { AppBrandLogo } from '@/shared/components/AppBrandLogo';
+import { resolveShellBrand } from '@/shared/config/app-brand';
 
 const { Header, Sider, Content } = Layout;
 
@@ -86,6 +103,66 @@ function AppLayoutShell() {
   const platformVertical = useTenantPlatformStore((s) => s.settings?.vertical);
   const { enabled: kapEnabled, checked: kapAccessChecked } = useKapAdminAccess();
   const adminVertical = resolveAdminVertical(platformVertical);
+  const shellBrand = resolveShellBrand(platformVertical);
+
+  const canAccessSales = useCanSalesRead();
+  const canAccessProcurement = useCanProcurementRead();
+  const canAccessInventory = useCanInventoryRead();
+  const canAccessCatalog = useCanCatalogRead();
+  const canAccessReports = useCanReportsRead();
+  const canAccessClinic = useCanClinicRead();
+  const canAccessSystem = useCanSystemRead();
+  const canAccessSuccess = useCanAccessSuccessModule();
+  const canAccessOwnerCockpit = useCanAccessOwnerCockpit();
+  const canAccessRx = useCanRxRead();
+  const canAccessConnect = useCanConnectRead();
+  const canAccessCustomer = useCanCustomerModule();
+  const canAccessReceivables = useCanReceivables();
+  const canAccessLearning = useCanLearningRead();
+
+  const modulePermissionOk = useMemo(
+    (): Partial<Record<ModuleKey, boolean>> => ({
+      dashboard: true,
+      success: canAccessSuccess,
+      sales: canAccessSales,
+      rx: canAccessRx,
+      connect: canAccessConnect,
+      clinic: canAccessClinic,
+      familyOs: true,
+      procurement: canAccessProcurement,
+      inventory: canAccessInventory,
+      receivables: canAccessReceivables,
+      customer: canAccessCustomer,
+      catalog: canAccessCatalog,
+      reports: canAccessReports,
+      learning: canAccessLearning,
+      kap: kapAccessChecked && kapEnabled,
+      system: canAccessSystem,
+    }),
+    [
+      canAccessSuccess,
+      canAccessSales,
+      canAccessRx,
+      canAccessConnect,
+      canAccessClinic,
+      canAccessProcurement,
+      canAccessInventory,
+      canAccessReceivables,
+      canAccessCustomer,
+      canAccessCatalog,
+      canAccessReports,
+      canAccessLearning,
+      kapAccessChecked,
+      kapEnabled,
+      canAccessSystem,
+    ],
+  );
+
+  useEffect(() => {
+    document.title = shellBrand.isFamily
+      ? `${shellBrand.brand} Admin`
+      : 'Novixa Admin';
+  }, [shellBrand.brand, shellBrand.isFamily]);
 
   const activeKey = resolveActiveModuleKey(location.pathname);
 
@@ -109,7 +186,8 @@ function AppLayoutShell() {
           const platformOk =
             !module.platformModule || !platformLoaded || isModuleEnabled(module.platformModule);
           const kapOk = module.key !== 'kap' || (kapAccessChecked && kapEnabled);
-          const navEnabled = module.enabled && platformOk && kapOk;
+          const permissionOk = modulePermissionOk[module.key] ?? true;
+          const navEnabled = module.enabled && platformOk && kapOk && permissionOk;
           // Ẩn hẳn module tắt / không thuộc vertical — không hiện "(sắp có)".
           if (!navEnabled) return [];
           return [
@@ -127,6 +205,7 @@ function AppLayoutShell() {
       platformLoaded,
       kapAccessChecked,
       kapEnabled,
+      modulePermissionOk,
     ],
   );
 
@@ -211,9 +290,27 @@ function AppLayoutShell() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            flexDirection: 'column',
+            gap: 2,
           }}
         >
-          <AppBrandLogo height={collapsed ? 36 : 48} maxWidth={collapsed ? 40 : 168} />
+          {shellBrand.isFamily ? (
+            <>
+              <Typography.Text
+                strong
+                style={{ color: '#fff', fontSize: collapsed ? 12 : 18, lineHeight: 1.1 }}
+              >
+                {collapsed ? 'FO' : shellBrand.brand}
+              </Typography.Text>
+              {!collapsed ? (
+                <Typography.Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
+                  Starter
+                </Typography.Text>
+              ) : null}
+            </>
+          ) : (
+            <AppBrandLogo height={collapsed ? 36 : 48} maxWidth={collapsed ? 40 : 168} />
+          )}
         </div>
 
         <Menu
@@ -232,9 +329,17 @@ function AppLayoutShell() {
             const platformOk =
               !module.platformModule || !platformLoaded || isModuleEnabled(module.platformModule);
             const kapOk = module.key !== 'kap' || (kapAccessChecked && kapEnabled);
-            if (module.enabled && platformOk && kapOk) {
-              navigate(module.path);
+            const permissionOk = modulePermissionOk[module.key] ?? true;
+            if (!(module.enabled && platformOk && kapOk && permissionOk)) return;
+            if (module.key === 'success') {
+              navigate(
+                canAccessOwnerCockpit
+                  ? '/success/cockpit'
+                  : '/success/shift-checklist',
+              );
+              return;
             }
+            navigate(module.path);
           }}
 
         />

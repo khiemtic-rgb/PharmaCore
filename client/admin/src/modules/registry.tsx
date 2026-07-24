@@ -14,6 +14,8 @@ import {
   InboxOutlined,
   ShopOutlined,
   SettingOutlined,
+  HomeOutlined,
+  RiseOutlined,
 } from '@ant-design/icons';
 import { commonT } from '@/shared/i18n';
 import { ADMIN_MODULE_PLATFORM_CODES } from '@/shared/platform/platform-feature-map';
@@ -28,14 +30,16 @@ export type ModuleKey =
   | 'rx'
   | 'connect'
   | 'clinic'
+  | 'familyOs'
   | 'receivables'
   | 'customer'
   | 'reports'
   | 'kap'
+  | 'learning'
   | 'system';
 
 /** Tenant platform.vertical — lọc sidebar theo loại tổ chức. */
-export type AdminVertical = 'pharmacy' | 'clinic';
+export type AdminVertical = 'pharmacy' | 'clinic' | 'family';
 
 /**
  * Module tạm ẩn khỏi sidebar/header (giữ code + route).
@@ -60,6 +64,7 @@ export const HEADER_MODULE_KEYS: ModuleKey[] = (
     'customer',
     'catalog',
     'reports',
+    'learning',
   ] as ModuleKey[]
 ).filter((k) => !TEMP_HIDDEN_MODULE_KEYS.includes(k));
 
@@ -80,10 +85,19 @@ export interface ModuleMenuItem {
 
 const PHARMACY_ONLY: readonly AdminVertical[] = ['pharmacy'];
 const CLINIC_ONLY: readonly AdminVertical[] = ['clinic'];
+const FAMILY_ONLY: readonly AdminVertical[] = ['family'];
+const ALL_VERTICALS: readonly AdminVertical[] = ['pharmacy', 'clinic', 'family'];
 
-/** Sidebar cấp 1 — thứ tự theo luồng vận hành nhà thuốc */
+/** Sidebar cấp 1 — thứ tự theo luồng vận hành */
 export const moduleRegistry: ModuleMenuItem[] = [
-  { key: 'dashboard', label: 'dashboard', path: '/', icon: <DashboardOutlined />, enabled: true },
+  {
+    key: 'dashboard',
+    label: 'dashboard',
+    path: '/',
+    icon: <DashboardOutlined />,
+    enabled: true,
+    verticals: ALL_VERTICALS,
+  },
   {
     key: 'success',
     label: 'success',
@@ -119,6 +133,7 @@ export const moduleRegistry: ModuleMenuItem[] = [
     icon: <ApartmentOutlined />,
     enabled: true,
     platformModule: ADMIN_MODULE_PLATFORM_CODES.connect,
+    verticals: ['pharmacy', 'clinic'],
   },
   {
     key: 'clinic',
@@ -128,6 +143,15 @@ export const moduleRegistry: ModuleMenuItem[] = [
     enabled: true,
     platformModule: ADMIN_MODULE_PLATFORM_CODES.clinic,
     verticals: CLINIC_ONLY,
+  },
+  {
+    key: 'familyOs',
+    label: 'familyOs',
+    path: '/family-os/overview',
+    icon: <HomeOutlined />,
+    enabled: true,
+    platformModule: ADMIN_MODULE_PLATFORM_CODES.familyOs,
+    verticals: FAMILY_ONLY,
   },
   {
     key: 'procurement',
@@ -163,6 +187,7 @@ export const moduleRegistry: ModuleMenuItem[] = [
     icon: <TeamOutlined />,
     enabled: true,
     platformModule: ADMIN_MODULE_PLATFORM_CODES.customer,
+    verticals: ['pharmacy', 'clinic'],
   },
   {
     key: 'catalog',
@@ -183,19 +208,39 @@ export const moduleRegistry: ModuleMenuItem[] = [
     verticals: PHARMACY_ONLY,
   },
   {
+    key: 'learning',
+    label: 'learning',
+    path: '/people',
+    icon: <RiseOutlined />,
+    enabled: true,
+    // Không gắn platformModule — tránh ẩn tab khi tenant chưa có code `learning` trong enabled_modules.
+    verticals: PHARMACY_ONLY,
+  },
+  {
     key: 'kap',
     label: 'kap',
     path: '/kap/leads',
     icon: <FormOutlined />,
     enabled: true,
     platformModule: ADMIN_MODULE_PLATFORM_CODES.kap,
+    verticals: ['pharmacy', 'clinic'],
   },
-  { key: 'system', label: 'system', path: '/system/branches', icon: <SettingOutlined />, enabled: true },
+  {
+    key: 'system',
+    label: 'system',
+    path: '/system/branches',
+    icon: <SettingOutlined />,
+    enabled: true,
+    verticals: ALL_VERTICALS,
+  },
 ];
 
 /** Vertical tenant (platform.settings) — mặc định pharmacy. */
 export function resolveAdminVertical(raw: string | null | undefined): AdminVertical {
-  return String(raw ?? 'pharmacy').trim().toLowerCase() === 'clinic' ? 'clinic' : 'pharmacy';
+  const value = String(raw ?? 'pharmacy').trim().toLowerCase();
+  if (value === 'clinic') return 'clinic';
+  if (value === 'family') return 'family';
+  return 'pharmacy';
 }
 
 export function isModuleVisibleForVertical(

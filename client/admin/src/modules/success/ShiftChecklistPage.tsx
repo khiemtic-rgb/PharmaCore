@@ -27,7 +27,7 @@ import {
   type ShiftChecklistRun,
   type ShiftChecklistToday,
 } from '@/shared/api/success.api';
-
+import { useCanAccessOwnerCockpit } from '@/shared/auth/usePermission';
 function statusTag(status: string, t: (k: string) => string) {
   if (status === 'completed') return <Tag color="success">{t('checklist.status.completed')}</Tag>;
   if (status === 'in_progress') return <Tag color="processing">{t('checklist.status.inProgress')}</Tag>;
@@ -123,6 +123,7 @@ function KindPanel({
 
 export function ShiftChecklistPage() {
   const { t } = useTranslation('success');
+  const canOwnerCockpit = useCanAccessOwnerCockpit();
   const [today, setToday] = useState<ShiftChecklistToday | null>(null);
   const [branchId, setBranchId] = useState<string | undefined>();
   const [openRun, setOpenRun] = useState<ShiftChecklistRun | null>(null);
@@ -223,7 +224,9 @@ export function ShiftChecklistPage() {
           </Typography.Text>
         </div>
         <Space>
-          <Link to="/success/cockpit">{t('checklist.backCockpit')}</Link>
+          {canOwnerCockpit ? (
+            <Link to="/success/cockpit">{t('checklist.backCockpit')}</Link>
+          ) : null}
           <Button icon={<ReloadOutlined />} onClick={() => void load(branchId)} loading={loading}>
             {t('refresh')}
           </Button>

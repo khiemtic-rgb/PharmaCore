@@ -68,7 +68,9 @@
     "customer": "Customers",
     "catalog": "Products",
     "reports": "Reports",
+    "learning": "People Development",
     "kap": "KAP — Surveys",
+    "familyOs": "FamilyOS",
     "system": "Settings",
     "comingSoon": "{{name}} (coming soon)"
   },

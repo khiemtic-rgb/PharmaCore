@@ -9,12 +9,28 @@ public static class SalesAuthorizationExtensions
         options.AddPolicy(SalesPolicies.Read, policy =>
             policy.RequireAssertion(ctx =>
                 AdminTokenRules.IsAdminPrincipal(ctx.User)
-                && (HasPermission(ctx, "sales.read") || HasPermission(ctx, "sales.write") || ctx.User.IsInRole("ADMIN"))));
+                && (HasAny(ctx, "sales.read", "sales.write", "sales.pos", "sales.customers", "sales.settings")
+                    || ctx.User.IsInRole("ADMIN"))));
 
         options.AddPolicy(SalesPolicies.Write, policy =>
             policy.RequireAssertion(ctx =>
                 AdminTokenRules.IsAdminPrincipal(ctx.User)
                 && (HasPermission(ctx, "sales.write") || ctx.User.IsInRole("ADMIN"))));
+
+        options.AddPolicy(SalesPolicies.Pos, policy =>
+            policy.RequireAssertion(ctx =>
+                AdminTokenRules.IsAdminPrincipal(ctx.User)
+                && (HasAny(ctx, "sales.pos", "sales.write") || ctx.User.IsInRole("ADMIN"))));
+
+        options.AddPolicy(SalesPolicies.Customers, policy =>
+            policy.RequireAssertion(ctx =>
+                AdminTokenRules.IsAdminPrincipal(ctx.User)
+                && (HasAny(ctx, "sales.customers", "sales.write") || ctx.User.IsInRole("ADMIN"))));
+
+        options.AddPolicy(SalesPolicies.Settings, policy =>
+            policy.RequireAssertion(ctx =>
+                AdminTokenRules.IsAdminPrincipal(ctx.User)
+                && (HasAny(ctx, "sales.settings", "sales.write") || ctx.User.IsInRole("ADMIN"))));
 
         options.AddPolicy(SalesPolicies.Cancel, policy =>
             policy.RequireAssertion(ctx =>
@@ -24,4 +40,7 @@ public static class SalesAuthorizationExtensions
 
     private static bool HasPermission(AuthorizationHandlerContext ctx, string permission) =>
         ctx.User.Claims.Any(c => c.Type == "permission" && c.Value == permission);
+
+    private static bool HasAny(AuthorizationHandlerContext ctx, params string[] permissions) =>
+        permissions.Any(p => HasPermission(ctx, p));
 }

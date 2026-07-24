@@ -12,12 +12,16 @@ public static class DashboardAuthorizationExtensions
                 && (ctx.User.IsInRole("ADMIN")
                 || HasPermission(ctx, "sales.read")
                 || HasPermission(ctx, "sales.write")
+                || HasPermission(ctx, "sales.pos")
+                || HasPermission(ctx, "sales.customers")
                 || HasPermission(ctx, "inventory.read")
                 || HasPermission(ctx, "inventory.write")
                 || HasPermission(ctx, "procurement.read")
                 || HasPermission(ctx, "procurement.write")
                 || HasPermission(ctx, "catalog.read")
-                || HasPermission(ctx, "catalog.write"))));
+                || HasPermission(ctx, "catalog.write")
+                || HasPermission(ctx, "reports.read")
+                || HasPermission(ctx, "success.read"))));
     }
 
     private static bool HasPermission(AuthorizationHandlerContext ctx, string permission) =>

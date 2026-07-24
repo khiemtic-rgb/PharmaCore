@@ -601,12 +601,20 @@ internal sealed class SalesRepository
         var statusFilter = filter.Status is short status
             ? "AND o.status = @Status"
             : string.Empty;
+        var dateFilter = filter.From is not null && filter.To is not null
+            ? "AND o.order_date >= @From AND o.order_date < @To"
+            : filter.From is not null
+                ? "AND o.order_date >= @From"
+                : filter.To is not null
+                    ? "AND o.order_date < @To"
+                    : string.Empty;
         var searchFilter = BuildSalesOrderSearchFilter(filter);
 
         var where = $"""
             o.tenant_id = @TenantId
               {warehouseFilter}
               {statusFilter}
+              {dateFilter}
               {searchFilter}
             """;
         var countSql = $"""
@@ -652,6 +660,8 @@ internal sealed class SalesRepository
             AllowedWarehouseIds = allowedWarehouseIds,
             ReturnCompleted = SalesReturnStatuses.Completed,
             Status = filter.Status,
+            From = filter.From,
+            To = filter.To,
             SearchPattern = string.IsNullOrWhiteSpace(legacySearch) ? null : $"%{legacySearch}%",
             SearchDigits = legacySearchDigits,
             SearchDigitsPattern = BuildPhoneDigitsPattern(legacySearchDigits),

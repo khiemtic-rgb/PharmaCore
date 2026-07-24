@@ -22,12 +22,19 @@ import { useAuthStore } from '@/shared/auth/auth.store';
 import { fetchDashboardOverview } from '@/shared/api/dashboard.api';
 import type { DashboardOverview } from '@/shared/api/dashboard.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import { useHasPermission } from '@/shared/auth/usePermission';
+import {
+  useCanAccessOwnerCockpit,
+  useCanSalesCustomers,
+  useCanSalesPos,
+  useCanViewStoreAnalytics,
+  useHasPermission,
+} from '@/shared/auth/usePermission';
 import { formatDisplayMoney } from '@/shared/utils/money';
 import { isProductFeatureEnabled } from '@/shared/product/product-phases';
 import { useTenantPlatformStore } from '@/shared/platform/tenant-platform.store';
 import { resolveAdminVertical } from '@/modules/registry';
 import { ClinicOverviewPage } from '@/modules/clinic/ClinicOverviewPage';
+import { FamilyOsOverviewPage } from '@/modules/family-os/FamilyOsOverviewPage';
 import { DashboardRevenueChart } from '@/modules/dashboard/DashboardRevenueChart';
 import { DashboardCategoryChart } from '@/modules/dashboard/DashboardCategoryChart';
 import type { RevenuePeriodDays } from '@/modules/dashboard/dashboard-revenue-range';
@@ -79,6 +86,10 @@ export function DashboardPage() {
     return <ClinicOverviewPage />;
   }
 
+  if (vertical === 'family') {
+    return <FamilyOsOverviewPage />;
+  }
+
   return <PharmacyDashboardPage />;
 }
 
@@ -90,11 +101,14 @@ function PharmacyDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [revenuePeriodDays, setRevenuePeriodDays] = useState<RevenuePeriodDays>(7);
 
-  const canSales = useHasPermission('sales.read') || useHasPermission('sales.write');
+  const canSalesOps = useCanSalesPos();
+  const canSalesCustomers = useCanSalesCustomers();
+  const canViewAnalytics = useCanViewStoreAnalytics();
+  const canAccessOwnerCockpit = useCanAccessOwnerCockpit();
   const canCatalog = useHasPermission('catalog.read') || useHasPermission('catalog.write');
   const canInventory = useHasPermission('inventory.read') || useHasPermission('inventory.write');
   const canProcurement = useHasPermission('procurement.read') || useHasPermission('procurement.write');
-  const canReceivables = useHasPermission('sales.read');
+  const canReceivables = canSalesCustomers;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -166,7 +180,7 @@ function PharmacyDashboardPage() {
         tone: 'warning',
       });
     }
-    if (canSales && (o2o?.draftOrdersAwaitingCount ?? 0) > 0) {
+    if (canSalesOps && (o2o?.draftOrdersAwaitingCount ?? 0) > 0) {
       items.push({
         key: 'app-drafts',
         label: t('kpis.draftOrdersAwaiting.title'),
@@ -175,7 +189,7 @@ function PharmacyDashboardPage() {
         tone: 'warning',
       });
     }
-    if (canSales && showReservations && (o2o?.reservationsAwaitingCount ?? 0) > 0) {
+    if (canSalesOps && showReservations && (o2o?.reservationsAwaitingCount ?? 0) > 0) {
       items.push({
         key: 'reservations',
         label: t('kpis.reservationsAwaiting.title'),
@@ -184,7 +198,7 @@ function PharmacyDashboardPage() {
         tone: 'warning',
       });
     }
-    if (canSales && showChat && (o2o?.chatUnreadCount ?? 0) > 0) {
+    if (canSalesOps && showChat && (o2o?.chatUnreadCount ?? 0) > 0) {
       items.push({
         key: 'chat',
         label: t('kpis.chatUnread.title'),
@@ -194,18 +208,21 @@ function PharmacyDashboardPage() {
       });
     }
     return items;
-  }, [canInventory, canProcurement, canSales, inventory, o2o, procurement, showChat, showReservations, t]);
+  }, [canInventory, canProcurement, canSalesOps, inventory, o2o, procurement, showChat, showReservations, t]);
 
   const quickActions = useMemo(() => {
     const items: Array<{ key: string; label: string; to: string; icon: ReactNode; primary?: boolean }> = [];
-    items.unshift({
-      key: 'owner-cockpit',
-      label: t('quickActions.ownerCockpit'),
-      to: '/success/cockpit',
-      icon: <RiseOutlined />,
-      primary: false,
-    });
-    if (canSales) {
+    // Cockpit chủ NT: chỉ chủ/quản lý — không hiện với thu ngân STAFF.
+    if (canAccessOwnerCockpit) {
+      items.push({
+        key: 'owner-cockpit',
+        label: t('quickActions.ownerCockpit'),
+        to: '/success/cockpit',
+        icon: <RiseOutlined />,
+        primary: false,
+      });
+    }
+    if (canSalesOps) {
       items.push({
         key: 'pos',
         label: t('quickActions.pos'),
@@ -238,7 +255,7 @@ function PharmacyDashboardPage() {
         icon: <InboxOutlined />,
       });
     }
-    if (canSales) {
+    if (canSalesOps) {
       items.push({
         key: 'app-drafts',
         label: t('quickActions.appDrafts'),
@@ -247,11 +264,11 @@ function PharmacyDashboardPage() {
       });
     }
     return items;
-  }, [canInventory, canProcurement, canReceivables, canSales, t]);
+  }, [canAccessOwnerCockpit, canInventory, canProcurement, canReceivables, canSalesOps, canViewAnalytics, t]);
 
   const secondaryTiles = useMemo(() => {
     const tiles: MetricTileProps[] = [];
-    if (canSales) {
+    if (canSalesCustomers) {
       tiles.push({
         title: t('kpis.customers.title'),
         value: catalog?.customerCount ?? '—',
@@ -259,6 +276,8 @@ function PharmacyDashboardPage() {
         to: '/customer/list',
         hint: t('kpis.customers.hint'),
       });
+    }
+    if (canSalesOps) {
       tiles.push({
         title: t('kpis.draftOrdersAwaiting.title'),
         value: o2o?.draftOrdersAwaitingCount ?? '—',
@@ -307,7 +326,7 @@ function PharmacyDashboardPage() {
         tone: (procurement?.pendingReceiptCount ?? 0) > 0 ? 'warning' : 'default',
       });
     }
-    if (canSales && showReservations) {
+    if (canSalesOps && showReservations) {
       tiles.push({
         title: t('kpis.reservationsAwaiting.title'),
         value: o2o?.reservationsAwaitingCount ?? '—',
@@ -316,7 +335,7 @@ function PharmacyDashboardPage() {
         tone: (o2o?.reservationsAwaitingCount ?? 0) > 0 ? 'warning' : 'default',
       });
     }
-    if (canSales && showChat) {
+    if (canSalesOps && showChat) {
       tiles.push({
         title: t('kpis.chatUnread.title'),
         value: o2o?.chatUnreadCount ?? '—',
@@ -330,7 +349,8 @@ function PharmacyDashboardPage() {
     canCatalog,
     canInventory,
     canProcurement,
-    canSales,
+    canSalesCustomers,
+    canSalesOps,
     catalog,
     inventory,
     o2o,
@@ -388,7 +408,7 @@ function PharmacyDashboardPage() {
         ) : null}
 
         <Spin spinning={loading && !overview}>
-          {canSales ? (
+          {canViewAnalytics ? (
             <div className="dashboard-hero">
               <Link to="/sales/shift" className="dashboard-hero__stat dashboard-hero__stat--featured">
                 <span className="dashboard-hero__label">{t('kpis.todayRevenue.title')}</span>
@@ -408,9 +428,24 @@ function PharmacyDashboardPage() {
                 </span>
               </Link>
             </div>
+          ) : canSalesOps ? (
+            <Alert
+              type="info"
+              showIcon
+              message={t('staffAnalytics.hiddenTitle')}
+              description={t('staffAnalytics.hiddenDescription')}
+              style={{ marginBottom: 16 }}
+              action={
+                <Link to="/sales/pos">
+                  <Button type="primary" size="small">
+                    {t('quickActions.pos')}
+                  </Button>
+                </Link>
+              }
+            />
           ) : null}
 
-          {canSales ? (
+          {canViewAnalytics ? (
             <section className="dashboard-analytics">
               <div className="dashboard-analytics__toolbar">
                 <Typography.Text className="dashboard-analytics__title">{t('analytics.title')}</Typography.Text>

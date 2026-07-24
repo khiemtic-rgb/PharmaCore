@@ -18,6 +18,10 @@
     "title": "Hai màn hình Novixa",
     "description": "Trang này (admin.novixa.vn) dùng để quản lý — danh mục, kho, công nợ, báo cáo. Nhân viên bán hàng tại quầy mở pos.novixa.vn (mã nhà thuốc và tài khoản giống khi đăng nhập)."
   },
+  "staffAnalytics": {
+    "hiddenTitle": "Không hiển thị doanh thu cửa hàng",
+    "hiddenDescription": "Tài khoản STAFF/POS không xem tổng quan doanh thu. Dùng Quầy bán (POS) hoặc mở pos.novixa.vn. Chủ NT / quản lý cần quyền Báo cáo hoặc Cockpit."
+  },
   "hero": {
     "weekRevenue": "Doanh thu 7 ngày",
     "weekRevenueHint": "7 ngày gần nhất (lịch VN)"

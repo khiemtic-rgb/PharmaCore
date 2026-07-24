@@ -351,7 +351,9 @@
       "status": "Trạng thái",
       "clear": "Xóa lọc",
       "reload": "Tải lại",
-      "documentPlaceholder": "Số đơn"
+      "documentPlaceholder": "Số đơn",
+      "dateFrom": "Từ ngày",
+      "dateTo": "Đến ngày"
     },
     "paginationTotal": "{{count}} đơn",
     "columns": {

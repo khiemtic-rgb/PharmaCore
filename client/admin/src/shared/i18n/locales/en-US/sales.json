@@ -351,7 +351,9 @@
       "status": "Status",
       "clear": "Clear filters",
       "reload": "Reload",
-      "documentPlaceholder": "Order no."
+      "documentPlaceholder": "Order no.",
+      "dateFrom": "From",
+      "dateTo": "To"
     },
     "paginationTotal": "{{count}} orders",
     "columns": {

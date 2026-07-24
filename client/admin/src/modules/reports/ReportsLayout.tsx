@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChartOutlined,
   InboxOutlined,
@@ -12,11 +12,13 @@ import { useRegisterProductNavSubnav } from '@/shared/components/module-subnav.c
 import type { ProductNavTab } from '@/shared/product/product-phases';
 import { useProductNavGuard } from '@/shared/product/useProductNavGuard';
 import { ReportCategoryNav } from '@/modules/reports/ReportCategoryNav';
+import { useCanReportsRead } from '@/shared/auth/usePermission';
 
 export function ReportsLayout() {
   const { t } = useTranslation('reports', { keyPrefix: 'layout.tabs' });
   const location = useLocation();
   const navigate = useNavigate();
+  const canReports = useCanReportsRead();
 
   const allTabs: ProductNavTab[] = useMemo(
     () => [
@@ -66,6 +68,10 @@ export function ReportsLayout() {
           : 'home';
 
   useRegisterProductNavSubnav(allTabs, activeKey, (tab) => navigate(tab.path));
+
+  if (!canReports) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div>

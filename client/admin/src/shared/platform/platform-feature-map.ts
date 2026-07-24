@@ -24,10 +24,13 @@ export const ADMIN_MODULE_PLATFORM_CODES: Partial<
     | 'rx'
     | 'connect'
     | 'clinic'
+    | 'familyOs'
+    | 'careOs'
     | 'receivables'
     | 'customer'
     | 'reports'
     | 'kap'
+    | 'learning'
     | 'system',
     string
   >
@@ -37,6 +40,9 @@ export const ADMIN_MODULE_PLATFORM_CODES: Partial<
   rx: 'e_rx',
   connect: 'novixa_connect',
   clinic: 'clinic_emr_lite',
+  familyOs: 'family_os',
+  /** Care OS instrumentation (T3-ready). Opt-in; not Community Health product UI. */
+  careOs: 'care_os',
   procurement: 'procurement',
   inventory: 'inventory',
   receivables: 'sales',
@@ -45,6 +51,7 @@ export const ADMIN_MODULE_PLATFORM_CODES: Partial<
   reports: 'reports',
   /** Survey / KAP — SKU cha `assessment` (gói Survey·KAP). */
   kap: 'assessment',
+  learning: 'learning',
 };
 
 export function isPlatformGateOpen(

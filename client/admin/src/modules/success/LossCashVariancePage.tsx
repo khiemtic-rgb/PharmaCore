@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -36,6 +36,7 @@ import {
   type LossEmployeeReports,
 } from '@/shared/api/success.api';
 import { formatDisplayMoney } from '@/shared/utils/money';
+import { useCanAccessOwnerCockpit } from '@/shared/auth/usePermission';
 
 const AUDIT_EVENT_TYPES = [
   'order_create',
@@ -49,6 +50,7 @@ const AUDIT_EVENT_TYPES = [
 
 export function LossCashVariancePage() {
   const { t } = useTranslation('success');
+  const canCockpit = useCanAccessOwnerCockpit();
   const [tab, setTab] = useState('cash');
   const [cash, setCash] = useState<LossCashVarianceToday | null>(null);
   const [reports, setReports] = useState<LossEmployeeReports | null>(null);
@@ -220,6 +222,10 @@ export function LossCashVariancePage() {
       <Tag>{reportRangeLabel}</Tag>
     </Space>
   );
+
+  if (!canCockpit) {
+    return <Navigate to="/" replace />;
+  }
 
   if (loading && !cash && !reports && !audit) {
     return (
