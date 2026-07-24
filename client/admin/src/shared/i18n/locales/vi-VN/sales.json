@@ -202,6 +202,8 @@
       "batchAssigned": "Đã gán lô {{batch}} — {{name}}",
       "productNotFound": "Không tìm thấy sản phẩm",
       "selectWarehouseFirst": "Chọn kho bán trước",
+      "noWarehouses": "Chưa có kho bán — nhờ quản trị tạo kho hoặc kiểm tra quyền.",
+      "warehousesLoadFailed": "Không tải được danh sách kho bán",
       "addProductFirst": "Thêm ít nhất một sản phẩm",
       "savingDraft": "Đang lưu đơn tạm...",
       "updatingDraft": "Đang cập nhật đơn tạm...",

@@ -11,6 +11,16 @@ public static class InventoryAuthorizationExtensions
                 AdminTokenRules.IsAdminPrincipal(ctx.User)
                 && (HasPermission(ctx, "inventory.read") || ctx.User.IsInRole("ADMIN"))));
 
+        // Quầy bán cần chọn kho — không mở cả module Kho (inventory.read).
+        options.AddPolicy(InventoryPolicies.WarehouseLookup, policy =>
+            policy.RequireAssertion(ctx =>
+                AdminTokenRules.IsAdminPrincipal(ctx.User)
+                && (ctx.User.IsInRole("ADMIN")
+                    || HasPermission(ctx, "inventory.read")
+                    || HasPermission(ctx, "inventory.write")
+                    || HasPermission(ctx, "sales.pos")
+                    || HasPermission(ctx, "sales.write"))));
+
         options.AddPolicy(InventoryPolicies.Write, policy =>
             policy.RequireAssertion(ctx =>
                 AdminTokenRules.IsAdminPrincipal(ctx.User)

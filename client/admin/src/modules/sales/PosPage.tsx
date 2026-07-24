@@ -30,7 +30,7 @@ import {
 import type { CartLine, CustomerListItem, PosCheckoutConfirm, PosCustomerLoyalty, PosCustomerVoucher, SalesOrderDetail, SalesShiftDetail } from '@/shared/api/sales.types';
 import { SALES_DISCOUNT_TYPES } from '@/shared/api/sales.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import { useHasPermission } from '@/shared/auth/usePermission';
+import { useCanSalesPos } from '@/shared/auth/usePermission';
 import { PosCheckoutModal } from '@/modules/sales/PosCheckoutModal';
 import { PosCartQuantityInput } from '@/modules/sales/PosCartQuantityInput';
 import { formatSuggestedBatch } from '@/modules/sales/pos-batch-display';
@@ -100,7 +100,7 @@ export function PosPage() {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const canWrite = useHasPermission('sales.write');
+  const canWrite = useCanSalesPos();
   const { canDiscount, maxPercent, unlimited } = useSalesDiscountPolicy();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [warehouseId, setWarehouseId] = useState<string>();
@@ -539,11 +539,22 @@ export function PosPage() {
 
   useEffect(() => {
     void (async () => {
-      const wh = await fetchWarehouses();
-      setWarehouses(wh);
-      const defaultWh = wh.find((w) => w.isDefault) ?? wh[0];
-      if (defaultWh && !warehouseId) selectWarehouse(defaultWh.id);
-      setCustomers(await searchCustomers());
+      try {
+        const wh = await fetchWarehouses();
+        setWarehouses(wh);
+        const defaultWh = wh.find((w) => w.isDefault) ?? wh[0];
+        if (defaultWh && !warehouseId) selectWarehouse(defaultWh.id);
+        if (wh.length === 0) {
+          message.warning(t('pos.messages.noWarehouses'));
+        }
+      } catch (error) {
+        message.error(apiErrorMessage(error, t('pos.messages.warehousesLoadFailed')));
+      }
+      try {
+        setCustomers(await searchCustomers());
+      } catch {
+        /* optional for POS */
+      }
       void loadReceiptStoreSettings();
     })();
   }, []);

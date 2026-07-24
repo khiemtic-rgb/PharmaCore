@@ -31,6 +31,7 @@
 | Báo cáo | `ReportsAuthorizationExtensions.cs`, `ReportsLayout.tsx`, `ReportViewPage.tsx` |
 | Cockpit / Success | `SuccessAuthorizationExtensions.cs`, `OwnerCockpitPage.tsx`, controllers `Success/*` |
 | Đơn bán (lọc ngày) | `SalesOrderListPage.tsx`, `SalesController` `from`/`to`, `SalesRepository` date filter |
+| POS chọn kho | `GET /inventory/warehouses` = `InventoryPolicies.WarehouseLookup` (`sales.pos` OK) — **không** đòi `inventory.read` |
 | People / Learning | `client/admin/src/modules/learning/**`, `learning.api.ts`, routes `/people` |
 | Learning API (bắt buộc cùng FE) | `Controllers/Learning/**`, `Infrastructure/Learning/**`, `migrations/*learning*.sql` |
 

@@ -202,6 +202,8 @@
       "batchAssigned": "Assigned batch {{batch}} — {{name}}",
       "productNotFound": "Product not found",
       "selectWarehouseFirst": "Select warehouse first",
+      "noWarehouses": "No sell warehouses — ask an admin to create one or check permissions.",
+      "warehousesLoadFailed": "Could not load sell warehouses",
       "addProductFirst": "Add at least one product",
       "savingDraft": "Saving draft...",
       "updatingDraft": "Updating draft...",

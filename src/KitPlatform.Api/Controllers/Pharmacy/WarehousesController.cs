@@ -15,12 +15,12 @@ public sealed class WarehousesController : ControllerBase
     public WarehousesController(IInventoryService inventory) => _inventory = inventory;
 
     [HttpGet("branches")]
-    [Authorize(Policy = InventoryPolicies.Read)]
+    [Authorize(Policy = InventoryPolicies.WarehouseLookup)]
     public async Task<ActionResult<IReadOnlyList<BranchLookupDto>>> Branches(CancellationToken cancellationToken) =>
         Ok(await _inventory.GetBranchLookupsAsync(cancellationToken));
 
     [HttpGet]
-    [Authorize(Policy = InventoryPolicies.Read)]
+    [Authorize(Policy = InventoryPolicies.WarehouseLookup)]
     public async Task<ActionResult<IReadOnlyList<WarehouseDto>>> List(CancellationToken cancellationToken) =>
         Ok(await _inventory.GetWarehousesAsync(cancellationToken));
 
