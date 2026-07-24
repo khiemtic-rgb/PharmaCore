@@ -12,12 +12,15 @@ public static class LearningAuthorizationExtensions
 {
     public static void AddLearningAuthorization(this AuthorizationOptions options)
     {
+        // NV quầy học bài: learning.* hoặc POS (khớp FE useCanLearningRead).
         options.AddPolicy(LearningPolicies.Read, policy =>
             policy.RequireAssertion(ctx =>
                 AdminTokenRules.IsAdminPrincipal(ctx.User)
                 && (ctx.User.IsInRole("ADMIN")
                     || HasPermission(ctx, "learning.read")
-                    || HasPermission(ctx, "learning.write"))));
+                    || HasPermission(ctx, "learning.write")
+                    || HasPermission(ctx, "sales.pos")
+                    || HasPermission(ctx, "sales.write"))));
 
         options.AddPolicy(LearningPolicies.Write, policy =>
             policy.RequireAssertion(ctx =>

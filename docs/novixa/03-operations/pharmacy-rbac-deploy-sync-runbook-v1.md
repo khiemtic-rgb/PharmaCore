@@ -32,6 +32,9 @@
 | Cockpit / Success | `SuccessAuthorizationExtensions.cs`, `OwnerCockpitPage.tsx`, controllers `Success/*` |
 | Đơn bán (lọc ngày) | `SalesOrderListPage.tsx`, `SalesController` `from`/`to`, `SalesRepository` date filter |
 | People / Learning | `client/admin/src/modules/learning/**`, `learning.api.ts`, routes `/people` |
+| Learning API (bắt buộc cùng FE) | `Controllers/Learning/**`, `Infrastructure/Learning/**`, `migrations/*learning*.sql` |
+
+**Cảnh báo (2026-07-24):** FE People từng deploy mà **thiếu Learning API trên git/DLL** → HTTP 404 khi mở bài (`…222210`). Backend phải commit + deploy API cùng lúc với FE.
 
 ---
 
