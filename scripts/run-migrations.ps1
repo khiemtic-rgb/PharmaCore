@@ -161,7 +161,8 @@ $files = @(
     "134_customer_groups.sql",
     "189_customer_merge_events.sql",
     "190_backfill_product_name_normalized.sql",
-    "191_customer_name_trgm.sql"
+    "191_customer_name_trgm.sql",
+    "210_customer_allow_credit_with_phone.sql"
 )
 
 Write-Host "=== KitPlatform Migrations ===" -ForegroundColor Cyan

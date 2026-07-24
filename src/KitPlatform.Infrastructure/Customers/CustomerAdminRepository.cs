@@ -574,14 +574,19 @@ internal sealed class CustomerAdminRepository
             WorkspaceId,
             cancellationToken);
 
+        // Phone on file → allow credit by default (ops can disable per customer later).
+        var allowCredit = HasUsablePhone(phone);
+
         const string sql = """
             INSERT INTO customers (
                 id, tenant_id, party_id, customer_code, full_name, phone, email, date_of_birth, gender, status,
+                allow_credit, credit_limit,
                 address_line, id_number, emergency_contact_name, emergency_contact_phone, clinical_notes,
                 customer_group_id
             )
             VALUES (
                 @CustomerId, @TenantId, @PartyId, @CustomerCode, @FullName, @Phone, @Email, @DateOfBirth, @Gender, 1,
+                @AllowCredit, NULL,
                 @AddressLine, @IdNumber, @EmergencyContactName, @EmergencyContactPhone, @ClinicalNotes,
                 @CustomerGroupId
             )
@@ -601,6 +606,7 @@ internal sealed class CustomerAdminRepository
                 Email = email,
                 DateOfBirth = dateOfBirth,
                 Gender = gender,
+                AllowCredit = allowCredit,
                 AddressLine = addressLine,
                 IdNumber = idNumber,
                 EmergencyContactName = emergencyContactName,
@@ -747,6 +753,17 @@ internal sealed class CustomerAdminRepository
             ToOffset(row.OrderDate),
             row.TotalAmount,
             row.ItemCount);
+
+    private static bool HasUsablePhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return false;
+        var digits = 0;
+        foreach (var ch in phone)
+        {
+            if (ch is >= '0' and <= '9') digits++;
+        }
+        return digits >= 8;
+    }
 
     private static DateTimeOffset ToOffset(DateTime value) =>
         new(DateTime.SpecifyKind(value, DateTimeKind.Utc));

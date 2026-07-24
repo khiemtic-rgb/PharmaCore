@@ -106,7 +106,8 @@ export function CustomerFormDrawer({
     }
 
     form.resetFields();
-    form.setFieldsValue({ status: 1 });
+    // New customers require a phone → default allow credit (can turn off later).
+    form.setFieldsValue({ status: 1, allowCredit: true });
     if (isQuick) return;
 
     setLoadingCode(true);
