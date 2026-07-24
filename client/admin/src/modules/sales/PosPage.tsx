@@ -43,6 +43,10 @@ import {
 import { applyBatchLabelScan } from '@/modules/sales/pos-batch-scan';
 import { capQuantityToStock, outOfStockWarningText, stockCapWarningText } from '@/modules/sales/pos-stock-messages';
 import { buildCreateSalePayload, buildDraftCompletePayload, buildDraftUpdatePayload } from '@/modules/sales/pos-sale-payload';
+import {
+  formatPosCustomerOptionLabel,
+  upsertPosCustomers,
+} from '@/modules/sales/pos-customer-option';
 import { OpenShiftModal } from '@/modules/sales/OpenShiftModal';
 import { PosSummaryDivider, PosSummaryOrderDiscountRow, PosSummaryPanel, PosSummaryRow } from '@/modules/sales/pos-summary-ui';
 import { printSalesInvoice } from '@/modules/sales/sales-invoice-print';
@@ -106,6 +110,10 @@ export function PosPage() {
   const [warehouseId, setWarehouseId] = useState<string>();
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [customerId, setCustomerId] = useState<string>();
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const customerIdRef = useRef<string | undefined>(undefined);
+  const customerSearchSeq = useRef(0);
+  const customerSearchTimer = useRef<number | undefined>(undefined);
   const [customerDraftOrders, setCustomerDraftOrders] = useState<CustomerDraftOrderListItem[]>([]);
   const [loadedCustomerDraftOrderId, setLoadedCustomerDraftOrderId] = useState<string>();
   const [loadedCustomerReservationId, setLoadedCustomerReservationId] = useState<string>();
@@ -144,6 +152,42 @@ export function PosPage() {
   const [activeCountSession, setActiveCountSession] = useState<AdjustmentListItem | null>(null);
 
   const pricing = useMemo(() => priceCart(cart, orderDiscount), [cart, orderDiscount]);
+
+  useEffect(() => {
+    customerIdRef.current = customerId;
+  }, [customerId]);
+
+  const runCustomerSearch = useCallback(async (query: string) => {
+    const seq = ++customerSearchSeq.current;
+    setCustomerSearchLoading(true);
+    try {
+      const hits = await searchCustomers(query.trim() || undefined);
+      if (seq !== customerSearchSeq.current) return;
+      setCustomers((prev) => {
+        const selectedId = customerIdRef.current;
+        const selected = selectedId ? prev.find((c) => c.id === selectedId) : undefined;
+        return upsertPosCustomers(hits, selected);
+      });
+    } catch {
+      /* keep previous options — search is best-effort */
+    } finally {
+      if (seq === customerSearchSeq.current) setCustomerSearchLoading(false);
+    }
+  }, []);
+
+  const handleCustomerSearch = useCallback(
+    (query: string) => {
+      window.clearTimeout(customerSearchTimer.current);
+      customerSearchTimer.current = window.setTimeout(() => {
+        void runCustomerSearch(query);
+      }, 250);
+    },
+    [runCustomerSearch],
+  );
+
+  useEffect(() => {
+    return () => window.clearTimeout(customerSearchTimer.current);
+  }, []);
 
   useEffect(() => {
     if (!customerId || pricing.totalAmount <= 0) {
@@ -381,13 +425,7 @@ export function PosPage() {
         );
         if (result.customer) {
           setCustomerId(result.customer.id);
-          setCustomers((prev) =>
-            prev.some((c) => c.id === result.customer!.id)
-              ? prev
-              : [...prev, result.customer!].sort((a, b) =>
-                  a.fullName.localeCompare(b.fullName, 'vi'),
-                ),
-          );
+          setCustomers((prev) => upsertPosCustomers(prev, result.customer!));
         } else {
           setCustomerId(undefined);
         }
@@ -527,12 +565,7 @@ export function PosPage() {
       allowCredit: customer.allowCredit,
       creditLimit: customer.creditLimit ?? undefined,
     };
-    setCustomers((prev) => {
-      if (prev.some((row) => row.id === customer.id)) {
-        return prev.map((row) => (row.id === customer.id ? listItem : row));
-      }
-      return [...prev, listItem].sort((a, b) => a.fullName.localeCompare(b.fullName, 'vi'));
-    });
+    setCustomers((prev) => upsertPosCustomers(prev, listItem));
     setCustomerId(customer.id);
     message.success(t('pos.messages.customerSelected', { name: customer.fullName, code: customer.customerCode }));
   }, [message]);
@@ -551,13 +584,13 @@ export function PosPage() {
         message.error(apiErrorMessage(error, t('pos.messages.warehousesLoadFailed')));
       }
       try {
-        setCustomers(await searchCustomers());
+        await runCustomerSearch('');
       } catch {
         /* optional for POS */
       }
       void loadReceiptStoreSettings();
     })();
-  }, []);
+  }, [runCustomerSearch]);
 
   useEffect(() => {
     void fetchBatchModeSettings()
@@ -618,6 +651,25 @@ export function PosPage() {
         }
         selectWarehouse(order.warehouseId);
         setCustomerId(order.customerId);
+        if (order.customerId) {
+          void fetchCustomer(order.customerId)
+            .then((c) =>
+              setCustomers((prev) =>
+                upsertPosCustomers(prev, {
+                  id: c.id,
+                  customerCode: c.customerCode,
+                  fullName: c.fullName,
+                  phone: c.phone,
+                  allowCredit: c.allowCredit,
+                  creditLimit: c.creditLimit ?? undefined,
+                  customerGroupId: c.customerGroupId ?? null,
+                  customerGroupName: c.customerGroupName,
+                  groupDiscountPercent: c.groupDiscountPercent,
+                }),
+              ),
+            )
+            .catch(() => {});
+        }
         setCart(await loadDraftCartLines(order));
         setOrderDiscount(orderDiscountFromDetail(order));
         setEditingDraftId(order.id);
@@ -1603,14 +1655,20 @@ export function PosPage() {
               <Select
                 allowClear={!customerAppDraftMode}
                 showSearch
-                optionFilterProp="label"
+                filterOption={false}
+                loading={customerSearchLoading}
+                onSearch={handleCustomerSearch}
+                onDropdownVisibleChange={(open) => {
+                  if (open && customers.length === 0) void runCustomerSearch('');
+                }}
                 style={{ width: 'calc(100% - 32px)' }}
                 placeholder={customerAppDraftMode ? t('pos.toolbar.customerRequired') : t('pos.toolbar.customerOptional')}
                 value={customerId}
                 onChange={setCustomerId}
+                notFoundContent={customerSearchLoading ? undefined : t('pos.toolbar.noCustomers')}
                 options={customers.map((c) => ({
                   value: c.id,
-                  label: `${c.customerCode} — ${c.fullName}`,
+                  label: formatPosCustomerOptionLabel(c),
                 }))}
               />
               {canWrite && !editingDraftId ? (
@@ -1792,6 +1850,8 @@ export function PosPage() {
         customerId={customerId}
         customers={customers}
         onCustomerChange={setCustomerId}
+        onCustomerSearch={handleCustomerSearch}
+        customerSearchLoading={customerSearchLoading}
         onQuickAddCustomer={canWrite && !editingDraftId ? () => setQuickCustomerOpen(true) : undefined}
         customerAllowCredit={customers.find((c) => c.id === customerId)?.allowCredit}
         customerCreditLimit={customers.find((c) => c.id === customerId)?.creditLimit}

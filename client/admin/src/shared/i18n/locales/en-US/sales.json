@@ -155,6 +155,7 @@
       "scanPlaceholder": "Scan barcode or type code / name",
       "searchOptionLabel": "{{code}} — {{name}} · stock {{stock}} {{unit}}",
       "noProducts": "No matching products",
+      "noCustomers": "No customers found — type phone or name",
       "checkout": "Checkout",
       "sendCustomer": "Send",
       "saveDraft": "Save draft",

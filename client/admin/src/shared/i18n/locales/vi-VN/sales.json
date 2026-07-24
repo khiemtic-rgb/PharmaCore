@@ -155,6 +155,7 @@
       "scanPlaceholder": "Quét mã vạch hoặc gõ mã / tên SP",
       "searchOptionLabel": "{{code}} — {{name}} · tồn {{stock}} {{unit}}",
       "noProducts": "Không có sản phẩm phù hợp",
+      "noCustomers": "Không tìm thấy khách — gõ SĐT hoặc tên",
       "checkout": "Thanh toán",
       "sendCustomer": "Gửi KH",
       "saveDraft": "Lưu tạm",

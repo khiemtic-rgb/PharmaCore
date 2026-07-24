@@ -52,6 +52,11 @@ type Props = {
 
   onCustomerChange?: (customerId: string | undefined) => void;
 
+  /** Server-side customer search (debounced by parent). When set, Select does not filter locally. */
+  onCustomerSearch?: (query: string) => void;
+
+  customerSearchLoading?: boolean;
+
   onQuickAddCustomer?: () => void;
 
   customerAllowCredit?: boolean;
@@ -260,6 +265,10 @@ export function PosCheckoutModal({
   customers = [],
 
   onCustomerChange,
+
+  onCustomerSearch,
+
+  customerSearchLoading = false,
 
   onQuickAddCustomer,
 
@@ -912,7 +921,11 @@ export function PosCheckoutModal({
 
             showSearch
 
-            optionFilterProp="label"
+            filterOption={false}
+
+            loading={customerSearchLoading}
+
+            onSearch={onCustomerSearch}
 
             placeholder={t('pos.checkout.customerPlaceholderCredit')}
 
