@@ -15,6 +15,11 @@ public static class CatalogAuthorizationExtensions
             policy.RequireAssertion(ctx =>
                 AdminTokenRules.IsAdminPrincipal(ctx.User)
                 && (HasPermission(ctx, "catalog.write") || ctx.User.IsInRole("ADMIN"))));
+
+        options.AddPolicy(CatalogPolicies.Merge, policy =>
+            policy.RequireAssertion(ctx =>
+                AdminTokenRules.IsAdminPrincipal(ctx.User)
+                && (HasPermission(ctx, "catalog.merge") || ctx.User.IsInRole("ADMIN"))));
     }
 
     private static bool HasPermission(AuthorizationHandlerContext ctx, string permission) =>

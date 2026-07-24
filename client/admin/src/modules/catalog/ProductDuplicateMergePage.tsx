@@ -38,7 +38,7 @@ import {
   type ProductMergeHistoryItem,
 } from '@/shared/api/catalog.api';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import { useCanCatalogRead, useCanCatalogWrite, useCanInventoryWrite } from '@/shared/auth/usePermission';
+import { useCanCatalogMerge } from '@/shared/auth/usePermission';
 import { formatDisplayDateTime } from '@/shared/utils/date';
 import { formatDisplayQuantity } from '@/shared/utils/money';
 
@@ -90,10 +90,7 @@ function applyClusterKeepers(
 export function ProductDuplicateMergePage() {
   const { t } = useTranslation('catalog', { keyPrefix: 'duplicateMerge' });
   const { message: msg } = App.useApp();
-  const canCatalogRead = useCanCatalogRead();
-  const canCatalogWrite = useCanCatalogWrite();
-  const canInventoryWrite = useCanInventoryWrite();
-  const canMerge = canCatalogWrite && canInventoryWrite;
+  const canMerge = useCanCatalogMerge();
 
   const [activeTab, setActiveTab] = useState('merge');
   const [loading, setLoading] = useState(false);
@@ -252,7 +249,7 @@ export function ProductDuplicateMergePage() {
     }
   };
 
-  if (!canCatalogRead) {
+  if (!canMerge) {
     return <Navigate to="/catalog/products" replace />;
   }
 
@@ -599,21 +596,6 @@ export function ProductDuplicateMergePage() {
                     </ol>
                   }
                 />
-                {!canCatalogWrite ? (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={t('needCatalogWrite')}
-                  />
-                ) : !canInventoryWrite ? (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={t('needInventoryWrite')}
-                  />
-                ) : null}
                 <Typography.Paragraph type="secondary">
                   {t('summary', { clusters: clusterCount, products: productCount })}
                 </Typography.Paragraph>
@@ -651,21 +633,6 @@ export function ProductDuplicateMergePage() {
                     </ol>
                   }
                 />
-                {!canCatalogWrite ? (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={t('needCatalogWrite')}
-                  />
-                ) : !canInventoryWrite ? (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={t('needInventoryWrite')}
-                  />
-                ) : null}
                 <Typography.Paragraph type="secondary">
                   {t('similarSummary', {
                     clusters: similarClusterCount,

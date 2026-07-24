@@ -133,7 +133,7 @@
     "mergeConfirmBody": "Orders, loyalty, payments… move to the keeper. This record will be soft-deleted.",
     "mergeSuccess": "Merged {{source}} into keeper ({{orders}} orders, {{payments}} payments).",
     "mergeFailed": "Could not merge customers",
-    "needCustomersWrite": "Customer write permission is required to merge."
+    "needCustomersWrite": "«Merge duplicate customers» (sales.customers.merge) is required — assign under System → Roles."
   },
   "detailPage": {
     "loadingTip": "Loading profile…",

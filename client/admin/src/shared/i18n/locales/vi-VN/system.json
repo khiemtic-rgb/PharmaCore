@@ -178,6 +178,49 @@
       "deleted": "Đã xóa chi nhánh {{code}}"
     }
   },
+  "branchesFamily": {
+    "title": "Gia đình",
+    "add": "Thêm gia đình",
+    "edit": "Sửa gia đình",
+    "create": "Thêm gia đình",
+    "columns": {
+      "code": "Mã gia đình",
+      "name": "Tên gia đình",
+      "phone": "Điện thoại",
+      "headOffice": "Vai trò",
+      "status": "Trạng thái",
+      "actions": "Tác vụ"
+    },
+    "headOfficeTag": "Chính",
+    "form": {
+      "code": "Mã gia đình",
+      "codeRequired": "Nhập mã gia đình (vd. HOME)",
+      "name": "Tên gia đình",
+      "nameRequired": "Nhập tên gia đình",
+      "phone": "Điện thoại liên hệ",
+      "retailFacilityCode": "Mã tham chiếu (tuỳ chọn)",
+      "retailFacilityCodeHint": "FamilyOS không dùng mã cơ sở bán lẻ — để trống.",
+      "address": "Địa chỉ",
+      "isHeadOffice": "Đây là gia đình chính",
+      "status": "Trạng thái"
+    },
+    "deleteConfirm": "Xóa gia đình «{{code}}»?",
+    "deleteDescription": "Gia đình sẽ bị vô hiệu hóa — không xóa thành viên FamilyOS.",
+    "cannotDeleteHeadOffice": "Không thể xóa gia đình chính",
+    "limit": {
+      "usage": "Đang dùng {{used}} / {{max}} gia đình theo gói",
+      "unlimited": "Đang dùng {{used}} gia đình — chưa giới hạn số gia đình",
+      "reached": "Đã đạt hạn mức {{max}} gia đình. Liên hệ để mở rộng."
+    },
+    "messages": {
+      "loadFailed": "Không tải được danh sách gia đình",
+      "saveFailed": "Không lưu được gia đình",
+      "deleteFailed": "Không xóa được gia đình",
+      "updated": "Đã cập nhật gia đình",
+      "created": "Đã thêm gia đình",
+      "deleted": "Đã xóa gia đình {{code}}"
+    }
+  },
   "users": {
     "title": "Tài khoản nhân viên",
     "add": "Thêm tài khoản",
@@ -266,6 +309,8 @@
       "status": "Trạng thái"
     },
     "permissionsHint": "Tick nhiều quyền trong cùng module khi cần. Chiết khấu bán hàng chỉ chọn một mức.",
+    "permissionsHintFamily": "Gán quyền Hệ thống cho vai trò (người dùng, vai trò, gia đình). Module FamilyOS bật trong Gói FamilyOS.",
+    "permissionsFamilyAlert": "Không hiện quyền Kho / Bán hàng / Clinic — FamilyOS dùng module family_os, không gán quyền nhà thuốc.",
     "discountSelectOne": "Chiết khấu (chọn một)",
     "messages": {
       "loadFailed": "Không tải được vai trò",
@@ -302,31 +347,59 @@
       "procurement": "Mua hàng",
       "sales": "Bán hàng",
       "clinic": "Clinic",
+      "connect": "Connect",
+      "success": "Cockpit chủ NT",
+      "survey": "KAP — Survey",
+      "learning": "Phát triển Nhân sự",
       "customer": "Khách hàng",
+      "family_os": "FamilyOS",
       "system": "Hệ thống"
     },
     "labels": {
       "catalog.read": "Xem danh mục",
       "catalog.write": "Sửa danh mục",
+      "catalog.merge": "Gộp sản phẩm trùng",
       "inventory.read": "Xem kho",
       "inventory.write": "Sửa kho",
+      "inventory.approve": "Duyệt điều chỉnh kho",
       "procurement.read": "Xem mua hàng",
-      "procurement.write": "Mua hàng",
+      "procurement.write": "Mua hàng (toàn quyền gói)",
+      "procurement.suppliers": "Quản lý nhà cung cấp",
+      "procurement.po": "Tạo / sửa đơn đặt hàng (PO)",
+      "procurement.approve": "Duyệt đơn đặt hàng (PO)",
+      "procurement.receive": "Nhập hàng (GRN)",
+      "procurement.pay": "Thanh toán & công nợ NCC",
       "sales.read": "Xem bán hàng",
-      "sales.write": "Bán hàng",
+      "sales.write": "Bán hàng (gói mở rộng: trả hàng, draft, chat…)",
+      "sales.pos": "Bán hàng POS (tạo / hoàn tất đơn)",
+      "sales.customers": "Khách hàng & công nợ",
+      "sales.customers.merge": "Gộp khách hàng trùng",
+      "sales.settings": "Cấu hình bán hàng (loyalty / voucher / hóa đơn)",
+      "sales.cancel": "Hủy hóa đơn nháp",
+      "sales.price.override": "Sửa giá bán trên đơn POS",
+      "sales.price.manage": "Tổng hợp & đồng bộ giá vượt khung",
       "sales.discount": "Chiết khấu bán hàng (tối đa 10%)",
       "sales.discount.unlimited": "Chiết khấu không giới hạn",
       "clinic.read": "Xem Clinic",
       "clinic.write": "Sửa Clinic",
+      "connect.read": "Xem Connect",
+      "connect.write": "Quản lý Connect",
+      "success.read": "Cockpit chủ NT (checklist ca / lệch quỹ)",
+      "survey.read": "Xem KAP / Survey",
+      "survey.write": "Quản lý KAP / Survey",
+      "learning.read": "Xem / học Phát triển Nhân sự",
+      "learning.write": "Quản lý Phát triển Nhân sự (ghi nhận / đánh giá)",
       "system.read": "Xem hệ thống",
       "system.write": "Quản trị hệ thống",
       "system.delete_permanent": "Xóa vĩnh viễn"
     },
     "groupHints": {
-      "catalog": "Chọn «Sửa danh mục» sẽ tự bật «Xem danh mục». Bỏ «Xem» sẽ bỏ luôn «Sửa».",
+      "catalog": "Chọn «Sửa danh mục» sẽ tự bật «Xem danh mục». «Gộp sản phẩm trùng» gán riêng (SoD).",
       "inventory": "Chọn «Sửa kho» sẽ tự bật «Xem kho». Bỏ «Xem» sẽ bỏ luôn «Sửa».",
-      "procurement": "Chọn «Mua hàng» sẽ tự bật «Xem mua hàng». Bỏ «Xem» sẽ bỏ luôn «Mua hàng».",
-      "sales": "Có thể chọn nhiều quyền. «Bán hàng» đã bao gồm xem POS trên hệ thống.",
+      "procurement": "Gói «Mua hàng» gồm xem + NCC + PO. Duyệt / nhận hàng / thanh toán gán riêng (SoD).",
+      "sales": "Gói «Bán hàng» gồm xem + POS + khách. Cấu hình / hủy nháp / giá / gộp khách gán riêng.",
+      "connect": "Chọn «Quản lý Connect» sẽ tự bật «Xem Connect».",
+      "success": "Mở menu Cockpit chủ NT — không cấp cho thu ngân thường.",
       "system": "Có thể chọn nhiều quyền độc lập."
     },
     "discountLevels": {
@@ -335,10 +408,15 @@
   },
   "platformPack": {
     "title": "Gói Novixa",
+    "titleFamily": "Gói FamilyOS",
     "intro": "Bật/tắt module trong phạm vi gói Core đã cấp cho tài khoản này.",
     "introDetail": "Loại hình và trần module do vận hành Novixa cấu hình tại /setup. ADMIN tenant chỉ chọn module trong gói đã mua.",
+    "introFamily": "Cấu hình module FamilyOS cho gia đình này.",
+    "introDetailFamily": "FamilyOS dùng module family_os — không dùng feature flag nhà thuốc (lô/HSD, dược quốc gia, giá chi nhánh…).",
     "ceilingHint": "Trần quyền (allowed modules) do Core cấp",
     "ceilingHintDetail": "Muốn thêm module ngoài danh sách — liên hệ vận hành Novixa để mở rộng entitlement.",
+    "familyFeaturesTitle": "Tính năng FamilyOS",
+    "familyFeaturesDetail": "Nhịp sống · Hôm nay · Thỏa thuận · Team Play · Coach · Screen Boundary nằm trong module FamilyOS (menu FamilyOS), không bật bằng switch FEFO/dược bên dưới.",
     "readOnlyHint": "Bạn có thể xem; chỉ ADMIN được chỉnh pack/module.",
     "fields": {
       "vertical": "Loại hình (vertical) — do Core cấu hình",
@@ -350,11 +428,12 @@
       "modulesRequired": "Chọn ít nhất một module"
     },
     "actions": {
-      "save": "Lưu cấu hình pack"
+      "save": "Lưu cấu hình pack",
+      "saveFamily": "Lưu gói FamilyOS"
     },
     "messages": {
       "loadFailed": "Không tải được cấu hình platform",
-      "saveFailed": "Không lưu được cấu hình platform",
+      "saveFailed": "Không lưu được cấu hình pack",
       "saveSuccess": "Đã cập nhật gói tính năng",
       "ignoredModules": "Bỏ qua module không có trong registry: {{codes}}"
     },
@@ -366,7 +445,8 @@
       "clinic": "Phòng khám",
       "lab": "Xét nghiệm (roadmap)",
       "medical_spa": "Spa y khoa (roadmap)",
-      "hybrid": "Lai (hybrid)"
+      "hybrid": "Lai (hybrid)",
+      "family": "Gia đình (FamilyOS)"
     },
     "features": {
       "batch_tracking": "Theo dõi lô / HSD (FEFO)",

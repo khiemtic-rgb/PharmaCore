@@ -16,7 +16,7 @@ import type {
   SimilarCustomerCluster,
 } from '@/shared/api/customer-admin.types';
 import { apiErrorMessage } from '@/shared/api/api-error';
-import { useCanSalesCustomers } from '@/shared/auth/usePermission';
+import { useCanSalesCustomers, useCanSalesCustomersMerge } from '@/shared/auth/usePermission';
 import { CustomerFormDrawer } from '@/modules/customer/CustomerFormDrawer';
 import { CustomerImportCard } from '@/modules/customer/CustomerImportCard';
 import { useCustomerEnums } from '@/shared/i18n/use-customer-enums';
@@ -83,6 +83,7 @@ export function CustomerListPage() {
   const { customerStatusLabel } = useCustomerEnums();
   const navigate = useNavigate();
   const canWrite = useCanSalesCustomers();
+  const canMerge = useCanSalesCustomersMerge();
   const [activeTab, setActiveTab] = useState<ListTab>('list');
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<CustomerAdminListItem[]>([]);
@@ -147,8 +148,12 @@ export function CustomerListPage() {
   }, [activeTab, load]);
 
   useEffect(() => {
-    if (activeTab === 'similar') void loadSimilar();
-  }, [activeTab, loadSimilar]);
+    if (!canMerge && activeTab === 'similar') setActiveTab('list');
+  }, [canMerge, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'similar' && canMerge) void loadSimilar();
+  }, [activeTab, canMerge, loadSimilar]);
 
   /** Live search while typing — debounce so API is not hit on every keystroke. */
   useEffect(() => {
@@ -298,7 +303,7 @@ export function CustomerListPage() {
           return pct > 0 ? t('similarityPct', { pct }) : '—';
         },
       },
-      ...(canWrite
+      ...(canMerge
         ? [
             {
               title: t('keep'),
@@ -346,7 +351,7 @@ export function CustomerListPage() {
         width: 110,
         render: (v: string) => formatDisplayDate(v),
       },
-      ...(canWrite
+      ...(canMerge
         ? [
             {
               title: '',
@@ -390,7 +395,7 @@ export function CustomerListPage() {
           ]
         : []),
     ],
-    [canWrite, keepers, mergingId, t, tc],
+    [canMerge, keepers, mergingId, t, tc],
   );
 
   return (
@@ -471,66 +476,62 @@ export function CustomerListPage() {
                 </>
               ),
             },
-            {
-              key: 'similar',
-              label: t('tabs.similar'),
-              children: (
-                <>
-                  <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={t('similarGuideTitle')}
-                    description={
-                      <ol style={{ margin: 0, paddingLeft: 18 }}>
-                        <li>{t('similarGuide1')}</li>
-                        <li>{t('similarGuide2')}</li>
-                        <li>{t('similarGuide3')}</li>
-                      </ol>
-                    }
-                  />
-                  {!canWrite ? (
-                    <Alert
-                      type="info"
-                      showIcon
-                      style={{ marginBottom: 16 }}
-                      message={t('needCustomersWrite')}
-                    />
-                  ) : null}
-                  <Space wrap style={{ marginBottom: 12 }}>
-                    <Typography.Text type="secondary">
-                      {t('similarSummary', {
-                        clusters: similarClusterCount,
-                        customers: similarCustomerCount,
-                      })}
-                    </Typography.Text>
-                    <Button
-                      icon={<ReloadOutlined />}
-                      onClick={() => void loadSimilar()}
-                      loading={similarLoading}
-                    >
-                      {tc('actions.reload')}
-                    </Button>
-                  </Space>
-                  <Table
-                    rowKey="key"
-                    size="small"
-                    loading={similarLoading}
-                    columns={similarColumns}
-                    dataSource={similarRows}
-                    onRow={(row) => ({
-                      style: {
-                        cursor: 'pointer',
-                        background: row.isFirstInCluster ? undefined : 'rgba(0,0,0,0.02)',
-                      },
-                      onClick: () => navigate(`/customer/${row.id}`),
-                    })}
-                    pagination={{ pageSize: 50, hideOnSinglePage: true }}
-                    locale={{ emptyText: t('similarEmpty') }}
-                  />
-                </>
-              ),
-            },
+            ...(canMerge
+              ? [
+                  {
+                    key: 'similar' as const,
+                    label: t('tabs.similar'),
+                    children: (
+                      <>
+                        <Alert
+                          type="warning"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                          message={t('similarGuideTitle')}
+                          description={
+                            <ol style={{ margin: 0, paddingLeft: 18 }}>
+                              <li>{t('similarGuide1')}</li>
+                              <li>{t('similarGuide2')}</li>
+                              <li>{t('similarGuide3')}</li>
+                            </ol>
+                          }
+                        />
+                        <Space wrap style={{ marginBottom: 12 }}>
+                          <Typography.Text type="secondary">
+                            {t('similarSummary', {
+                              clusters: similarClusterCount,
+                              customers: similarCustomerCount,
+                            })}
+                          </Typography.Text>
+                          <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => void loadSimilar()}
+                            loading={similarLoading}
+                          >
+                            {tc('actions.reload')}
+                          </Button>
+                        </Space>
+                        <Table
+                          rowKey="key"
+                          size="small"
+                          loading={similarLoading}
+                          columns={similarColumns}
+                          dataSource={similarRows}
+                          onRow={(row) => ({
+                            style: {
+                              cursor: 'pointer',
+                              background: row.isFirstInCluster ? undefined : 'rgba(0,0,0,0.02)',
+                            },
+                            onClick: () => navigate(`/customer/${row.id}`),
+                          })}
+                          pagination={{ pageSize: 50, hideOnSinglePage: true }}
+                          locale={{ emptyText: t('similarEmpty') }}
+                        />
+                      </>
+                    ),
+                  },
+                ]
+              : []),
           ]}
         />
       </Card>

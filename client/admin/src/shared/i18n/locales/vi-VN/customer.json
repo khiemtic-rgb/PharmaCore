@@ -133,7 +133,7 @@
     "mergeConfirmBody": "Đơn, điểm, phiếu thu… sẽ chuyển sang khách giữ. Bản này sẽ bị ẩn (soft-delete).",
     "mergeSuccess": "Đã gộp {{source}} → giữ ({{orders}} đơn, {{payments}} phiếu thu).",
     "mergeFailed": "Không gộp được khách",
-    "needCustomersWrite": "Cần quyền quản lý khách hàng để gộp."
+    "needCustomersWrite": "Cần quyền «Gộp khách hàng trùng» (sales.customers.merge) — gán trong Hệ thống → Vai trò."
   },
   "detailPage": {
     "loadingTip": "Đang tải hồ sơ...",

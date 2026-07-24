@@ -4,6 +4,7 @@
 INSERT INTO permissions (permission_code, permission_name, module_name) VALUES
     ('catalog.read', 'Xem danh mục', 'Danh mục'),
     ('catalog.write', 'Sửa danh mục', 'Danh mục'),
+    ('catalog.merge', 'Gộp sản phẩm trùng', 'Danh mục'),
     ('inventory.read', 'Xem kho', 'Kho hàng'),
     ('inventory.write', 'Sửa kho', 'Kho hàng'),
     ('procurement.read', 'Xem mua hàng', 'Mua hàng'),
@@ -13,6 +14,7 @@ INSERT INTO permissions (permission_code, permission_name, module_name) VALUES
     ('sales.discount', 'Chiết khấu bán hàng (tối đa 10%)', 'Bán hàng'),
     ('sales.discount.unlimited', 'Chiết khấu không giới hạn', 'Bán hàng'),
     ('sales.cancel', 'Hủy hóa đơn nháp (Loss gate)', 'Bán hàng'),
+    ('sales.customers.merge', 'Gộp khách hàng trùng', 'Bán hàng'),
     ('inventory.approve', 'Duyệt điều chỉnh / xuất nội bộ tồn (Loss gate)', 'Kho'),
     ('system.delete_permanent', 'Xóa vĩnh viễn', 'Hệ thống'),
     ('system.read', 'Xem hệ thống', 'Hệ thống'),

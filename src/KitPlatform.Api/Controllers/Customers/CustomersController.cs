@@ -49,7 +49,7 @@ public sealed class CustomersController : ControllerBase
 
     /// <summary>Near-duplicate customers: same digit-phone or name similarity ≥ threshold.</summary>
     [HttpGet("similar-clusters")]
-    [Authorize(Policy = SalesPolicies.Read)]
+    [Authorize(Policy = SalesPolicies.CustomerMerge)]
     public async Task<ActionResult<SimilarCustomerClustersResult>> SimilarClusters(
         [FromQuery] double threshold = 0.8,
         CancellationToken cancellationToken = default) =>
@@ -72,7 +72,7 @@ public sealed class CustomersController : ControllerBase
 
     /// <summary>Merge source customer into keeper (reassign orders/loyalty/etc, soft-delete source).</summary>
     [HttpPost("merge")]
-    [Authorize(Policy = SalesPolicies.Customers)]
+    [Authorize(Policy = SalesPolicies.CustomerMerge)]
     public async Task<ActionResult<MergeCustomersResult>> Merge(
         [FromBody] MergeCustomersRequest request,
         CancellationToken cancellationToken)

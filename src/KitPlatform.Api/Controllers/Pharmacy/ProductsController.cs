@@ -72,22 +72,21 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpGet("duplicate-clusters")]
-    [Authorize(Policy = CatalogPolicies.Read)]
+    [Authorize(Policy = CatalogPolicies.Merge)]
     public async Task<ActionResult<DuplicateProductClustersResult>> DuplicateClusters(
         CancellationToken cancellationToken) =>
         Ok(await _merge.GetDuplicateClustersAsync(cancellationToken));
 
     /// <summary>Near-duplicate groups (pg_trgm similarity ≥ threshold, default 0.8) with different normalized names.</summary>
     [HttpGet("similar-clusters")]
-    [Authorize(Policy = CatalogPolicies.Read)]
+    [Authorize(Policy = CatalogPolicies.Merge)]
     public async Task<ActionResult<DuplicateProductClustersResult>> SimilarClusters(
         [FromQuery] double threshold = 0.8,
         CancellationToken cancellationToken = default) =>
         Ok(await _merge.GetSimilarClustersAsync(threshold, cancellationToken));
 
     [HttpPost("merge-duplicate-stock")]
-    [Authorize(Policy = CatalogPolicies.Write)]
-    [Authorize(Policy = InventoryPolicies.Write)]
+    [Authorize(Policy = CatalogPolicies.Merge)]
     public async Task<ActionResult<MergeDuplicateProductStockResult>> MergeDuplicateStock(
         [FromBody] MergeDuplicateProductStockRequest request,
         CancellationToken cancellationToken)
@@ -103,21 +102,21 @@ public sealed class ProductsController : ControllerBase
     }
 
     [HttpGet("merge-history")]
-    [Authorize(Policy = CatalogPolicies.Read)]
+    [Authorize(Policy = CatalogPolicies.Merge)]
     public async Task<ActionResult<ProductMergeHistoryResult>> MergeHistory(
         [FromQuery] int limit = 200,
         CancellationToken cancellationToken = default) =>
         Ok(await _merge.GetMergeHistoryAsync(limit, cancellationToken));
 
     [HttpGet("hidden")]
-    [Authorize(Policy = CatalogPolicies.Read)]
+    [Authorize(Policy = CatalogPolicies.Merge)]
     public async Task<ActionResult<HiddenProductsResult>> HiddenProducts(
         [FromQuery] int limit = 500,
         CancellationToken cancellationToken = default) =>
         Ok(await _merge.GetHiddenProductsAsync(limit, cancellationToken));
 
     [HttpPost("{id:guid}/restore")]
-    [Authorize(Policy = CatalogPolicies.Write)]
+    [Authorize(Policy = CatalogPolicies.Merge)]
     public async Task<IActionResult> RestoreHidden(Guid id, CancellationToken cancellationToken)
     {
         try

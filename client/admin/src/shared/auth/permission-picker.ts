@@ -23,7 +23,7 @@ const PERMISSION_UI_GROUP_DEFS: Array<{
 }> = [
   {
     moduleKey: 'catalog',
-    items: ['catalog.read', 'catalog.write'],
+    items: ['catalog.read', 'catalog.write', 'catalog.merge'],
   },
   {
     moduleKey: 'inventory',
@@ -48,6 +48,7 @@ const PERMISSION_UI_GROUP_DEFS: Array<{
       'sales.write',
       'sales.pos',
       'sales.customers',
+      'sales.customers.merge',
       'sales.settings',
       'sales.cancel',
       'sales.price.override',
@@ -130,8 +131,10 @@ const PACKAGE_WRITE_BY_INCLUDED_PERMISSION = Object.entries(WRITE_IMPLIES_PACKAG
 }, {});
 
 const SPECIALIZED_IMPLIES_READ: Record<string, string> = {
+  'catalog.merge': 'catalog.read',
   'sales.pos': 'sales.read',
   'sales.customers': 'sales.read',
+  'sales.customers.merge': 'sales.read',
   'sales.settings': 'sales.read',
   'sales.cancel': 'sales.read',
   'sales.price.override': 'sales.read',

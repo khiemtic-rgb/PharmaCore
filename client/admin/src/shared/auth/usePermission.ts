@@ -32,6 +32,11 @@ export function useCanCatalogWrite(): boolean {
   return useHasPermission('catalog.write');
 }
 
+/** Gộp SP trùng — quyền riêng, không đi kèm catalog.write. */
+export function useCanCatalogMerge(): boolean {
+  return useHasPermission('catalog.merge');
+}
+
 export function useCanInventoryRead(): boolean {
   return useHasAnyPermission('inventory.read', 'inventory.write', 'inventory.approve');
 }
@@ -80,6 +85,11 @@ export function useCanSalesPos(): boolean {
 
 export function useCanSalesCustomers(): boolean {
   return useHasAnyPermission('sales.customers', 'sales.write');
+}
+
+/** Gộp KH trùng — quyền riêng, không đi kèm sales.customers. */
+export function useCanSalesCustomersMerge(): boolean {
+  return useHasPermission('sales.customers.merge');
 }
 
 export function useCanSalesSettings(): boolean {

@@ -9,4 +9,6 @@ public static class SalesPolicies
     public const string Settings = "SalesSettings";
     /// <summary>AC5 — cancel draft sales orders (sales.cancel or ADMIN).</summary>
     public const string Cancel = "SalesCancel";
+    /// <summary>Merge duplicate customers (sales.customers.merge or ADMIN) — not implied by sales.customers.</summary>
+    public const string CustomerMerge = "SalesCustomerMerge";
 }

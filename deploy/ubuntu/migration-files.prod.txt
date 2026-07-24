@@ -134,4 +134,5 @@
 190_backfill_product_name_normalized.sql
 191_customer_name_trgm.sql
 210_customer_allow_credit_with_phone.sql
+211_merge_permissions.sql
 seed-prod/001_base_permissions.sql

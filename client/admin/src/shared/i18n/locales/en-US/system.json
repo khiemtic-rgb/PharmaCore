@@ -178,6 +178,49 @@
       "deleted": "Deleted branch {{code}}"
     }
   },
+  "branchesFamily": {
+    "title": "Families",
+    "add": "Add family",
+    "edit": "Edit family",
+    "create": "Add family",
+    "columns": {
+      "code": "Family code",
+      "name": "Family name",
+      "phone": "Phone",
+      "headOffice": "Role",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "headOfficeTag": "Primary",
+    "form": {
+      "code": "Family code",
+      "codeRequired": "Enter a family code (e.g. HOME)",
+      "name": "Family name",
+      "nameRequired": "Enter the family name",
+      "phone": "Contact phone",
+      "retailFacilityCode": "Reference code (optional)",
+      "retailFacilityCodeHint": "FamilyOS does not use retail facility codes — leave blank.",
+      "address": "Address",
+      "isHeadOffice": "This is the primary family",
+      "status": "Status"
+    },
+    "deleteConfirm": "Remove family «{{code}}»?",
+    "deleteDescription": "The family will be deactivated — FamilyOS members are not deleted.",
+    "cannotDeleteHeadOffice": "Cannot delete the primary family",
+    "limit": {
+      "usage": "Using {{used}} / {{max}} families on this plan",
+      "unlimited": "Using {{used}} families — no family ceiling set",
+      "reached": "Reached the {{max}}-family limit. Contact us to expand."
+    },
+    "messages": {
+      "loadFailed": "Could not load families",
+      "saveFailed": "Could not save family",
+      "deleteFailed": "Could not remove family",
+      "updated": "Family updated",
+      "created": "Family added",
+      "deleted": "Removed family {{code}}"
+    }
+  },
   "users": {
     "title": "Staff accounts",
     "add": "Add account",
@@ -266,6 +309,8 @@
       "status": "Status"
     },
     "permissionsHint": "Select multiple permissions in the same module when needed. Sales discount allows only one level.",
+    "permissionsHintFamily": "Assign System permissions for this role (users, roles, families). Turn on the FamilyOS module in the FamilyOS pack.",
+    "permissionsFamilyAlert": "Pharmacy permissions (Inventory / Sales / Clinic) are hidden — FamilyOS uses the family_os module, not retail permission ticks.",
     "discountSelectOne": "Discount (pick one)",
     "messages": {
       "loadFailed": "Could not load roles",
@@ -302,31 +347,59 @@
       "procurement": "Procurement",
       "sales": "Sales",
       "clinic": "Clinic",
+      "connect": "Connect",
+      "success": "Owner cockpit",
+      "survey": "KAP — Survey",
+      "learning": "People Development",
       "customer": "Customers",
+      "family_os": "FamilyOS",
       "system": "System"
     },
     "labels": {
       "catalog.read": "View catalog",
       "catalog.write": "Edit catalog",
+      "catalog.merge": "Merge duplicate products",
       "inventory.read": "View inventory",
       "inventory.write": "Edit inventory",
+      "inventory.approve": "Approve inventory adjustments",
       "procurement.read": "View procurement",
-      "procurement.write": "Procurement",
+      "procurement.write": "Procurement (full package)",
+      "procurement.suppliers": "Manage suppliers",
+      "procurement.po": "Create / edit purchase orders",
+      "procurement.approve": "Approve purchase orders",
+      "procurement.receive": "Goods receipts (GRN)",
+      "procurement.pay": "Supplier payments & payables",
       "sales.read": "View sales",
-      "sales.write": "Sales",
+      "sales.write": "Sales (extended: returns, drafts, chat…)",
+      "sales.pos": "POS sell (create / complete orders)",
+      "sales.customers": "Customers & receivables",
+      "sales.customers.merge": "Merge duplicate customers",
+      "sales.settings": "Sales settings (loyalty / voucher / receipt)",
+      "sales.cancel": "Cancel draft invoices",
+      "sales.price.override": "POS unit price override",
+      "sales.price.manage": "Review and sync price overrides",
       "sales.discount": "Sales discount (max 10%)",
       "sales.discount.unlimited": "Unlimited discount",
       "clinic.read": "View Clinic",
       "clinic.write": "Edit Clinic",
+      "connect.read": "View Connect",
+      "connect.write": "Manage Connect",
+      "success.read": "Owner cockpit (shift checklist / cash variance)",
+      "survey.read": "View KAP / Survey",
+      "survey.write": "Manage KAP / Survey",
+      "learning.read": "View / take People Development",
+      "learning.write": "Manage People Development (recognize / evaluate)",
       "system.read": "View system",
       "system.write": "Manage system",
       "system.delete_permanent": "Permanent delete"
     },
     "groupHints": {
-      "catalog": "Selecting «Edit catalog» auto-enables «View catalog». Removing «View» also removes «Edit».",
+      "catalog": "Selecting «Edit catalog» auto-enables «View catalog». «Merge duplicate products» is assigned separately (SoD).",
       "inventory": "Selecting «Edit inventory» auto-enables «View inventory». Removing «View» also removes «Edit».",
-      "procurement": "Selecting «Procurement» auto-enables «View procurement». Removing «View» also removes «Procurement».",
-      "sales": "Multiple permissions can be selected. «Sales» includes POS access on the system.",
+      "procurement": "Package «Procurement» includes view + suppliers + PO. Approve / receive / pay are assigned separately (SoD).",
+      "sales": "Package «Sales» includes view + POS + customers. Settings / cancel / price / customer merge are assigned separately.",
+      "connect": "Selecting «Manage Connect» auto-enables «View Connect».",
+      "success": "Opens Owner cockpit — do not grant to regular cashiers.",
       "system": "Multiple independent permissions can be selected."
     },
     "discountLevels": {
@@ -335,10 +408,15 @@
   },
   "platformPack": {
     "title": "Novixa feature pack",
+    "titleFamily": "FamilyOS pack",
     "intro": "Enable/disable modules within the Core entitlement for this account.",
     "introDetail": "Vertical and module ceiling are set by Novixa ops at /setup. Tenant ADMIN may only toggle modules inside the purchased pack.",
+    "introFamily": "Configure the FamilyOS module for this family.",
+    "introDetailFamily": "FamilyOS uses the family_os module — not pharmacy feature flags (FEFO, national drug, branch pricing…).",
     "ceilingHint": "Entitlement ceiling (allowed modules) is Core-assigned",
     "ceilingHintDetail": "Need modules outside this list — contact Novixa ops to expand entitlement.",
+    "familyFeaturesTitle": "FamilyOS capabilities",
+    "familyFeaturesDetail": "Routine · Day Flow · Agreements · Team Play · Coach · Screen Boundary live under the FamilyOS menu — not as FEFO/pharmacy switches.",
     "readOnlyHint": "View only — only ADMIN can edit pack/modules.",
     "fields": {
       "vertical": "Business vertical — Core-managed",
@@ -350,7 +428,8 @@
       "modulesRequired": "Select at least one module"
     },
     "actions": {
-      "save": "Save pack configuration"
+      "save": "Save pack configuration",
+      "saveFamily": "Save FamilyOS pack"
     },
     "messages": {
       "loadFailed": "Could not load platform settings",
@@ -366,7 +445,8 @@
       "clinic": "Clinic",
       "lab": "Lab (roadmap)",
       "medical_spa": "Medical spa (roadmap)",
-      "hybrid": "Hybrid"
+      "hybrid": "Hybrid",
+      "family": "Family (FamilyOS)"
     },
     "features": {
       "batch_tracking": "Batch / expiry (FEFO)",
