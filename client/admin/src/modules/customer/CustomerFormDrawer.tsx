@@ -39,6 +39,9 @@ interface CustomerFormDrawerProps {
   onSaved: (customer: CustomerDetail) => void;
   /** POS: chỉ họ tên + SĐT, mã tự sinh */
   variant?: 'full' | 'quick';
+  /** Prefill when opening quick create from POS search (phone or name already typed). */
+  initialPhone?: string;
+  initialName?: string;
 }
 
 function normalizeCustomerCodeInput(value: string | undefined): string | undefined {
@@ -63,6 +66,8 @@ export function CustomerFormDrawer({
   onClose,
   onSaved,
   variant = 'full',
+  initialPhone,
+  initialName,
 }: CustomerFormDrawerProps) {
   const { t } = useTranslation('customer', { keyPrefix: 'formDrawer' });
   const { t: tc } = useTranslation('common');
@@ -107,7 +112,16 @@ export function CustomerFormDrawer({
 
     form.resetFields();
     // New customers require a phone → default allow credit (can turn off later).
-    form.setFieldsValue({ status: 1, allowCredit: true });
+    form.setFieldsValue({
+      status: 1,
+      allowCredit: true,
+      ...(isQuick
+        ? {
+            fullName: initialName?.trim() || undefined,
+            phone: initialPhone?.trim() || undefined,
+          }
+        : {}),
+    });
     if (isQuick) return;
 
     setLoadingCode(true);
@@ -117,7 +131,7 @@ export function CustomerFormDrawer({
         /* gợi ý mã tùy chọn */
       })
       .finally(() => setLoadingCode(false));
-  }, [open, editing, form, isQuick]);
+  }, [open, editing, form, isQuick, initialPhone, initialName]);
 
   const handleSave = async () => {
     try {

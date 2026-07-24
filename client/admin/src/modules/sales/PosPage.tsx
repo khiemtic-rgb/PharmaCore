@@ -98,6 +98,17 @@ import { loadConnectHandoffForPos } from '@/modules/sales/connect-handoff-pos-lo
 import { LoadPrescriptionModal } from '@/modules/sales/LoadPrescriptionModal';
 import { fetchPrescriptionPosLoad, type RxPrescriptionPosLoad } from '@/shared/api/rx.api';
 
+/** Prefill quick-create: digits-only query → phone, otherwise → name. */
+function guessPhoneOrName(query: string): { phone?: string; name?: string } {
+  const trimmed = query.trim();
+  if (!trimmed) return {};
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.length >= 8 && digits.length === trimmed.replace(/[\s+\-().]/g, '').length) {
+    return { phone: trimmed };
+  }
+  return { name: trimmed };
+}
+
 export function PosPage() {
   const { t } = useTranslation('sales');
   const { t: tc } = useTranslation('common');
@@ -111,6 +122,7 @@ export function PosPage() {
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [customerId, setCustomerId] = useState<string>();
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const customerIdRef = useRef<string | undefined>(undefined);
   const customerSearchSeq = useRef(0);
   const customerSearchTimer = useRef<number | undefined>(undefined);
@@ -177,6 +189,7 @@ export function PosPage() {
 
   const handleCustomerSearch = useCallback(
     (query: string) => {
+      setCustomerSearchQuery(query);
       window.clearTimeout(customerSearchTimer.current);
       customerSearchTimer.current = window.setTimeout(() => {
         void runCustomerSearch(query);
@@ -184,6 +197,13 @@ export function PosPage() {
     },
     [runCustomerSearch],
   );
+
+  const quickCreateDefaults = useMemo(
+    () => guessPhoneOrName(customerSearchQuery),
+    [customerSearchQuery],
+  );
+
+  const openQuickCustomer = useCallback(() => setQuickCustomerOpen(true), []);
 
   useEffect(() => {
     return () => window.clearTimeout(customerSearchTimer.current);
@@ -1673,7 +1693,7 @@ export function PosPage() {
               />
               {canWrite && !editingDraftId ? (
                 <Tooltip title={t('pos.toolbar.quickAddCustomer')}>
-                  <Button icon={<UserAddOutlined />} onClick={() => setQuickCustomerOpen(true)} />
+                  <Button icon={<UserAddOutlined />} onClick={openQuickCustomer} />
                 </Tooltip>
               ) : null}
             </Space.Compact>
@@ -1852,7 +1872,7 @@ export function PosPage() {
         onCustomerChange={setCustomerId}
         onCustomerSearch={handleCustomerSearch}
         customerSearchLoading={customerSearchLoading}
-        onQuickAddCustomer={canWrite && !editingDraftId ? () => setQuickCustomerOpen(true) : undefined}
+        onQuickAddCustomer={canWrite && !editingDraftId ? openQuickCustomer : undefined}
         customerAllowCredit={customers.find((c) => c.id === customerId)?.allowCredit}
         customerCreditLimit={customers.find((c) => c.id === customerId)?.creditLimit}
         customerCurrentOutstanding={customers.find((c) => c.id === customerId)?.currentOutstanding}
@@ -1912,6 +1932,8 @@ export function PosPage() {
         open={quickCustomerOpen}
         editing={null}
         variant="quick"
+        initialPhone={quickCreateDefaults.phone}
+        initialName={quickCreateDefaults.name}
         onClose={() => setQuickCustomerOpen(false)}
         onSaved={handleQuickCustomerSaved}
       />
